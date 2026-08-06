@@ -1,0 +1,6 @@
+node_modules/
+*.db
+*.db-*
+timetable.db*
+.env
+npm-debug.log*

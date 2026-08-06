@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: aumtara-timetable
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # paste your Neon connection string in the Render dashboard

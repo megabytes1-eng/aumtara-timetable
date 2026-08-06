@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aumtara — Timetable Module</title>
+<style>
+:root{--navy:#1F3864;--blue:#2f5fd0;--accent:#7030A0;--green:#0e9f6e;--amber:#c98a00;--red:#c0392b;--bg:#f4f7fc;--line:#e2e6ee;--muted:#6b7280;}
+*{box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif;}
+body{margin:0;background:var(--bg);color:#222;}
+header{background:var(--navy);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:12px;}
+header .logo{width:30px;height:30px;background:linear-gradient(135deg,#4f8cff,#7030A0);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;}
+header h1{font-size:18px;margin:0;} header .sub{font-size:12px;opacity:.8;}
+.savebadge{margin-left:auto;font-size:12px;background:#0e9f6e;padding:4px 10px;border-radius:20px;opacity:0;transition:.3s;}
+.savebadge.show{opacity:1;}
+.tabs{display:flex;gap:2px;background:#fff;padding:0 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.tab{padding:12px 13px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;}
+.tab.active{color:var(--navy);border-bottom-color:var(--blue);}
+.wrap{max-width:1240px;margin:0 auto;padding:22px;}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;}
+.kpi .n{font-size:26px;font-weight:800;color:var(--navy);} .kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+.kpi.g .n{color:var(--green);}.kpi.a .n{color:var(--amber);}.kpi.p .n{color:var(--accent);}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
+.card h2{margin:0 0 4px;font-size:16px;color:var(--navy);} .card .desc{color:var(--muted);font-size:13px;margin-bottom:14px;}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;}
+input,select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;}
+button{background:var(--blue);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;}
+button.ghost{background:#fff;color:var(--navy);border:1px solid var(--line);} button.green{background:var(--green);}button.purple{background:var(--accent);}button.red{background:var(--red);}
+button.mini{padding:4px 9px;font-size:12px;} button:hover{opacity:.92;}
+table{border-collapse:collapse;width:100%;font-size:12.5px;} th,td{border:1px solid var(--line);padding:6px 8px;text-align:center;vertical-align:middle;}
+th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;color:var(--navy);}
+.cell{min-width:118px;} .cell select{width:100%;font-size:11px;padding:3px;border:none;background:transparent;margin:1px 0;}
+.subj{font-weight:700;color:var(--navy);font-size:11.5px;} .tch{font-size:10.5px;color:var(--muted);} .rm{font-size:9.5px;color:var(--accent);}
+.conflict{background:#ffe1e1 !important;outline:2px solid var(--red);}
+.free{color:#bbb;font-style:italic;}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+.pill.live{background:#d1fae5;color:#065f46;}.pill.break{background:#fef3c7;color:#92400e;}.pill.idle{background:#e5e7eb;color:#374151;}.pill.proxy{background:#ede9fe;color:#5b21b6;}
+.mon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.mon{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;border-left:5px solid var(--line);}
+.mon.live{border-left-color:var(--green);}.mon.break{border-left-color:var(--amber);}.mon.idle{border-left-color:#9ca3af;}.mon.proxy{border-left-color:var(--accent);}
+.mon .cn{font-weight:800;color:var(--navy);font-size:15px;} .mon .info{font-size:12.5px;color:var(--muted);margin-top:6px;}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 0 16px;}
+.note{background:#fff8e1;border-left:4px solid #f1c40f;padding:9px 12px;border-radius:0 6px 6px 0;font-size:12.5px;margin-bottom:16px;}
+.hours-row{display:flex;justify-content:space-between;padding:10px 12px;border-left:4px solid var(--green);background:#f6fbff;border-radius:6px;margin-bottom:8px;} .hours-row.sat{border-left-color:var(--blue);}
+.tag{background:#eef2fb;color:var(--navy);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;}
+.small{font-size:11px;color:var(--muted);} .badge-bad{color:var(--red);font-weight:700;font-size:10px;}
+.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;} .feat div{background:#f6f8fc;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12.5px;} .feat b{color:var(--navy);}
+.setcols{display:grid;grid-template-columns:1fr 1fr;gap:16px;} @media(max-width:820px){.setcols{grid-template-columns:1fr;}.kpis{grid-template-columns:1fr 1fr;}}
+.listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
+.chk{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#eef2fb;padding:3px 7px;border-radius:12px;margin:2px;cursor:pointer;} .chk input{margin:0;}
+.guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
+.dropzone{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted);}
+.okmsg{background:#d1fae5;color:#065f46;padding:8px 12px;border-radius:8px;font-size:13px;margin-top:10px;}
+.errmsg{background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:8px;font-size:13px;margin-top:10px;}
+#printhead{display:none;}
+@media print{
+  header,.tabs,.savebadge{display:none !important;}
+  .wrap{padding:0;max-width:100%;}
+  .card{border:none;box-shadow:none;padding:0;margin:0;}
+  .row,.desc,button,.note,.card>h2{display:none !important;}
+  #diaryreport{border:1px solid #999 !important;padding:16px !important;}
+  #printhead{display:block;text-align:center;margin-bottom:10px;} #printhead h3{margin:0;color:#000;} #printhead .sub{font-size:12px;color:#444;}
+  table{font-size:11px;} th{background:#1F3864 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .conflict{outline:none;}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">A</div>
+  <div><h1>Aumtara — Timetable Module</h1><div class="sub">Create &amp; manage class schedules · live data from your database</div></div>
+  <div class="savebadge" id="saved">✓ Saved</div>
+</header>
+<div class="tabs" id="tabs"></div>
+<div class="wrap"><div id="printhead"></div><div id="view">Loading…</div></div>
+
+<script>
+const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat"];
+let classes=[],subjects=[],teachers=[],rooms=[],config={},TT=[],absence=[],conflicts={teacher:[],room:[]},chaptersAll=[];
+let tab="dash",curClass=null,curTeacher=null,buildDay=0,monDay=null,monTime=null,subDay=0,cover=null;
+
+const api=async(m,u,b)=>{const r=await fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});return r.json();};
+function toast(){const e=document.getElementById('saved');e.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove('show'),1200);}
+
+async function loadAll(){
+  [classes,subjects,teachers,rooms,config,TT,absence,conflicts,chaptersAll]=await Promise.all([
+    api('GET','/api/classes'),api('GET','/api/subjects'),api('GET','/api/teachers'),api('GET','/api/rooms'),
+    api('GET','/api/timetable/config'),api('GET','/api/timetable'),api('GET','/api/timetable/absence'),api('GET','/api/timetable/conflicts'),api('GET','/api/chapters')]);
+  if(!curClass||!classes.find(c=>c.id===curClass))curClass=classes[0]?.id;
+  if(!curTeacher||!teachers.find(t=>t.id===curTeacher))curTeacher=teachers[0]?.id;
+  render();
+}
+function addMin(h,m){let[a,b]=h.split(":").map(Number);let d=new Date(2020,0,1,a,b+m);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
+function slotsFor(di){const end=di===5?config.saturday_end:config.weekday_end;let s=[],t=config.weekday_start,i=0;while(true){const e=addMin(t,config.period_minutes);s.push({i,label:"P"+(i+1),start:t,end:e,brk:false});i++;if(e>=end||i>=10)break;t=e;if(i===config.break_after_period){const be=addMin(t,config.break_minutes);s.push({brk:true,label:"Break",start:t,end:be});t=be;}}return s;}
+const sName=id=>(subjects.find(s=>s.id===id)||{}).name||"";
+const tName=id=>(teachers.find(t=>t.id===id)||{}).name||"";
+const rName=id=>(rooms.find(r=>r.id===id)||{}).name||"";
+const tForSub=sid=>teachers.filter(t=>t.subjects.includes(sid));
+const cell=(cid,d,p)=>TT.find(r=>r.class_id===cid&&r.day_of_week===d&&r.period_index===p);
+function conflictAt(cid,d,p){const c=cell(cid,d,p);if(!c)return null;const out={};
+  if(c.teacher_id){const o=TT.find(r=>r.class_id!==cid&&r.day_of_week===d&&r.period_index===p&&r.teacher_id===c.teacher_id);if(o)out.t=(classes.find(x=>x.id===o.class_id)||{}).name;}
+  if(c.room_id){const o=TT.find(r=>r.class_id!==cid&&r.day_of_week===d&&r.period_index===p&&r.room_id===c.room_id);if(o)out.r=(classes.find(x=>x.id===o.class_id)||{}).name;}
+  return (out.t||out.r)?out:null;}
+function completed(){let n=0;classes.forEach(c=>{let f=0,tot=0;DAYS.forEach((_,di)=>{slotsFor(di).filter(s=>!s.brk).forEach((_,pi)=>{tot++;const cc=cell(c.id,di,pi);if(cc&&cc.subject_id)f++;});});if(tot&&f===tot)n++;});return n;}
+const absentDay=tid=>absence.filter(a=>a.teacher_id===tid).map(a=>a.day_of_week);
+const conflictCount=()=>conflicts.teacher.length+conflicts.room.length;
+
+const TABS=[["dash","Dashboard"],["setup","Setup"],["hours","Academic Hours"],["quota","Quota"],["build","Builder"],["class","Class"],["teacher","Teacher"],["diary","Teacher Diary"],["school","School View"],["sub","Substitution"],["monitor","Live Monitor"],["data","Import / Export"],["help","Help & Guide"]];
+function render(){
+  document.getElementById("tabs").innerHTML=TABS.map(([k,l])=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${l}</div>`).join("");
+  document.getElementById("view").innerHTML=({dash,setup,hours,quota:quotaView,build:builder,class:classView,teacher:teacherView,diary:diaryView,school:schoolView,sub:subView,monitor,data:dataView,help}[tab])();
+  if(tab==="monitor")refreshMonitor(); if(tab==="sub")loadCover(); if(tab==="quota")loadQuota(); if(tab==="diary")loadDiary();
+}
+function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3>${title}</h3><div class="sub">${sub||''}</div>`;window.print();}
+function printPlain(){document.getElementById('printhead').innerHTML='';window.print();}
+function setTab(t){tab=t;render();}
+
+// ---------- DASHBOARD ----------
+function dash(){return `<div class="kpis">
+   <div class="kpi"><div class="n">${classes.length}</div><div class="l">Classrooms</div></div>
+   <div class="kpi g"><div class="n">${subjects.length}</div><div class="l">Subjects</div></div>
+   <div class="kpi a"><div class="n">${teachers.length}</div><div class="l">Teachers</div></div>
+   <div class="kpi p"><div class="n">${completed()}/${classes.length}</div><div class="l">Completed</div></div></div>
+   <div class="card"><h2>Timetable Management</h2><div class="desc">Full module — everything saves to the database. ${rooms.length} rooms · ${conflictCount()} active clash(es).</div>
+   <div class="row"><button class="green" onclick="autoGen()">⚡ Auto-generate timetable</button>
+     <button class="ghost" onclick="setTab('setup')">Manage classes/teachers</button>
+     <button class="ghost" onclick="setTab('build')">Build timetable</button>
+     <button class="purple" onclick="setTab('sub')">Substitution</button>
+     <button class="ghost" onclick="setTab('monitor')">▶ Live Monitor</button></div>
+   <div class="feat">
+     <div><b>Period optimization</b><br><span class="small">Slots + quota-aware auto-generate.</span></div>
+     <div><b>Conflict management</b><br><span class="small">Teacher & room clashes flagged (${conflictCount()} now).</span></div>
+     <div><b>Substitution</b><br><span class="small">Absent teacher → assign a free proxy.</span></div></div></div>`;}
+async function autoGen(){await api('POST','/api/timetable/auto-generate');toast();await loadAll();}
+
+// ---------- SETUP (CRUD) ----------
+function setup(){
+  const classList=classes.map(c=>`<div class="listrow"><input value="${c.name}" onchange="upd('classes',${c.id},{name:this.value})"><button class="ghost mini red" onclick="del('classes',${c.id})">✕</button></div>`).join('');
+  const subList=subjects.map(s=>`<div class="listrow"><input value="${s.name}" onchange="upd('subjects',${s.id},{name:this.value})"><button class="ghost mini red" onclick="del('subjects',${s.id})">✕</button></div>`).join('');
+  const roomList=rooms.map(r=>`<div class="listrow"><input value="${r.name}" onchange="upd('rooms',${r.id},{name:this.value})"><input type="number" style="width:70px" value="${r.capacity||''}" placeholder="cap" onchange="upd('rooms',${r.id},{capacity:+this.value})"><button class="ghost mini red" onclick="del('rooms',${r.id})">✕</button></div>`).join('');
+  const tchList=teachers.map(t=>`<div style="padding:8px 0;border-bottom:1px solid #f0f2f6">
+     <div class="listrow"><input value="${t.name}" onchange="updTeacher(${t.id},{name:this.value})"><button class="ghost mini red" onclick="delTeacher(${t.id})">✕</button></div>
+     <div class="row" style="gap:8px;margin:4px 0">
+       <input style="flex:1;min-width:120px" value="${t.qualification||''}" placeholder="Qualification" onchange="updTeacher(${t.id},{qualification:this.value})">
+       <select onchange="updTeacher(${t.id},{main_subject_id:this.value?+this.value:null})"><option value="">Main subject…</option>${subjects.map(s=>`<option value="${s.id}" ${t.main_subject_id===s.id?'selected':''}>${s.name}</option>`).join('')}</select>
+       <input type="number" style="width:110px" value="${t.max_load||''}" placeholder="Weekly load" onchange="updTeacher(${t.id},{max_load:+this.value||null})"></div>
+     <div><span class="small">Can teach: </span>${subjects.map(s=>`<label class="chk"><input type="checkbox" ${t.subjects.includes(s.id)?'checked':''} onchange="toggleSub(${t.id},${s.id},this.checked)">${s.name}</label>`).join('')}</div></div>`).join('');
+  return `<div class="setcols">
+   <div class="card"><h2>Classes</h2>${classList||'<span class="small">none</span>'}<div class="row" style="margin-top:8px"><input id="ncls" placeholder="New class name"><button onclick="add('classes','ncls')">+ Add</button></div></div>
+   <div class="card"><h2>Subjects</h2>${subList||'<span class="small">none</span>'}<div class="row" style="margin-top:8px"><input id="nsub" placeholder="New subject"><button onclick="add('subjects','nsub')">+ Add</button></div></div>
+   <div class="card"><h2>Rooms</h2>${roomList||'<span class="small">none</span>'}<div class="row" style="margin-top:8px"><input id="nroom" placeholder="Room name"><input id="ncap" type="number" style="width:70px" placeholder="cap"><button onclick="addRoom()">+ Add</button></div></div>
+   <div class="card"><h2>Teachers</h2><div class="desc">Name, qualification, main subject, teachable subjects &amp; weekly period load. Bulk-add many at once from the <b>Import / Export</b> tab.</div>${tchList||'<span class="small">none</span>'}<div class="row" style="margin-top:8px"><input id="ntch" placeholder="New teacher name"><button onclick="addTeacher()">+ Add</button></div></div>
+   <div class="card"><h2>Chapters (per subject)</h2><div class="desc">Chapters show as a <b>pulldown</b> while filling the Teacher's Diary — fast &amp; consistent.</div>
+     <div class="row" style="margin-bottom:8px"><select onchange="setupSubj=+this.value;render()">${subjects.map(s=>`<option value="${s.id}" ${s.id===(setupSubj||(subjects[0]||{}).id)?'selected':''}>${s.name}</option>`).join('')}</select></div>
+     ${(()=>{const sid=setupSubj||(subjects[0]||{}).id;const list=chaptersForSubject(sid);return list.length?list.map(c=>`<div class="listrow"><input value="${c.name.replace(/"/g,'&quot;')}" disabled><button class="ghost mini red" onclick="delChapter(${c.id})">✕</button></div>`).join(''):'<span class="small">No chapters yet.</span>';})()}
+     <div class="row" style="margin-top:8px"><input id="nchap" placeholder="New chapter name"><button onclick="addChapter()">+ Add</button></div></div></div>`;
+}
+async function add(route,inp){const v=document.getElementById(inp).value.trim();if(!v)return;await api('POST','/api/'+route,{name:v});toast();await loadAll();}
+async function addRoom(){const v=document.getElementById('nroom').value.trim();if(!v)return;await api('POST','/api/rooms',{name:v,capacity:+document.getElementById('ncap').value||null});toast();await loadAll();}
+async function upd(route,id,body){await api('PUT','/api/'+route+'/'+id,body);toast();await loadAll();}
+async function del(route,id){await api('DELETE','/api/'+route+'/'+id);toast();await loadAll();}
+async function addTeacher(){const v=document.getElementById('ntch').value.trim();if(!v)return;await api('POST','/api/teachers',{name:v,subjects:[]});toast();await loadAll();}
+async function updTeacher(id,body){await api('PUT','/api/teachers/'+id,body);toast();await loadAll();}
+async function delTeacher(id){await api('DELETE','/api/teachers/'+id);toast();await loadAll();}
+async function toggleSub(tid,sid,on){const t=teachers.find(x=>x.id===tid);const subs=new Set(t.subjects);on?subs.add(sid):subs.delete(sid);await api('PUT','/api/teachers/'+tid,{subjects:[...subs]});toast();await loadAll();}
+let setupSubj=null;
+async function addChapter(){const sid=setupSubj||(subjects[0]||{}).id;const el=document.getElementById('nchap');const v=(el.value||'').trim();if(!v||!sid)return;await api('POST','/api/chapters',{subject_id:sid,name:v});toast();await loadAll();}
+async function delChapter(id){await api('DELETE','/api/chapters/'+id);toast();await loadAll();}
+
+// ---------- HOURS ----------
+function hours(){const wd=slotsFor(0);return `<div class="card"><h2>Academic Hours <span class="tag">Configuration</span></h2>
+   <div class="desc">Period slots are generated from this and saved to DB.</div>
+   <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:280px"><label>School name (shown on diary &amp; reports)</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div></div>
+   <div class="row" style="margin-bottom:14px">
+     <div><label>Weekday start</label><input type="time" value="${config.weekday_start}" onchange="cfg('weekday_start',this.value)"></div>
+     <div><label>Weekday end</label><input type="time" value="${config.weekday_end}" onchange="cfg('weekday_end',this.value)"></div>
+     <div><label>Saturday end</label><input type="time" value="${config.saturday_end}" onchange="cfg('saturday_end',this.value)"></div>
+     <div><label>Period (min)</label><input type="number" value="${config.period_minutes}" style="width:80px" onchange="cfg('period_minutes',+this.value)"></div>
+     <div><label>Break after period</label><input type="number" value="${config.break_after_period}" style="width:80px" onchange="cfg('break_after_period',+this.value)"></div>
+     <div><label>Break (min)</label><input type="number" value="${config.break_minutes}" style="width:80px" onchange="cfg('break_minutes',+this.value)"></div></div>
+   <div class="hours-row"><div><b>Weekdays</b><br><span class="small">${wd.filter(s=>!s.brk).length} periods · ${config.period_minutes} min</span></div><div><b>${config.weekday_start} – ${config.weekday_end}</b></div></div>
+   <div class="hours-row sat"><div><b>Saturdays</b><br><span class="small">${slotsFor(5).filter(s=>!s.brk).length} periods</span></div><div><b>${config.weekday_start} – ${config.saturday_end}</b></div></div>
+   <div style="margin-top:10px"><b class="small">Weekday slots:</b><br>${wd.map(s=>`<span class="tag">${s.brk?'☕ Break':s.label} ${s.start}-${s.end}</span>`).join("")}</div></div>`;}
+async function cfg(k,v){config[k]=v;await api('PUT','/api/timetable/config',config);toast();render();}
+
+// ---------- BUILDER (with rooms) ----------
+function builder(){const di=buildDay,slots=slotsFor(di);
+  let head=`<th>Class \\ Period</th>`+slots.map(s=>`<th>${s.brk?'☕':s.label}<br><span style="font-weight:400;font-size:10px">${s.start}-${s.end}</span></th>`).join("");
+  let rows=classes.map(c=>{let pi=0,cells=`<td class="ph">${c.name}</td>`;
+    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6">☕</td>`;return;}
+      const cc=cell(c.id,di,pi),conf=conflictAt(c.id,di,pi);
+      const sopt=`<option value="">— free —</option>`+subjects.map(s=>`<option value="${s.id}" ${cc&&cc.subject_id===s.id?'selected':''}>${s.name}</option>`).join("");
+      const tl=cc&&cc.subject_id?tForSub(cc.subject_id):teachers;
+      const topt=`<option value="">teacher…</option>`+tl.map(t=>`<option value="${t.id}" ${cc&&cc.teacher_id===t.id?'selected':''}>${t.name}</option>`).join("");
+      const ropt=`<option value="">room…</option>`+rooms.map(r=>`<option value="${r.id}" ${cc&&cc.room_id===r.id?'selected':''}>${r.name}</option>`).join("");
+      cells+=`<td class="cell ${conf?'conflict':''}"><select onchange="setSub_(${c.id},${di},${pi},this.value)">${sopt}</select>
+        <select onchange="setTea(${c.id},${di},${pi},this.value)">${topt}</select>
+        <select onchange="setRoom(${c.id},${di},${pi},this.value)">${ropt}</select>
+        ${conf?`<div class="badge-bad">${conf.t?'⚠ teacher: '+conf.t:''} ${conf.r?'⚠ room: '+conf.r:''}</div>`:''}</td>`;pi++;});
+    return `<tr>${cells}</tr>`;}).join("");
+  return `<div class="card"><h2>Set Daily Lectures — Builder</h2><div class="desc">Subject + teacher + room per class/period. Saved instantly; teacher &amp; room clashes highlighted.</div>
+   <div class="row" style="margin-bottom:12px"><div><label>Day</label><select onchange="buildDay=+this.value;render()">${DAYS.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${d}</option>`).join("")}</select></div>
+     <button class="green" onclick="autoGen()">⚡ Auto-generate all</button></div>
+   <div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
+async function saveCell(c,d,p,patch){const cc=cell(c,d,p)||{};await api('PUT','/api/timetable/cell',{class_id:c,day:d,period:p,subject_id:cc.subject_id||null,teacher_id:cc.teacher_id||null,room_id:cc.room_id||null,...patch});toast();await loadAll();}
+async function setSub_(c,d,p,v){const cc=cell(c,d,p)||{};await api('PUT','/api/timetable/cell',{class_id:c,day:d,period:p,subject_id:v||null,teacher_id:v?cc.teacher_id:null,room_id:cc.room_id||null});toast();await loadAll();}
+async function setTea(c,d,p,v){await saveCell(c,d,p,{teacher_id:v||null});}
+async function setRoom(c,d,p,v){await saveCell(c,d,p,{room_id:v||null});}
+
+// ---------- CLASS VIEW ----------
+function classView(){const slots0=slotsFor(0);
+  let head=`<th>Day</th>`+slots0.map(s=>`<th>${s.brk?'☕':s.label}</th>`).join("");
+  let rows=DAYS.map((d,di)=>{const slots=slotsFor(di);let pi=0,cells=`<td class="ph">${d}</td>`;
+    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6">☕</td>`;return;}const cc=cell(curClass,di,pi);pi++;
+      cells+=cc&&cc.subject_id?`<td><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}</div>${cc.room_id?`<div class="rm">${rName(cc.room_id)}</div>`:''}</td>`:`<td class="free">—</td>`;});
+    return `<tr>${cells}</tr>`;}).join("");
+  return `<div class="card"><h2>Class Schedule</h2><div class="row" style="margin-bottom:12px">
+     <div><label>Class</label><select onchange="curClass=+this.value;render()">${classes.map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join("")}</select></div>
+     <button class="ghost" onclick="printDoc('Class Timetable — '+document.querySelector('#view select').selectedOptions[0].text,'Aumtara')">🖨 Print / PDF</button>
+     <button class="ghost" onclick="location.href='/api/export/timetable.xlsx'">⬇ Excel</button></div>
+   <div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
+
+// ---------- TEACHER VIEW ----------
+function teacherView(){const slots0=slotsFor(0);let load=0;
+  let head=`<th>Day</th>`+slots0.map(s=>`<th>${s.brk?'☕':s.label}</th>`).join("");
+  let rows=DAYS.map((d,di)=>{const slots=slotsFor(di);let pi=0,cells=`<td class="ph">${d}${absentDay(curTeacher).includes(di)?' <span class="pill proxy">absent</span>':''}</td>`;
+    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6">☕</td>`;return;}
+      let f=null;classes.forEach(c=>{const cc=cell(c.id,di,pi);if(cc&&cc.teacher_id===curTeacher)f={cls:c.name,s:cc.subject_id};});pi++;
+      if(f){load++;cells+=`<td><div class="subj">${sName(f.s)}</div><div class="tch">${f.cls}</div></td>`;}else cells+=`<td class="free">free</td>`;});
+    return `<tr>${cells}</tr>`;}).join("");
+  return `<div class="card"><h2>Teacher Schedule &amp; Workload</h2><div class="row" style="margin-bottom:12px">
+     <div><label>Teacher</label><select onchange="curTeacher=+this.value;render()">${teachers.map(t=>`<option value="${t.id}" ${t.id===curTeacher?'selected':''}>${t.name}</option>`).join("")}</select></div>
+     <div><label>Mark absent (day)</label><select onchange="setAbsent(${curTeacher},this.value)"><option value="">— none —</option>${DAYS.map((d,i)=>`<option value="${i}" ${absentDay(curTeacher).includes(i)?'selected':''}>${d}</option>`).join("")}</select></div>
+     <div style="align-self:flex-end"><span class="tag" style="${(()=>{const mx=(teachers.find(t=>t.id===curTeacher)||{}).max_load;return mx&&load>mx?'background:#fee2e2;color:#991b1b':''})()}">Load: ${load}${(teachers.find(t=>t.id===curTeacher)||{}).max_load?' / '+(teachers.find(t=>t.id===curTeacher).max_load)+' max':''}</span></div>
+     <button class="ghost" onclick="printDoc('Teacher Timetable','Aumtara')">🖨 Print / PDF</button></div>
+   <div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
+async function setAbsent(t,v){await api('POST','/api/timetable/absence',{teacher_id:t,day:v===''?null:+v});toast();await loadAll();}
+
+// ---------- SCHOOL-WIDE VIEW ----------
+function schoolView(){const di=buildDay,slots=slotsFor(di);
+  let head=`<th>Class \\ Period</th>`+slots.map(s=>`<th>${s.brk?'☕':s.label}<br><span style="font-weight:400;font-size:10px">${s.start}</span></th>`).join("");
+  let rows=classes.map(c=>{let pi=0,cells=`<td class="ph">${c.name}</td>`;
+    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6">☕</td>`;return;}const cc=cell(c.id,di,pi);pi++;
+      cells+=cc&&cc.subject_id?`<td><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}${cc.room_id?' · '+rName(cc.room_id):''}</div></td>`:`<td class="free">—</td>`;});
+    return `<tr>${cells}</tr>`;}).join("");
+  return `<div class="card"><h2>Whole-School Timetable</h2><div class="desc">All classes for one day, side by side — the master view.</div>
+   <div class="row" style="margin-bottom:12px"><div><label>Day</label><select onchange="buildDay=+this.value;render()">${DAYS.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${d}</option>`).join("")}</select></div>
+     <button class="ghost" onclick="printDoc('Whole-School Timetable — '+DAYS[buildDay],'Aumtara')">🖨 Print / PDF</button>
+     <button class="ghost" onclick="location.href='/api/export/timetable.xlsx'">⬇ Excel (all classes)</button></div>
+   <div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
+
+// ---------- QUOTA ----------
+let quotaData=[];
+async function loadQuota(){ if(!curClass)return; quotaData=await api('GET','/api/quota?class_id='+curClass); renderQuota(); }
+function quotaView(){ return `<div class="card"><h2>Subject Weekly Quota</h2><div class="desc">How many periods per week each subject should get for a class. Auto-generate uses this. Leave 0 to let it fill automatically.</div>
+   <div class="row" style="margin-bottom:12px"><div><label>Class</label><select onchange="curClass=+this.value;loadQuota()">${classes.map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join('')}</select></div>
+     <button class="green" onclick="autoGen()">⚡ Auto-generate</button></div>
+   <div id="quotabox">Loading…</div></div>`; }
+function renderQuota(){ const box=document.getElementById('quotabox'); if(!box)return;
+  let totalSlots=0; DAYS.forEach((_,di)=>totalSlots+=slotsFor(di).filter(s=>!s.brk).length);
+  const q={}; quotaData.forEach(x=>q[x.subject_id]=x.per_week);
+  let sum=Object.values(q).reduce((a,b)=>a+(+b||0),0);
+  box.innerHTML=`<table><tr><th>Subject</th><th>Periods / week</th></tr>${subjects.map(s=>`<tr><td>${s.name}</td>
+     <td><input type="number" min="0" style="width:90px" value="${q[s.id]||0}" onchange="setQuota(${s.id},+this.value)"></td></tr>`).join('')}
+     <tr><td class="ph">Total assigned</td><td class="ph" style="${sum>totalSlots?'color:#991b1b':''}">${sum} / ${totalSlots} weekly slots</td></tr></table>
+     ${sum>totalSlots?'<div class="errmsg">Assigned more than available weekly slots — reduce some.</div>':''}`;
+}
+async function setQuota(subject_id,per_week){ await api('PUT','/api/quota',{class_id:curClass,subject_id,per_week}); toast(); await loadQuota(); }
+
+// ---------- IMPORT / EXPORT ----------
+function dataView(){ return `<div class="setcols">
+   <div class="card"><h2>Export to Excel</h2><div class="desc">Download your data as .xlsx.</div>
+     <div class="row"><button onclick="location.href='/api/export/timetable.xlsx'">⬇ Timetable (all classes)</button>
+       <button class="ghost" onclick="location.href='/api/export/setup.xlsx'">⬇ Setup (classes, subjects, teachers, rooms)</button></div>
+     <div class="note" style="margin-top:12px">Tip: open the Class / Teacher / School tabs and use <b>Print / PDF</b> to save a printable timetable.</div></div>
+   <div class="card"><h2>Import Teachers &amp; Setup from Excel</h2><div class="desc">Bulk-add Classes, Subjects, Rooms and Teachers. Teachers sheet columns: <b>Name, Qualification, Main Subject, Optional Subjects, Weekly Period Load</b>.</div>
+     <div class="row" style="margin-bottom:10px"><button class="ghost" onclick="location.href='/api/export/setup-template.xlsx'">⬇ Download template</button></div>
+     <div class="dropzone"><input type="file" id="impfile" accept=".xlsx"><div style="margin-top:8px"><button onclick="doImport()">⬆ Import file</button></div></div>
+     <div id="impresult"></div></div></div>`; }
+async function doImport(){ const f=document.getElementById('impfile').files[0]; const box=document.getElementById('impresult');
+  if(!f){box.innerHTML='<div class="errmsg">Choose an .xlsx file first.</div>';return;}
+  const fd=new FormData(); fd.append('file',f);
+  const r=await fetch('/api/import/setup',{method:'POST',body:fd}); const d=await r.json();
+  if(d.ok){ box.innerHTML=`<div class="okmsg">Imported ✓ — added ${d.added.classes} classes, ${d.added.subjects} subjects, ${d.added.rooms} rooms, ${d.added.teachers} teachers.</div>`; await loadAll(); }
+  else box.innerHTML=`<div class="errmsg">${d.error||'Import failed'}</div>`;
+}
+
+// ---------- HELP & GUIDE ----------
+function help(){ const steps=[
+   ['Set up your school','In <b>Setup</b>, add your Classes, Subjects, Rooms and Teachers. For each teacher set qualification, main subject, the subjects they can teach, and a weekly period load (max periods/week). Bulk-add many via <b>Import / Export</b>.'],
+   ['Configure hours','In <b>Academic Hours</b>, set weekday/Saturday timings, period length and break — the period slots are generated automatically.'],
+   ['Set subject quota (optional)','In <b>Quota</b>, choose how many periods per week each subject gets for a class. Auto-generate will honour it.'],
+   ['Generate or build','Click <b>Auto-generate</b> to fill the whole timetable (avoids teacher & room clashes and respects weekly load), or use the <b>Builder</b> to set each cell by hand. Clashes are highlighted in red.'],
+   ['Review','Check <b>Class</b>, <b>Teacher</b> (with workload vs max) and <b>School View</b>. Print or save any as PDF, or export to Excel.'],
+   ['Handle absences','Mark a teacher absent in the <b>Teacher</b> tab, then go to <b>Substitution</b> to assign a free teacher to each period needing cover.'],
+   ['Monitor live','<b>Live Monitor</b> shows every classroom’s current status (LIVE / BREAK / IDLE / PROXY), computed from the timetable and time.'],
+ ];
+ return `<div class="card"><h2>Help &amp; Guide</h2><div class="desc">A quick walk-through of the whole module.</div>
+   <div class="guide">${steps.map((s,i)=>`<div class="step"><div class="no">${i+1}</div><div class="txt"><b>${s[0]}</b><br>${s[1]}</div></div>`).join('')}</div>
+   <div class="note"><b>Legend:</b> <span class="pill live">LIVE</span> class running · <span class="pill break">BREAK</span> · <span class="pill idle">IDLE</span> free/after-hours · <span class="pill proxy">PROXY</span> teacher absent / covered.</div>
+   <div class="feat"><div><b>Data is real</b><br><span class="small">Everything saves to a SQLite database and survives restarts.</span></div>
+     <div><b>Import/Export</b><br><span class="small">Bulk-load setup from Excel; export timetable & setup to Excel.</span></div>
+     <div><b>Print / PDF</b><br><span class="small">Class/Teacher/School views print cleanly (browser → Save as PDF).</span></div></div></div>`;
+}
+
+// ---------- TEACHER DIARY (official format) ----------
+let diaryDate=null, diaryEntries=[], diaryMode='entry', diaryClass='';
+const DFIELDS=[['lesson','Lesson'],['topic','Topic'],['learning_outcome','Learning Outcome'],['assessment_lo','Assessment of LO (Strategies)'],['homework','Home Work'],['teaching_aids','Teaching Aids used']];
+function dowFromDate(d){ return (new Date(d+'T00:00:00').getDay()+6)%7; }
+function longDate(d){ return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+function diaryView(){ if(!diaryDate)diaryDate=new Date().toISOString().slice(0,10);
+  return `<div class="card"><h2>Teacher's Diary</h2><div class="desc">Fill Lesson, Topic, Learning Outcome, Assessment of LO (Strategies), Home Work &amp; Teaching Aids per period — then view/print the official report.</div>
+   <div class="row" style="margin-bottom:12px">
+     <div><label>Teacher</label><select onchange="curTeacher=+this.value;loadDiary()">${teachers.map(t=>`<option value="${t.id}" ${t.id===curTeacher?'selected':''}>${t.name}</option>`).join('')}</select></div>
+     <div><label>Day</label><select onchange="diaryDate=dateForDay(+this.value);loadDiary()">${DAYS.map((d,i)=>`<option value="${i}" ${i===dowFromDate(diaryDate)?'selected':''}>${d}</option>`).join('')}</select></div>
+     <div><label>Date</label><input type="date" value="${diaryDate}" onchange="diaryDate=this.value;loadDiary()"></div>
+     <div style="align-self:flex-end"><button class="${diaryMode==='entry'?'':'ghost'}" onclick="diaryMode='entry';loadDiary()">✎ Fill entries</button>
+       <button class="${diaryMode==='report'?'purple':'ghost'}" onclick="diaryMode='report';loadDiary()">📄 Diary Report</button></div>
+   </div>
+   <div id="diarybody">Loading…</div></div>`;
+}
+const chaptersForSubject=sid=>chaptersAll.filter(c=>c.subject_id===sid);
+function dateForDay(dow){ const d=new Date(diaryDate+'T00:00:00'); const cur=(d.getDay()+6)%7; d.setDate(d.getDate()-cur+dow); return d.toISOString().slice(0,10); }
+function subjOptions(sel){ return subjects.map(s=>`<option value="${s.id}" ${s.id===sel?'selected':''}>${s.name}</option>`).join(''); }
+function onSubjChange(selEl){ const card=selEl.closest('.card'); const sid=+selEl.value; card.querySelectorAll('input[data-listsub]').forEach(inp=>inp.setAttribute('list','chap_'+sid)); }
+function chapDatalists(){ return subjects.map(s=>`<datalist id="chap_${s.id}">${chaptersForSubject(s.id).map(c=>`<option value="${c.name.replace(/"/g,'&quot;')}">`).join('')}</datalist>`).join(''); }
+async function loadDiary(){ const box=document.getElementById('diarybody'); if(!box){render();return;}
+  const dow=dowFromDate(diaryDate);
+  diaryEntries=await api('GET',`/api/diary?teacher_id=${curTeacher}&date=${diaryDate}`);
+  if(diaryMode==='report'){ box.innerHTML=diaryReport(dow); return; }
+  const periods=TT.filter(r=>r.teacher_id===curTeacher && r.day_of_week===dow).sort((a,b)=>a.period_index-b.period_index);
+  const ex=(cid,pi)=>diaryEntries.find(e=>e.class_id===cid && e.period_index===pi)||{};
+  const esc=s=>(s||'').replace(/</g,'&lt;'); const av=s=>(s||'').replace(/"/g,'&quot;');
+  const inS='width:100%;border:1px solid var(--line);border-radius:6px;padding:6px;font-size:12px';
+  const combo=(e,f,sid,ph)=>`<input data-f="${f}" data-listsub list="chap_${sid}" value="${av(e[f])}" placeholder="${ph}" style="${inS}">`;
+  const ta=(e,f)=>`<textarea rows="2" data-f="${f}" style="${inS};resize:vertical">${esc(e[f])}</textarea>`;
+  let html;
+  if(!periods.length){ html=`<div class="note">No scheduled periods for this teacher on ${DAYS[dow]}. Add a free entry:</div>`+freeForm(dow); }
+  else html=periods.map(p=>{const e=ex(p.class_id,p.period_index);const cls=(classes.find(c=>c.id===p.class_id)||{}).name;const sid=p.subject_id;
+    return `<div class="card" style="margin-bottom:12px;border-left:4px solid var(--blue)">
+      <div class="row" style="gap:12px;align-items:flex-end;margin-bottom:4px">
+        <div><label>Period</label><div style="font-weight:700;color:var(--navy)">P${p.period_index+1} · ${cls}</div></div>
+        <div><label>Subject</label><select data-sel="subject" onchange="onSubjChange(this)">${subjOptions(sid)}</select></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label>Lesson / Chapter</label>${combo(e,'lesson',sid,'pick chapter or type')}</div>
+        <div><label>Topic</label>${combo(e,'topic',sid,'topic / sub-topic')}</div>
+        <div><label>Learning Outcome</label>${ta(e,'learning_outcome')}</div>
+        <div><label>Assessment of LO (Strategies)</label>${ta(e,'assessment_lo')}</div>
+        <div><label>Home Work</label>${ta(e,'homework')}</div>
+        <div><label>Teaching Aids used</label>${ta(e,'teaching_aids')}</div></div>
+      <div style="margin-top:8px"><button onclick="saveDiary(this,${p.class_id},${p.period_index},${dow})">💾 Save</button></div></div>`;}).join('');
+  box.innerHTML=chapDatalists()+html;
+}
+function freeForm(dow){ const inS='width:100%;border:1px solid var(--line);border-radius:6px;padding:6px';
+  const cl=`<option value="">Class…</option>`+classes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const sb=`<option value="">Subject…</option>`+subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  const firstSid=subjects[0]?subjects[0].id:'';
+  return `<div class="card" style="border-left:4px solid var(--accent)"><div class="row"><div><label>Class</label><select id="fcls">${cl}</select></div>
+     <div><label>Subject</label><select id="fsub" onchange="document.querySelectorAll('#ff_lesson,#ff_topic').forEach(x=>x.setAttribute('list','chap_'+this.value))">${sb}</select></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:8px">
+      <div><label>Lesson / Chapter</label><input id="ff_lesson" list="chap_${firstSid}" style="${inS}"></div>
+      <div><label>Topic</label><input id="ff_topic" list="chap_${firstSid}" style="${inS}"></div>
+      ${['learning_outcome','assessment_lo','homework','teaching_aids'].map(f=>`<div><label>${DFIELDS.find(x=>x[0]===f)[1]}</label><textarea rows="2" id="ff_${f}" style="${inS}"></textarea></div>`).join('')}</div>
+    <div style="margin-top:8px"><button onclick="saveFree(${dow})">💾 Save entry</button></div></div>`;
+}
+async function saveDiary(btn,class_id,period_index,dow){ const card=btn.closest('.card');
+  const g=f=>(card.querySelector(`[data-f="${f}"]`)||{}).value||'';
+  const subject_id=+(card.querySelector('[data-sel="subject"]')||{}).value||null;
+  const body={teacher_id:curTeacher,entry_date:diaryDate,day_of_week:dow,class_id,subject_id,period_index}; DFIELDS.forEach(([f])=>body[f]=g(f));
+  await api('POST','/api/diary',body); toast(); btn.textContent='✓ Saved'; setTimeout(()=>btn.textContent='💾 Save',1200);
+}
+async function saveFree(dow){ const v=id=>(document.getElementById(id)||{}).value;
+  if(!v('fcls')){alert('Pick a class');return;}
+  const body={teacher_id:curTeacher,entry_date:diaryDate,day_of_week:dow,class_id:+v('fcls'),subject_id:+v('fsub')||null,period_index:null}; DFIELDS.forEach(([f])=>body[f]=v('ff_'+f));
+  await api('POST','/api/diary',body); toast(); loadDiary();
+}
+// ----- official printable report -----
+function diaryReport(dow){
+  const tName2=(teachers.find(t=>t.id===curTeacher)||{}).name||'';
+  let rows=diaryEntries.slice().sort((a,b)=>(a.period_index??99)-(b.period_index??99));
+  if(diaryClass)rows=rows.filter(r=>r.class_id===+diaryClass);
+  const esc=s=>(s||'').replace(/</g,'&lt;');
+  const single=diaryClass?(classes.find(c=>c.id===+diaryClass)||{}).name:'';
+  const singleSub=diaryClass&&rows[0]?sName(rows[0].subject_id):'';
+  const cols=diaryClass?DFIELDS:[['class','Class'],['subject','Subject'],...DFIELDS];
+  const cellFor=(r,f)=> f==='class'?( (classes.find(c=>c.id===r.class_id)||{}).name||'') : f==='subject'?sName(r.subject_id) : esc(r[f]);
+  const clsFilter=`<select onchange="diaryClass=this.value;loadDiary()"><option value="">All classes</option>${classes.map(c=>`<option value="${c.id}" ${diaryClass==String(c.id)?'selected':''}>${c.name}</option>`).join('')}</select>`;
+  return `<div class="row" style="margin-bottom:10px"><div><label>Class</label>${clsFilter}</div>
+     <div style="align-self:flex-end">
+       <button class="ghost" onclick="printPlain()">🖨 Print / PDF</button>
+       <button class="ghost" onclick="location.href='/api/export/diary.xlsx?teacher_id='+curTeacher+'&date='+diaryDate">⬇ Export Excel</button>
+       <button onclick="diaryMode='entry';loadDiary()">✎ Edit</button></div></div>
+   <div id="diaryreport" style="border:1px solid var(--line);border-radius:8px;padding:18px">
+     <div style="text-align:center;border-bottom:2px solid var(--navy);padding-bottom:8px;margin-bottom:10px">
+       <div style="font-size:20px;font-weight:800;color:var(--navy)">${esc(config.school_name||'School Name')}</div>
+       <div style="font-size:15px;font-weight:700;letter-spacing:.5px">Teacher's Diary</div></div>
+     <div style="display:flex;flex-wrap:wrap;gap:20px;font-size:13px;margin-bottom:12px">
+       <div><b>Teacher:</b> ${esc(tName2)}</div>${diaryClass?`<div><b>Class:</b> ${esc(single)}</div><div><b>Subject:</b> ${esc(singleSub)}</div>`:''}
+       <div><b>Date:</b> ${longDate(diaryDate)}</div><div><b>Day:</b> ${DAYS[dow]}</div></div>
+     ${rows.length?`<table><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr>${rows.map(r=>`<tr>${cols.map(c=>`<td style="text-align:left;vertical-align:top">${cellFor(r,c[0])}</td>`).join('')}</tr>`).join('')}</table>`
+       :'<div class="note">No diary entries for this date yet. Use “Fill entries”.</div>'}
+   </div>`;
+}
+async function delDiary(id){ await api('DELETE','/api/diary/'+id); toast(); loadDiary(); }
+
+// ---------- SUBSTITUTION ----------
+function subView(){return `<div class="card"><h2>Substitution / Cover</h2><div class="desc">Pick a day. Any period whose teacher is absent shows here — assign a free teacher to cover.</div>
+   <div class="row" style="margin-bottom:12px"><div><label>Day</label><select onchange="subDay=+this.value;loadCover()">${DAYS.map((d,i)=>`<option value="${i}" ${i===subDay?'selected':''}>${d}</option>`).join("")}</select></div>
+     <span class="small">Mark teachers absent in the Teacher tab first.</span></div>
+   <div id="coverbox">Loading…</div></div>`;}
+async function loadCover(){const box=document.getElementById('coverbox');if(!box)return;cover=await api('GET','/api/timetable/cover?day='+subDay);
+  if(!cover.need.length){box.innerHTML='<div class="note">No periods need cover on '+DAYS[subDay]+' — no absent teachers, or all covered. 👍</div>';return;}
+  box.innerHTML=`<table><tr><th>Class</th><th>Period</th><th>Subject</th><th>Absent teacher</th><th>Assign proxy</th></tr>${
+    cover.need.map(n=>`<tr><td>${(classes.find(c=>c.id===n.class_id)||{}).name}</td><td>P${n.period_index+1}</td><td>${n.subj}</td>
+      <td><span class="pill proxy">${tName(n.teacher_id)}</span></td>
+      <td><select onchange="assignProxy(${n.class_id},${n.period_index},this.value)"><option value="">— pick free teacher —</option>${n.free.map(f=>`<option value="${f.id}" ${n.proxy_teacher_id===f.id?'selected':''}>${f.name}</option>`).join('')}</select></td></tr>`).join('')}</table>
+    <div class="small" style="margin-top:8px">Assigned proxies show up in Live Monitor as <span class="pill proxy">Proxy: name</span>.</div>`;}
+async function assignProxy(class_id,period,v){await api('POST','/api/timetable/substitute',{day:subDay,class_id,period,proxy_teacher_id:v===''?null:+v});toast();loadCover();}
+
+// ---------- LIVE MONITOR ----------
+function monitor(){return `<div class="card"><h2>Live Classroom Monitor</h2>
+   <div class="desc">Real-time status of every classroom (server-computed). Assigned proxies are shown.</div>
+   <div class="row" style="margin-bottom:6px">
+     <div><label>Simulate day</label><select id="mday" onchange="monDay=this.value===''?null:+this.value;refreshMonitor()"><option value="">(now)</option>${DAYS.map((d,i)=>`<option value="${i}" ${monDay===i?'selected':''}>${d}</option>`).join("")}</select></div>
+     <div><label>Simulate time</label><input type="time" id="mtime" value="${monTime||''}" onchange="monTime=this.value;refreshMonitor()"></div>
+     <button class="ghost" onclick="monDay=null;monTime=null;refreshMonitor()">Use real time</button></div>
+   <div class="legend"><span><span class="pill live">LIVE</span> running</span><span><span class="pill break">BREAK</span></span><span><span class="pill idle">IDLE</span></span><span><span class="pill proxy">PROXY</span> absent/covered</span></div>
+   <div class="mon-grid" id="mongrid">Loading…</div></div>`;}
+async function refreshMonitor(){const g=document.getElementById('mongrid');if(!g)return;let u='/api/timetable/monitor';if(monDay!=null&&monTime)u+=`?day=${monDay}&time=${monTime}`;const d=await api('GET',u);
+  g.innerHTML=d.classes.map(c=>`<div class="mon ${c.status}"><div class="cn">${c.name}</div><div><span class="pill ${c.status}">${c.status.toUpperCase()}</span></div><div class="info">${c.text}</div></div>`).join("");}
+
+// ---------- ABOUT ----------
+function about(){return `<div class="card"><h2>About this module</h2>
+   <div class="desc">A complete, runnable Timetable module — Node + Express + SQLite. Every change persists.</div>
+   <div class="feat">
+    <div><b>Setup / Manage</b><br><span class="small">CRUD classes, subjects, teachers (+subjects), rooms.</span></div>
+    <div><b>Academic Hours</b><br><span class="small">Times + period/break → auto slots.</span></div>
+    <div><b>Builder</b><br><span class="small">Subject + teacher + room per cell, saved instantly.</span></div>
+    <div><b>Conflict management</b><br><span class="small">Teacher AND room clashes flagged.</span></div>
+    <div><b>Auto-generate</b><br><span class="small">Quota-aware, room-aware, avoids clashes.</span></div>
+    <div><b>Class / Teacher / School views</b><br><span class="small">Print/PDF each.</span></div>
+    <div><b>Substitution</b><br><span class="small">Absent teacher → assign a free proxy.</span></div>
+    <div><b>Live Monitor</b><br><span class="small">LIVE/BREAK/IDLE/PROXY, server-computed.</span></div></div>
+   <div class="note" style="margin-top:14px"><b>API:</b> /api/timetable/* , /api/classes|subjects|teachers|rooms · <b>DB:</b> timetable.db. See README to integrate into Aumtara.</div></div>`;}
+
+loadAll();
+</script>
+</body>
+</html>

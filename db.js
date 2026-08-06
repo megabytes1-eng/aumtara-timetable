@@ -1,0 +1,168 @@
+// Postgres persistence layer for the Timetable module (v3 — Neon/Render ready)
+// Migrated from better-sqlite3 → pg so data persists on free cloud hosts.
+const { Pool } = require('pg');
+
+const connectionString =
+  process.env.DATABASE_URL ||
+  'postgres://postgres:postgres@127.0.0.1:5432/timetable';
+
+// Neon (and most managed Postgres) require SSL. Local dev does not.
+const needSSL = /neon\.tech|render\.com|supabase|sslmode=require/i.test(connectionString)
+  || process.env.PGSSL === '1';
+const pool = new Pool({
+  connectionString,
+  ssl: needSSL ? { rejectUnauthorized: false } : false,
+  max: 5,
+});
+
+// Convert better-sqlite3 style "?" placeholders to Postgres "$1,$2,..."
+function toPg(sql) { let i = 0; return sql.replace(/\?/g, () => '$' + (++i)); }
+
+// Query helpers (async). Keep call-sites close to the old .all()/.get()/.run() shape.
+async function q(sql, params = [])  { const r = await pool.query(toPg(sql), params); return r.rows; }        // → array
+async function q1(sql, params = []) { const r = await pool.query(toPg(sql), params); return r.rows[0]; }      // → first row | undefined
+async function run(sql, params = []){ return pool.query(toPg(sql), params); }                                 // → result
+
+// Transaction: fn receives a scoped query helper cq(sql, params)
+async function tx(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const cq  = async (sql, params = []) => (await client.query(toPg(sql), params)).rows;
+    const cq1 = async (sql, params = []) => (await client.query(toPg(sql), params)).rows[0];
+    const out = await fn(cq, cq1);
+    await client.query('COMMIT');
+    return out;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+// ---- in-memory config cache so slot math can stay synchronous ----
+let CONFIG = null;
+async function loadConfig() { CONFIG = await q1('SELECT * FROM tt_config WHERE id=1'); return CONFIG; }
+function getConfigCached() { return CONFIG; }
+
+async function init() {
+  await run(`
+  CREATE TABLE IF NOT EXISTS tt_class   (id SERIAL PRIMARY KEY, name TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS tt_subject (id SERIAL PRIMARY KEY, name TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS tt_teacher (id SERIAL PRIMARY KEY, name TEXT NOT NULL, qualification TEXT, main_subject_id INTEGER, max_load INTEGER);
+  CREATE TABLE IF NOT EXISTS tt_room    (id SERIAL PRIMARY KEY, name TEXT NOT NULL, capacity INTEGER);
+  CREATE TABLE IF NOT EXISTS tt_teacher_subject (teacher_id INTEGER, subject_id INTEGER, PRIMARY KEY (teacher_id, subject_id));
+
+  CREATE TABLE IF NOT EXISTS tt_config (
+     id INTEGER PRIMARY KEY CHECK (id=1),
+     weekday_start TEXT, weekday_end TEXT, saturday_end TEXT,
+     period_minutes INTEGER, break_after_period INTEGER, break_minutes INTEGER,
+     school_name TEXT);
+
+  CREATE TABLE IF NOT EXISTS tt_timetable (
+     id SERIAL PRIMARY KEY,
+     class_id INTEGER NOT NULL,
+     day_of_week INTEGER NOT NULL,
+     period_index INTEGER NOT NULL,
+     subject_id INTEGER, teacher_id INTEGER, room_id INTEGER,
+     UNIQUE (class_id, day_of_week, period_index));
+  CREATE INDEX IF NOT EXISTS ix_tt_slot ON tt_timetable (day_of_week, period_index, teacher_id);
+  CREATE INDEX IF NOT EXISTS ix_tt_room ON tt_timetable (day_of_week, period_index, room_id);
+
+  CREATE TABLE IF NOT EXISTS tt_quota (
+     class_id INTEGER, subject_id INTEGER, per_week INTEGER,
+     PRIMARY KEY (class_id, subject_id));
+
+  CREATE TABLE IF NOT EXISTS tt_chapter (
+     id SERIAL PRIMARY KEY, subject_id INTEGER NOT NULL, name TEXT NOT NULL, seq INTEGER);
+
+  CREATE TABLE IF NOT EXISTS tt_absence (
+     id SERIAL PRIMARY KEY,
+     teacher_id INTEGER NOT NULL, day_of_week INTEGER NOT NULL, reason TEXT,
+     UNIQUE (teacher_id, day_of_week));
+
+  CREATE TABLE IF NOT EXISTS tt_substitution (
+     id SERIAL PRIMARY KEY,
+     day_of_week INTEGER NOT NULL, class_id INTEGER NOT NULL, period_index INTEGER NOT NULL,
+     proxy_teacher_id INTEGER,
+     UNIQUE (day_of_week, class_id, period_index));
+
+  CREATE TABLE IF NOT EXISTS tt_diary (
+     id SERIAL PRIMARY KEY,
+     teacher_id INTEGER NOT NULL,
+     entry_date TEXT NOT NULL,
+     day_of_week INTEGER,
+     class_id INTEGER, subject_id INTEGER, period_index INTEGER,
+     topic TEXT, observation TEXT, plan TEXT, remarks TEXT,
+     created_at TEXT,
+     lesson TEXT, learning_outcome TEXT, assessment_lo TEXT, homework TEXT, teaching_aids TEXT,
+     UNIQUE (teacher_id, entry_date, class_id, period_index));
+  `);
+
+  // idempotent safety migrations (no-ops on a fresh DB)
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS school_name TEXT`);
+  for (const c of ['lesson','learning_outcome','assessment_lo','homework','teaching_aids'])
+    await run(`ALTER TABLE tt_diary ADD COLUMN IF NOT EXISTS ${c} TEXT`);
+
+  const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
+  if (!n) await seed();
+
+  const cfg = await q1('SELECT COUNT(*)::int AS n FROM tt_config');
+  if (!cfg.n)
+    await run(`INSERT INTO tt_config(id,weekday_start,weekday_end,saturday_end,period_minutes,break_after_period,break_minutes)
+               VALUES (1,?,?,?,?,?,?)`, ['07:30','13:00','11:30',35,3,20]);
+
+  const sn = await q1('SELECT school_name FROM tt_config WHERE id=1');
+  if (!sn || !sn.school_name)
+    await run('UPDATE tt_config SET school_name=? WHERE id=1', ['Your School Name']);
+
+  await loadConfig();
+}
+
+async function seed() {
+  const cls = ['Class VI-A','Class VII-A','Class VIII-A'];
+  const sub = ['English','Maths','Science','Social','Hindi','Computer','PE'];
+  const rooms = [['Room 101',40],['Room 102',40],['Lab-1',30],['Computer Lab',30]];
+  // name, qualification, main subject, [optional subjects], max weekly load
+  const tch = [
+    ['R. Kumar','M.Sc, B.Ed','Maths',['Computer'],30],
+    ['A. Sharma','M.Sc Physics, B.Ed','Science',[],28],
+    ['P. Desai','M.A, B.Ed','English',['Hindi'],30],
+    ['S. Nair','M.A History, B.Ed','Social',[],26],
+    ['V. Iyer','B.P.Ed','PE',['Science'],24],
+  ];
+  const chapters = {
+    English:['Grammar','Prose','Poetry','Writing Skills'],
+    Maths:['Fractions','Decimals','Geometry','Algebra Basics','Mensuration'],
+    Science:['Living World','Matter Around Us','Force & Motion','Light','The Human Body'],
+    Social:['Our Past','Maps & Geography','Civics Basics'],
+    Hindi:['व्याकरण','गद्य','पद्य','रचना'],
+    Computer:['Intro to Computers','MS Word','Scratch Programming'],
+    PE:['Fitness','Athletics','Team Games'],
+  };
+  await tx(async (cq, cq1) => {
+    for (const c of cls) await cq('INSERT INTO tt_class(name) VALUES (?)', [c]);
+    for (const s of sub) await cq('INSERT INTO tt_subject(name) VALUES (?)', [s]);
+    for (const r of rooms) await cq('INSERT INTO tt_room(name,capacity) VALUES (?,?)', [r[0], r[1]]);
+
+    const subId = {};
+    (await cq('SELECT * FROM tt_subject')).forEach(r => subId[r.name] = r.id);
+
+    for (const [name, qual, main, opts, load] of tch) {
+      const mid = subId[main];
+      const row = await cq1('INSERT INTO tt_teacher(name,qualification,main_subject_id,max_load) VALUES (?,?,?,?) RETURNING id',
+        [name, qual, mid, load]);
+      await cq('INSERT INTO tt_teacher_subject VALUES (?,?) ON CONFLICT DO NOTHING', [row.id, mid]);
+      for (const sn of opts) await cq('INSERT INTO tt_teacher_subject VALUES (?,?) ON CONFLICT DO NOTHING', [row.id, subId[sn]]);
+    }
+
+    for (const [sn, list] of Object.entries(chapters)) {
+      if (!subId[sn]) continue;
+      let i = 0;
+      for (const c of list) { i++; await cq('INSERT INTO tt_chapter(subject_id,name,seq) VALUES(?,?,?)', [subId[sn], c, i]); }
+    }
+  });
+}
+
+module.exports = { pool, q, q1, run, tx, init, loadConfig, getConfigCached };
