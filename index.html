@@ -81,7 +81,7 @@ let classes=[],subjects=[],teachers=[],rooms=[],config={},TT=[],absence=[],confl
 let tab="dash",curClass=null,curTeacher=null,buildDay=0,monDay=null,monTime=null,subDay=0,cover=null;
 
 const api=async(m,u,b)=>{const r=await fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});return r.json();};
-function toast(){const e=document.getElementById('saved');e.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove('show'),1200);}
+function toast(msg){const e=document.getElementById('saved');e.textContent=msg||'✓ Saved';e.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>{e.classList.remove('show');e.textContent='✓ Saved';},msg?2800:1200);}
 
 async function loadAll(){
   [classes,subjects,teachers,rooms,config,TT,absence,conflicts,chaptersAll]=await Promise.all([
@@ -132,7 +132,7 @@ function dash(){return `<div class="kpis">
      <div><b>Period optimization</b><br><span class="small">Slots + quota-aware auto-generate.</span></div>
      <div><b>Conflict management</b><br><span class="small">Teacher & room clashes flagged (${conflictCount()} now).</span></div>
      <div><b>Substitution</b><br><span class="small">Absent teacher → assign a free proxy.</span></div></div></div>`;}
-async function autoGen(){await api('POST','/api/timetable/auto-generate');toast();await loadAll();}
+async function autoGen(){const b=event&&event.target;if(b){b.disabled=true;b.dataset.txt=b.textContent;b.textContent='⏳ Generating…';}const r=await api('POST','/api/timetable/auto-generate');await loadAll();setTab('class');toast('✓ Timetable ban gaya! '+((r&&r.cells)||0)+' periods bhare — yeh raha Class view.');if(b){b.disabled=false;b.textContent=b.dataset.txt;}}
 
 // ---------- SETUP (CRUD) ----------
 function setup(){
