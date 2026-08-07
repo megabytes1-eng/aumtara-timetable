@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const { q, q1, run, tx, init, loadConfig, getConfigCached, hashPw, verifyPw, seedConfigForSchool } = require('./db');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '8mb' }));   // logos (base64 data-URLs) can exceed the 100kb default
 // Serve the single-page frontend. index.html lives next to server.js (flat layout
 // so the repo uploads cleanly to GitHub's web uploader, which can't preserve subfolders).
 // index.html is fully self-contained (inline CSS/JS), so no other static assets are needed.
