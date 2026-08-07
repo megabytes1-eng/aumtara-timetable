@@ -118,6 +118,15 @@ async function init() {
   // Phase 3 — optional class structure (Board / Medium / Standard / Section). All additive & optional.
   for (const c of ['board','medium','standard','section'])
     await run(`ALTER TABLE tt_class ADD COLUMN IF NOT EXISTS ${c} TEXT`);
+  // Phase 4 — academic session label + saved timetable versions (snapshots)
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS academic_session TEXT`);
+  await run(`CREATE TABLE IF NOT EXISTS tt_snapshot (
+     id SERIAL PRIMARY KEY, name TEXT NOT NULL, session TEXT, created_at TEXT, cell_count INTEGER)`);
+  await run(`CREATE TABLE IF NOT EXISTS tt_snapshot_cell (
+     snapshot_id INTEGER NOT NULL, class_id INTEGER NOT NULL,
+     day_of_week INTEGER NOT NULL, period_index INTEGER NOT NULL,
+     subject_id INTEGER, teacher_id INTEGER, room_id INTEGER)`);
+  await run(`CREATE INDEX IF NOT EXISTS ix_snap_cell ON tt_snapshot_cell (snapshot_id)`);
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();

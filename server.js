@@ -139,9 +139,9 @@ app.get('/api/timetable/config', h(async (_,res)=>res.json(getConfig())));
 app.put('/api/timetable/config', h(async (req,res)=>{
   const c=getConfig(), b=req.body, v=(k)=>b[k]!==undefined?b[k]:c[k];
   await run(`UPDATE tt_config SET weekday_start=?,weekday_end=?,saturday_end=?,period_minutes=?,break_after_period=?,break_minutes=?,school_name=?,
-       short_break_minutes=?,short_break_after=?,lunch_minutes=?,lunch_after=?,period_durations=?,working_days=? WHERE id=1`,
+       short_break_minutes=?,short_break_after=?,lunch_minutes=?,lunch_after=?,period_durations=?,working_days=?,academic_session=? WHERE id=1`,
     [v('weekday_start'),v('weekday_end'),v('saturday_end'),v('period_minutes'),v('break_after_period'),v('break_minutes'),v('school_name'),
-     v('short_break_minutes'),v('short_break_after'),v('lunch_minutes'),v('lunch_after'),v('period_durations'),v('working_days')]);
+     v('short_break_minutes'),v('short_break_after'),v('lunch_minutes'),v('lunch_after'),v('period_durations'),v('working_days'),v('academic_session')]);
   await loadConfig();
   res.json(getConfig());
 }));
@@ -254,6 +254,48 @@ function shuffleStable(arr, seed){ // deterministic light shuffle so subjects sp
   for(let i=a.length-1;i>0;i--){ s=(s*9301+49297)%233280; const j=Math.floor(s/233280*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
   return a;
 }
+
+// ---------- TIMETABLE VERSIONS (saved snapshots) ----------
+app.get('/api/versions', h(async (_,res)=>{
+  res.json(await q('SELECT id,name,session,created_at,cell_count FROM tt_snapshot ORDER BY id DESC'));
+}));
+// save the current live timetable as a named version
+app.post('/api/versions', h(async (req,res)=>{
+  const name=(req.body.name||'').trim()||('Version '+((await q1('SELECT COUNT(*)::int n FROM tt_snapshot')).n+1));
+  const session=(getConfig()||{}).academic_session||null;
+  const cells=await q('SELECT class_id,day_of_week,period_index,subject_id,teacher_id,room_id FROM tt_timetable');
+  const snap=await tx(async (cq,cq1)=>{
+    const s=await cq1('INSERT INTO tt_snapshot(name,session,created_at,cell_count) VALUES(?,?,now()::text,?) RETURNING id',[name,session,cells.length]);
+    for(const c of cells)
+      await cq('INSERT INTO tt_snapshot_cell(snapshot_id,class_id,day_of_week,period_index,subject_id,teacher_id,room_id) VALUES(?,?,?,?,?,?,?)',
+        [s.id,c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id]);
+    return s;
+  });
+  res.json({ok:true, id:snap.id, name, cells:cells.length});
+}));
+// restore a saved version → overwrites the live timetable
+app.post('/api/versions/:id/restore', h(async (req,res)=>{
+  const id=Number(req.params.id);
+  const snap=await q1('SELECT * FROM tt_snapshot WHERE id=?',[id]);
+  if(!snap){ res.status(404).json({error:'not found'}); return; }
+  const cells=await q('SELECT class_id,day_of_week,period_index,subject_id,teacher_id,room_id FROM tt_snapshot_cell WHERE snapshot_id=?',[id]);
+  await tx(async (cq)=>{
+    await cq('DELETE FROM tt_timetable');
+    for(const c of cells)
+      await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id) VALUES(?,?,?,?,?,?)',
+        [c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id]);
+  });
+  res.json({ok:true, cells:cells.length});
+}));
+app.put('/api/versions/:id', h(async (req,res)=>{
+  if(req.body.name!==undefined) await run('UPDATE tt_snapshot SET name=? WHERE id=?',[req.body.name, req.params.id]);
+  res.json({ok:true});
+}));
+app.delete('/api/versions/:id', h(async (req,res)=>{
+  await run('DELETE FROM tt_snapshot_cell WHERE snapshot_id=?',[req.params.id]);
+  await run('DELETE FROM tt_snapshot WHERE id=?',[req.params.id]);
+  res.json({ok:true});
+}));
 
 // ---------- TEACHER schedule ----------
 app.get('/api/timetable/teacher/:id', h(async (req,res)=>{
