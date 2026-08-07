@@ -58,7 +58,7 @@ function simpleCrud(route, tbl, cols){
   }));
   app.delete('/api/'+route+'/:id', h(async (req,res)=>{ await run(`DELETE FROM ${tbl} WHERE id=?`, [req.params.id]); res.json({ok:true}); }));
 }
-simpleCrud('classes','tt_class',['name','class_teacher_id']);
+simpleCrud('classes','tt_class',['name','class_teacher_id','board','medium','standard','section']);
 simpleCrud('subjects','tt_subject',['name','active']);
 simpleCrud('rooms','tt_room',['name','capacity']);
 

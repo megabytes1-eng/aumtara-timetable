@@ -115,6 +115,9 @@ async function init() {
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived
   await run(`UPDATE tt_subject SET active=1 WHERE active IS NULL`);
+  // Phase 3 — optional class structure (Board / Medium / Standard / Section). All additive & optional.
+  for (const c of ['board','medium','standard','section'])
+    await run(`ALTER TABLE tt_class ADD COLUMN IF NOT EXISTS ${c} TEXT`);
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();
