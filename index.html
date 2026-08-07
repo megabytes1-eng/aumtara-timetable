@@ -1,8 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Aumtara — Timetable Module</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1f2b57">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Aumtara">
 <style>
 :root{--navy:#1F3864;--blue:#2f5fd0;--accent:#7030A0;--green:#0e9f6e;--amber:#c98a00;--red:#c0392b;--bg:#f4f7fc;--line:#e2e6ee;--muted:#6b7280;}
 *{box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif;}
@@ -1275,6 +1283,7 @@ async function refreshMonitor(){const g=document.getElementById('mongrid');if(!g
   g.innerHTML=d.classes.map(c=>`<div class="mon ${c.status}"><div class="cn">${c.name}</div><div><span class="pill ${c.status}">${t('st_'+c.status)}</span></div><div class="info">${c.text}</div></div>`).join("");}
 
 /* ============================ boot ============================ */
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }); }
 boot();
 </script>
 </body>

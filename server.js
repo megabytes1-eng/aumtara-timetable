@@ -14,6 +14,32 @@ app.use(express.json());
 // index.html is fully self-contained (inline CSS/JS), so no other static assets are needed.
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
+// ---------- PWA (installable web app: manifest + service worker + icons) ----------
+const MANIFEST = {
+  name: 'Aumtara Timetable', short_name: 'Aumtara',
+  description: 'School timetable, teacher diary & reports — multi-school.',
+  start_url: '/', scope: '/', display: 'standalone', orientation: 'any',
+  background_color: '#1f2b57', theme_color: '#1f2b57', lang: 'en',
+  icons: [
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+  ]
+};
+const SW_JS = `const CACHE='aumtara-v2';
+const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+self.addEventListener('fetch',e=>{const req=e.request; if(req.method!=='GET') return; let url; try{url=new URL(req.url);}catch(_){return;} if(url.origin!==self.location.origin) return; if(url.pathname.startsWith('/api/')) return;
+  if(req.mode==='navigate'){ e.respondWith(fetch(req).then(r=>{const cp=r.clone(); caches.open(CACHE).then(c=>c.put('/',cp)); return r;}).catch(()=>caches.match('/'))); return; }
+  e.respondWith(caches.match(req).then(r=>r||fetch(req)));});`;
+app.get('/manifest.webmanifest', (_, res) => { res.type('application/manifest+json'); res.send(JSON.stringify(MANIFEST)); });
+app.get('/sw.js', (_, res) => { res.type('application/javascript'); res.set('Cache-Control', 'no-cache'); res.send(SW_JS); });
+for (const ic of ['icon-192.png', 'icon-512.png', 'icon-maskable.png'])
+  app.get('/' + ic, (_, res) => res.sendFile(path.join(__dirname, ic)));
+app.get('/apple-touch-icon.png', (_, res) => res.sendFile(path.join(__dirname, 'icon-192.png')));
+app.get('/apple-touch-icon-precomposed.png', (_, res) => res.sendFile(path.join(__dirname, 'icon-192.png')));
+
 // async route wrapper — turns rejected promises into a clean 500 instead of a crash
 const h = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => {
   console.error(e);
