@@ -646,6 +646,89 @@ app.get('/api/export/setup-template.xlsx', h(async (_,res)=>{
   await wb.xlsx.write(res); res.end();
 }));
 
+// ---------- REPORTS (aSc-style multi-sheet workbook, from the school's data) ----------
+function shortCode(name){ if(!name)return ''; const p=String(name).trim().split(/\s+/); if(p.length>1)return p.map(x=>x[0]).join('').toUpperCase().slice(0,4); return (String(name).replace(/[^A-Za-z0-9]/g,'').slice(0,3).toUpperCase())||String(name).slice(0,3); }
+app.get('/api/export/reports.xlsx', h(async (req,res)=>{
+  const sid=req.sid, cfg=getConfig(sid)||{};
+  const classes =await q('SELECT * FROM tt_class WHERE school_id=? ORDER BY id',[sid]);
+  const subjects=await q('SELECT * FROM tt_subject WHERE school_id=? ORDER BY id',[sid]);
+  const teachers=await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY id',[sid]);
+  const rooms   =await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY id',[sid]);
+  const tmap    =await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
+  const tt      =await q('SELECT * FROM tt_timetable WHERE school_id=?',[sid]);
+  const absents =await q('SELECT * FROM tt_absence WHERE school_id=?',[sid]);
+  const cById={},sById={},tById={},rById={};
+  classes.forEach(c=>cById[c.id]=c); subjects.forEach(s=>sById[s.id]=s); teachers.forEach(t=>tById[t.id]=t); rooms.forEach(r=>rById[r.id]=r);
+  const cName=id=>(cById[id]||{}).name||'', sName=id=>(sById[id]||{}).name||'', tName=id=>(tById[id]||{}).name||'';
+  const sShort={},tShort={}; subjects.forEach(s=>sShort[s.id]=shortCode(s.name)); teachers.forEach(t=>tShort[t.id]=shortCode(t.name));
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara';
+  const title=(cfg.school_name||'School')+(cfg.board?(' · '+cfg.board):'')+(cfg.academic_session?(' · '+cfg.academic_session):'');
+  const used=new Set();
+  const uniq=nm=>{ let b=String(nm).slice(0,31).replace(/[\\\/\?\*\[\]:]/g,' ').trim()||'Sheet'; let n=b,i=2; while(used.has(n.toLowerCase())){ n=b.slice(0,27)+' '+i; i++; } used.add(n.toLowerCase()); return n; };
+  const addSheet=(name,headers)=>{ const ws=wb.addWorksheet(uniq(name)); const span=Math.max(headers.length,2);
+    ws.mergeCells(1,1,1,span); const tc=ws.getCell(1,1); tc.value=title; tc.font={bold:true,size:13,color:{argb:'FF1F3864'}}; tc.alignment={horizontal:'center'};
+    ws.mergeCells(2,1,2,span); const sc=ws.getCell(2,1); sc.value=name; sc.font={bold:true,size:11,color:{argb:'FF6B3FA0'}}; sc.alignment={horizontal:'center'};
+    const hr=ws.addRow(headers); styleHeader(hr); hr.eachCell(c=>c.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}); return ws; };
+  const widths=(ws,w)=>ws.columns.forEach((c,i)=>c.width=w[i]||14);
+  const body=ws=>{ ws.eachRow((r,n)=>{ if(n>3) r.eachCell(c=>{c.alignment={vertical:'top',wrapText:true}; c.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};}); }); };
+
+  // Teachers list
+  let ws=addSheet('Teachers list',['Name','Total lessons/week','Subjects','Classes','Class teacher for']);
+  teachers.forEach(t=>{ const mine=tt.filter(x=>x.teacher_id===t.id);
+    const subs=[...new Set(tmap.filter(m=>m.teacher_id===t.id).map(m=>sShort[m.subject_id]).filter(Boolean))].join(', ');
+    const cls=[...new Set(mine.map(x=>cName(x.class_id)))].filter(Boolean).join(', ');
+    const ct=classes.filter(c=>c.class_teacher_id===t.id).map(c=>c.name).join(', ');
+    ws.addRow([t.name, mine.length, subs, cls, ct]); });
+  widths(ws,[22,16,22,34,20]); body(ws);
+
+  // Lessons
+  ws=addSheet('Lessons',['Teacher','Class','Subject','Lessons/week']);
+  const grp={}; tt.forEach(x=>{ if(!x.subject_id)return; const k=(x.teacher_id||0)+'|'+x.class_id+'|'+x.subject_id; grp[k]=(grp[k]||0)+1; });
+  Object.keys(grp).sort((a,b)=>{const A=a.split('|'),B=b.split('|');return (tName(+A[0])||'~').localeCompare(tName(+B[0])||'~')||cName(+A[1]).localeCompare(cName(+B[1]));}).forEach(k=>{ const[tid,cid,sx]=k.split('|'); ws.addRow([tName(+tid)||'—', cName(+cid), sName(+sx), grp[k]]); });
+  widths(ws,[22,12,20,14]); body(ws);
+
+  // Subjects
+  ws=addSheet('Subjects',['Subject','Short','Periods/week (all classes)']);
+  subjects.forEach(s=>ws.addRow([s.name, sShort[s.id], tt.filter(x=>x.subject_id===s.id).length]));
+  widths(ws,[22,10,26]); body(ws);
+
+  // Classes
+  ws=addSheet('Classes',['Class','Board','Medium','Standard','Section','Class teacher','Periods/week']);
+  classes.forEach(c=>ws.addRow([c.name, c.board||'', c.medium||'', c.standard||'', c.section||'', c.class_teacher_id?tName(c.class_teacher_id):'', tt.filter(x=>x.class_id===c.id&&x.subject_id).length]));
+  widths(ws,[16,12,12,10,10,20,14]); body(ws);
+
+  // Teachers
+  ws=addSheet('Teachers',['Name','Short','Qualification','Class teacher for','Weekly load','Max load']);
+  teachers.forEach(t=>ws.addRow([t.name, tShort[t.id], t.qualification||'', classes.filter(c=>c.class_teacher_id===t.id).map(c=>c.name).join(', '), tt.filter(x=>x.teacher_id===t.id).length, t.max_load||'']));
+  widths(ws,[22,10,22,20,12,10]); body(ws);
+
+  // Classrooms
+  ws=addSheet('Classrooms',['Name','Capacity']);
+  rooms.forEach(r=>ws.addRow([r.name, r.capacity||''])); widths(ws,[20,12]); body(ws);
+
+  const dayP=DAYS.map((_,di)=>teachingSlots(di,sid).length); const maxP=Math.max(1,...dayP);
+  const absDay={}; absents.forEach(a=>{(absDay[a.day_of_week]=absDay[a.day_of_week]||new Set()).add(a.teacher_id);});
+
+  // Available (free) teachers per day/period
+  ws=addSheet('Available teachers',['Day','Period','Free teachers']);
+  DAYS.forEach((d,di)=>{ for(let p=0;p<dayP[di];p++){ const busy=new Set(tt.filter(x=>x.day_of_week===di&&x.period_index===p&&x.teacher_id).map(x=>x.teacher_id)); const ab=absDay[di]||new Set(); ws.addRow([d,p+1,teachers.filter(t=>!busy.has(t.id)&&!ab.has(t.id)).map(t=>tShort[t.id]).join(', ')]); }});
+  widths(ws,[10,8,70]); body(ws);
+
+  // Unused classrooms per day/period
+  ws=addSheet('Unused classrooms',['Day','Period','Free rooms']);
+  DAYS.forEach((d,di)=>{ for(let p=0;p<dayP[di];p++){ const u=new Set(tt.filter(x=>x.day_of_week===di&&x.period_index===p&&x.room_id).map(x=>x.room_id)); ws.addRow([d,p+1,rooms.filter(r=>!u.has(r.id)).map(r=>r.name).join(', ')]); }});
+  widths(ws,[10,8,70]); body(ws);
+
+  // Per-subject grids (Day x Period -> classes having that subject)
+  subjects.forEach(s=>{ const ws=addSheet(s.name+' .',['Day','Period',...Array.from({length:maxP},(_,i)=>'P'+(i+1))]);
+    DAYS.forEach((d,di)=>{ for(let p=0;p<dayP[di];p++){ const cls=tt.filter(x=>x.day_of_week===di&&x.period_index===p&&x.subject_id===s.id).map(x=>cName(x.class_id)); ws.addRow([d,p+1,...cls]); }});
+    widths(ws,[10,8,...Array.from({length:maxP},()=>10)]); body(ws); });
+
+  res.setHeader('Content-Disposition','attachment; filename=reports.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
 // ---------- EXCEL IMPORT (setup) ----------
 app.post('/api/import/setup', upload.single('file'), async (req,res)=>{
   try{
