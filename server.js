@@ -4,7 +4,8 @@ const path = require('path');
 const ExcelJS = require('exceljs');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
-const { q, q1, run, tx, init, loadConfig, getConfigCached } = require('./db');
+const crypto = require('crypto');
+const { q, q1, run, tx, init, loadConfig, getConfigCached, hashPw, verifyPw } = require('./db');
 
 const app = express();
 app.use(express.json());
@@ -18,6 +19,79 @@ const h = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => {
   console.error(e);
   if (!res.headersSent) res.status(500).json({ error: String((e && e.message) || e) });
 });
+
+// ========================= AUTH (role-based login) =========================
+async function currentUser(req){
+  const tok = (req.headers.authorization||'').replace(/^Bearer\s+/i,'').trim() || (req.query && req.query.token) || '';
+  if(!tok) return null;
+  const s = await q1('SELECT user_id FROM tt_session WHERE token=?',[tok]);
+  if(!s) return null;
+  return await q1('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id FROM tt_user WHERE id=? AND active=1',[s.user_id]);
+}
+// public: sign in
+app.post('/api/login', h(async (req,res)=>{
+  const b=req.body||{};
+  const u=await q1('SELECT * FROM tt_user WHERE lower(login_id)=lower(?) AND active=1',[String(b.login_id||'').trim()]);
+  if(!u || !verifyPw(b.password, u.password_hash)){ res.status(401).json({error:'invalid credentials'}); return; }
+  const token=crypto.randomBytes(24).toString('hex');
+  await run('INSERT INTO tt_session(token,user_id,created_at) VALUES(?,?,now()::text)',[token,u.id]);
+  res.json({ token, user:{ id:u.id, name:u.name, role:u.role, login_id:u.login_id } });
+}));
+// public: sign out (harmless if unauthenticated)
+app.post('/api/logout', h(async (req,res)=>{
+  const tok=(req.headers.authorization||'').replace(/^Bearer\s+/i,'').trim();
+  if(tok) await run('DELETE FROM tt_session WHERE token=?',[tok]);
+  res.json({ ok:true });
+}));
+// gate: every other /api route requires a valid session
+app.use('/api', (req,res,next)=>{
+  currentUser(req).then(u=>{ if(!u){ res.status(401).json({error:'auth required'}); return; } req.user=u; next(); })
+    .catch(e=>{ console.error(e); res.status(500).json({error:String((e&&e.message)||e)}); });
+});
+app.get('/api/me', h(async (req,res)=>res.json(req.user)));
+
+// ---- USER MANAGEMENT (create/update/delete restricted to admin & master) ----
+const ROLES=['master','admin','principal','supervisor','teacher'];
+function requireAdmin(req,res){ if(!['admin','master'].includes(req.user.role)){ res.status(403).json({error:'forbidden'}); return false; } return true; }
+app.get('/api/users', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  res.json(await q('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,active,created_at FROM tt_user ORDER BY id'));
+}));
+app.post('/api/users', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  const b=req.body||{}; const login=String(b.login_id||'').trim();
+  if(!login){ res.status(400).json({error:'login_id required'}); return; }
+  if(!ROLES.includes(b.role||'teacher')){ res.status(400).json({error:'bad role'}); return; }
+  if(await q1('SELECT 1 FROM tt_user WHERE lower(login_id)=lower(?)',[login])){ res.status(400).json({error:'login id already exists'}); return; }
+  const pw=(b.password!=null && String(b.password).length)?b.password:'changeme123';
+  const row=await q1(`INSERT INTO tt_user(name,role,login_id,email,mobile,qualification,main_subject_id,password_hash,active,created_at)
+     VALUES(?,?,?,?,?,?,?,?,1,now()::text) RETURNING id`,
+    [b.name||login, b.role||'teacher', login, b.email||null, b.mobile||null, b.qualification||null, b.main_subject_id||null, hashPw(pw)]);
+  res.json({ id:row.id });
+}));
+app.put('/api/users/:id', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  const b=req.body||{}, id=req.params.id;
+  if(b.role!==undefined && !ROLES.includes(b.role)){ res.status(400).json({error:'bad role'}); return; }
+  const cols=['name','role','email','mobile','qualification','main_subject_id','active'];
+  const set=cols.filter(c=>b[c]!==undefined);
+  if(set.length) await run(`UPDATE tt_user SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
+  if(b.login_id){ const login=String(b.login_id).trim(); if(login && !(await q1('SELECT 1 FROM tt_user WHERE lower(login_id)=lower(?) AND id<>?',[login,id]))) await run('UPDATE tt_user SET login_id=? WHERE id=?',[login,id]); }
+  if(b.password!=null && String(b.password).length) await run('UPDATE tt_user SET password_hash=? WHERE id=?',[hashPw(b.password), id]);
+  res.json({ ok:true });
+}));
+app.delete('/api/users/:id', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  if(+req.params.id===req.user.id){ res.status(400).json({error:'cannot delete yourself'}); return; }
+  const target=await q1('SELECT role FROM tt_user WHERE id=?',[req.params.id]);
+  if(target && ['admin','master'].includes(target.role)){
+    const others=(await q1('SELECT COUNT(*)::int AS n FROM tt_user WHERE role IN (?,?) AND id<>? AND active=1',['admin','master',req.params.id])).n;
+    if(!others){ res.status(400).json({error:'cannot remove the last admin'}); return; }
+  }
+  await run('DELETE FROM tt_session WHERE user_id=?',[req.params.id]);
+  await run('DELETE FROM tt_user WHERE id=?',[req.params.id]);
+  res.json({ ok:true });
+}));
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat'];
 const addMin = (hhmm,min)=>{const[h,m]=hhmm.split(':').map(Number);const d=new Date(2020,0,1,h,m+min);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};

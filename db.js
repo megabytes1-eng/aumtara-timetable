@@ -1,6 +1,11 @@
 // Postgres persistence layer for the Timetable module (v3 — Neon/Render ready)
 // Migrated from better-sqlite3 → pg so data persists on free cloud hosts.
 const { Pool } = require('pg');
+const crypto = require('crypto');
+
+// ---- password hashing (built-in scrypt; no native deps) ----
+function hashPw(pw){ const salt=crypto.randomBytes(16).toString('hex'); const h=crypto.scryptSync(String(pw),salt,32).toString('hex'); return salt+':'+h; }
+function verifyPw(pw,stored){ try{ if(!stored||!stored.includes(':'))return false; const [salt,h]=stored.split(':'); const hh=crypto.scryptSync(String(pw),salt,32).toString('hex'); const a=Buffer.from(h,'hex'),b=Buffer.from(hh,'hex'); return a.length===b.length && crypto.timingSafeEqual(a,b); }catch(e){ return false; } }
 
 const connectionString =
   process.env.DATABASE_URL ||
@@ -127,6 +132,17 @@ async function init() {
      day_of_week INTEGER NOT NULL, period_index INTEGER NOT NULL,
      subject_id INTEGER, teacher_id INTEGER, room_id INTEGER)`);
   await run(`CREATE INDEX IF NOT EXISTS ix_snap_cell ON tt_snapshot_cell (snapshot_id)`);
+  // Phase 5 — role-based users + login sessions
+  await run(`CREATE TABLE IF NOT EXISTS tt_user (
+     id SERIAL PRIMARY KEY, name TEXT, role TEXT NOT NULL DEFAULT 'teacher',
+     login_id TEXT UNIQUE NOT NULL, email TEXT, mobile TEXT, qualification TEXT,
+     main_subject_id INTEGER, password_hash TEXT NOT NULL, active INTEGER DEFAULT 1, created_at TEXT)`);
+  await run(`CREATE TABLE IF NOT EXISTS tt_session (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL, created_at TEXT)`);
+  // seed a default super-admin so the very first login is possible (must be changed after first login)
+  const uc = (await q1('SELECT COUNT(*)::int AS n FROM tt_user')).n;
+  if (!uc)
+    await run(`INSERT INTO tt_user(name,role,login_id,password_hash,active,created_at) VALUES(?,?,?,?,1,now()::text)`,
+      ['Administrator','master','admin',hashPw('admin123')]);
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();
@@ -198,4 +214,4 @@ async function seed() {
   });
 }
 
-module.exports = { pool, q, q1, run, tx, init, loadConfig, getConfigCached };
+module.exports = { pool, q, q1, run, tx, init, loadConfig, getConfigCached, hashPw, verifyPw };
