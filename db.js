@@ -46,10 +46,13 @@ async function tx(fn) {
   }
 }
 
-// ---- in-memory config cache so slot math can stay synchronous ----
-let CONFIG = null;
-async function loadConfig() { CONFIG = await q1('SELECT * FROM tt_config WHERE id=1'); return CONFIG; }
-function getConfigCached() { return CONFIG; }
+// ---- in-memory config cache (per school) so slot math can stay synchronous ----
+let CONFIGS = {};   // school_id -> config row
+async function loadConfig(sid) {
+  if (sid == null) { CONFIGS = {}; (await q('SELECT * FROM tt_config')).forEach(r => { if (r.school_id != null) CONFIGS[r.school_id] = r; }); return CONFIGS; }
+  const c = await q1('SELECT * FROM tt_config WHERE school_id=?', [sid]); if (c) CONFIGS[sid] = c; return c;
+}
+function getConfigCached(sid) { return (sid != null ? CONFIGS[sid] : null) || null; }
 
 async function init() {
   await run(`
@@ -145,6 +148,18 @@ async function init() {
     await run(`INSERT INTO tt_user(name,role,login_id,password_hash,active,created_at) VALUES(?,?,?,?,1,now()::text)`,
       ['Administrator','master','admin',hashPw('admin123')]);
 
+  // ===================== MULTI-SCHOOL (multi-tenancy) schema =====================
+  await run(`CREATE TABLE IF NOT EXISTS tt_school (
+     id SERIAL PRIMARY KEY, name TEXT NOT NULL, board TEXT, medium TEXT, active INTEGER DEFAULT 1, created_at TEXT)`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS logo TEXT`);   // data-URL (jpg/png) or null
+  // let each school own a tt_config row (drop the single-row id=1 restriction)
+  await run(`ALTER TABLE tt_config DROP CONSTRAINT IF EXISTS tt_config_id_check`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS school_id INTEGER`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS medium TEXT`);
+  // school_id on every per-school data table + on users
+  for (const tbl of ['tt_class','tt_subject','tt_teacher','tt_room','tt_quota','tt_chapter','tt_absence','tt_substitution','tt_diary','tt_timetable','tt_snapshot','tt_user'])
+    await run(`ALTER TABLE ${tbl} ADD COLUMN IF NOT EXISTS school_id INTEGER`);
+
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();
 
@@ -167,7 +182,32 @@ async function init() {
      period_durations   = COALESCE(period_durations, '')
    WHERE id=1`);
 
+  // ---- MULTI-SCHOOL seed: create "School 1" from the current config and adopt all existing data ----
+  const scn = (await q1('SELECT COUNT(*)::int AS n FROM tt_school')).n;
+  if (!scn) {
+    const cur = await q1('SELECT school_name, board, medium FROM tt_config WHERE id=1');
+    const nm = (cur && cur.school_name && cur.school_name !== 'Your School Name') ? cur.school_name : 'School 1';
+    const s1 = await q1('INSERT INTO tt_school(name,board,medium,active,created_at) VALUES(?,?,?,1,now()::text) RETURNING id',
+      [nm, (cur && cur.board) || null, (cur && cur.medium) || null]);
+    const sid = s1.id;
+    await run('UPDATE tt_config SET school_id=? WHERE id=1', [sid]);
+    // adopt every existing row (data + users) into School 1
+    for (const tbl of ['tt_class','tt_subject','tt_teacher','tt_room','tt_quota','tt_chapter','tt_absence','tt_substitution','tt_diary','tt_timetable','tt_snapshot','tt_user'])
+      await run(`UPDATE ${tbl} SET school_id=? WHERE school_id IS NULL`, [sid]);
+  }
+
   await loadConfig();
+}
+
+// create a fresh config row (defaults) for a newly-added school
+async function seedConfigForSchool(schoolId, schoolName, board, medium) {
+  const nid = (await q1('SELECT COALESCE(MAX(id),0)+1 AS n FROM tt_config')).n;
+  await run(`INSERT INTO tt_config(id,school_id,weekday_start,weekday_end,saturday_end,period_minutes,break_after_period,break_minutes,
+       school_name,board,medium,working_days,lunch_after,lunch_minutes,short_break_minutes,short_break_after,period_durations)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [nid, schoolId, '07:30','13:00','11:30',35,3,20, schoolName||'New School', board||null, medium||null, '0,1,2,3,4,5', 3, 20, 0, '', '']);
+  await loadConfig(schoolId);
+  return nid;
 }
 
 async function seed() {
@@ -215,4 +255,4 @@ async function seed() {
   });
 }
 
-module.exports = { pool, q, q1, run, tx, init, loadConfig, getConfigCached, hashPw, verifyPw };
+module.exports = { pool, q, q1, run, tx, init, loadConfig, getConfigCached, hashPw, verifyPw, seedConfigForSchool };
