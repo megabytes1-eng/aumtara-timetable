@@ -729,6 +729,112 @@ app.get('/api/export/reports.xlsx', h(async (req,res)=>{
   await wb.xlsx.write(res); res.end();
 }));
 
+// ---------- REPORT DATA (shared: scalars + collections for template fill) ----------
+async function gatherReportData(sid){
+  const cfg=getConfig(sid)||{};
+  const classes =await q('SELECT * FROM tt_class WHERE school_id=? ORDER BY id',[sid]);
+  const subjects=await q('SELECT * FROM tt_subject WHERE school_id=? ORDER BY id',[sid]);
+  const teachers=await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY id',[sid]);
+  const rooms   =await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY id',[sid]);
+  const tmap    =await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
+  const tt      =await q('SELECT * FROM tt_timetable WHERE school_id=?',[sid]);
+  const cN={},sN={},tN={}; classes.forEach(c=>cN[c.id]=c.name); subjects.forEach(s=>sN[s.id]=s.name); teachers.forEach(t=>tN[t.id]=t.name);
+  const dt=new Date(); const dateStr=String(dt.getFullYear())+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  const scalars={ school_name:cfg.school_name||'', board:cfg.board||'', medium:cfg.medium||'', session:cfg.academic_session||'', date:dateStr,
+    class_count:classes.length, teacher_count:teachers.length, subject_count:subjects.length, room_count:rooms.length };
+  const grp={}; tt.forEach(x=>{ if(!x.subject_id)return; const k=(x.teacher_id||0)+'|'+x.class_id+'|'+x.subject_id; grp[k]=(grp[k]||0)+1; });
+  const collections={
+    teachers: teachers.map(t=>({ name:t.name, short:shortCode(t.name), qualification:t.qualification||'', max_load:t.max_load||'',
+      load: tt.filter(x=>x.teacher_id===t.id).length,
+      subjects:[...new Set(tmap.filter(m=>m.teacher_id===t.id).map(m=>sN[m.subject_id]).filter(Boolean))].join(', '),
+      classes:[...new Set(tt.filter(x=>x.teacher_id===t.id).map(x=>cN[x.class_id]).filter(Boolean))].join(', '),
+      class_teacher_for: classes.filter(c=>c.class_teacher_id===t.id).map(c=>c.name).join(', ') })),
+    classes: classes.map(c=>({ name:c.name, board:c.board||'', medium:c.medium||'', standard:c.standard||'', section:c.section||'',
+      class_teacher: c.class_teacher_id?(tN[c.class_teacher_id]||''):'', periods: tt.filter(x=>x.class_id===c.id&&x.subject_id).length })),
+    subjects: subjects.map(s=>({ name:s.name, short:shortCode(s.name), active:(+s.active!==0?'Yes':'No'), periods: tt.filter(x=>x.subject_id===s.id).length })),
+    rooms: rooms.map(r=>({ name:r.name, capacity:r.capacity||'' })),
+    lessons: Object.keys(grp).map(k=>{ const[tid,cid,sx]=k.split('|'); return { teacher:tN[+tid]||'—', class:cN[+cid]||'', subject:sN[+sx]||'', lessons_week:grp[k] }; }),
+  };
+  return { scalars, collections };
+}
+
+// ---------- REPORT #1: fill an uploaded template with this school's data ----------
+app.post('/api/reports/template', upload.single('file'), async (req,res)=>{
+  try{
+    const sid=req.sid; const { scalars, collections }=await gatherReportData(sid);
+    const wb=new ExcelJS.Workbook(); await wb.xlsx.load(req.file.buffer);
+    const scal=str=>String(str).replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,(m,k)=> scalars[k]!==undefined?String(scalars[k]):m);
+    wb.eachSheet(ws=>{
+      // 1) expand repeat rows: a cell containing {{rows:collection}} marks a row template
+      const blocks=[];
+      ws.eachRow((row,rn)=>{ row.eachCell({includeEmpty:false},cell=>{ if(typeof cell.value==='string'){ const mm=cell.value.match(/\{\{\s*rows:([a-zA-Z0-9_]+)\s*\}\}/); if(mm)blocks.push({rn,coll:mm[1]}); } }); });
+      blocks.sort((a,b)=>b.rn-a.rn).forEach(({rn,coll})=>{
+        const items=collections[coll]||[];
+        const tmplRow=ws.getRow(rn); const tmpl={}; tmplRow.eachCell({includeEmpty:true},(cell,cn)=>{ tmpl[cn]=cell.value; });
+        if(items.length>1) ws.duplicateRow(rn, items.length-1, true);
+        const fillRow=(r,it)=>{ r.eachCell({includeEmpty:true},(cell,cn)=>{ let v=tmpl[cn]; if(typeof v==='string'){ v=v.replace(/\{\{\s*rows:[a-zA-Z0-9_]+\s*\}\}/g,''); v=v.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,(m,k)=> it[k]!==undefined?String(it[k]):(scalars[k]!==undefined?String(scalars[k]):'')); cell.value=v; } }); };
+        if(items.length===0){ tmplRow.eachCell({includeEmpty:true},(cell,cn)=>{ if(typeof tmpl[cn]==='string') cell.value=tmpl[cn].replace(/\{\{\s*rows:[a-zA-Z0-9_]+\s*\}\}/g,'').replace(/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/g,''); }); }
+        else items.forEach((it,i)=> fillRow(ws.getRow(rn+i), it));
+      });
+      // 2) scalar replace everywhere
+      ws.eachRow(row=>row.eachCell({includeEmpty:false},cell=>{ if(typeof cell.value==='string') cell.value=scal(cell.value); }));
+    });
+    res.setHeader('Content-Disposition','attachment; filename=filled-report.xlsx');
+    res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await wb.xlsx.write(res); res.end();
+  }catch(e){ console.error(e); res.status(400).json({error:String(e.message||e)}); }
+});
+
+// ---------- REPORT #1b: sample template so users learn the placeholders ----------
+app.get('/api/reports/template-sample.xlsx', h(async (req,res)=>{
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara';
+  const ws=wb.addWorksheet('Template');
+  ws.addRow(['{{school_name}}']); ws.getCell('A1').font={bold:true,size:15};
+  ws.addRow(['Board: {{board}}   Medium: {{medium}}   Session: {{session}}   Date: {{date}}']);
+  ws.addRow(['Totals: {{class_count}} classes · {{teacher_count}} teachers · {{subject_count}} subjects']);
+  ws.addRow([]);
+  const h1=ws.addRow(['Teacher','Short','Qualification','Subjects','Classes','Weekly load','Class teacher for']); styleHeader(h1);
+  ws.addRow(['{{rows:teachers}}{{name}}','{{short}}','{{qualification}}','{{subjects}}','{{classes}}','{{load}}','{{class_teacher_for}}']);
+  ws.addRow([]);
+  const h2=ws.addRow(['Class','Standard','Section','Class teacher','Periods/week']); styleHeader(h2);
+  ws.addRow(['{{rows:classes}}{{name}}','{{standard}}','{{section}}','{{class_teacher}}','{{periods}}']);
+  ws.addRow([]);
+  const gd=ws.addRow(['GUIDE — scalars: {{school_name}} {{board}} {{medium}} {{session}} {{date}} {{class_count}} {{teacher_count}} {{subject_count}} {{room_count}}']); gd.getCell(1).font={italic:true,color:{argb:'FF8A93B4'}};
+  const gd2=ws.addRow(['GUIDE — repeat a row: put {{rows:teachers}} (or classes / subjects / rooms / lessons) in the first cell, then {{field}} tokens in that row. teachers fields: name,short,qualification,subjects,classes,load,max_load,class_teacher_for · classes: name,board,medium,standard,section,class_teacher,periods · subjects: name,short,periods,active · rooms: name,capacity · lessons: teacher,class,subject,lessons_week']); gd2.getCell(1).font={italic:true,color:{argb:'FF8A93B4'}};
+  ws.columns.forEach((c,i)=>c.width=[24,10,20,24,24,12,20][i]||18);
+  res.setHeader('Content-Disposition','attachment; filename=report-template-sample.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
+// ---------- REPORT #3: beautify an uploaded data Excel into a formatted report ----------
+app.post('/api/reports/format', upload.single('file'), async (req,res)=>{
+  try{
+    const sid=req.sid, cfg=getConfig(sid)||{};
+    const title=String((req.body&&req.body.title)||'').trim() || (cfg.school_name||'Report');
+    const allB={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
+    const inWb=new ExcelJS.Workbook(); await inWb.xlsx.load(req.file.buffer);
+    const outWb=new ExcelJS.Workbook(); outWb.creator='Aumtara';
+    const vtext=v=>{ if(v==null)return ''; if(typeof v==='object')return v.text||v.result||(v.richText&&v.richText.map(x=>x.text).join(''))||''; return v; };
+    let sheets=0;
+    inWb.eachSheet(ws=>{
+      const data=[]; ws.eachRow({includeEmpty:false},row=>{ const vals=[]; row.eachCell({includeEmpty:true},(cell,cn)=>{ vals[cn-1]=vtext(cell.value); }); if(vals.some(v=>String(v).trim()!==''))data.push(vals); });
+      if(!data.length)return; sheets++;
+      const o=outWb.addWorksheet(ws.name.slice(0,31).replace(/[\\\/\?\*\[\]:]/g,' ')||('Sheet'+sheets));
+      const cols=Math.max(1,...data.map(r=>r.length));
+      o.mergeCells(1,1,1,cols); const tc=o.getCell(1,1); tc.value=title; tc.font={bold:true,size:14,color:{argb:'FF1F3864'}}; tc.alignment={horizontal:'center'};
+      const hdr=o.addRow(data[0]); styleHeader(hdr); hdr.eachCell(c=>c.border=allB);
+      for(let i=1;i<data.length;i++){ const r=o.addRow(data[i]); r.eachCell(c=>{ c.alignment={vertical:'top',wrapText:true}; c.border=allB; }); }
+      o.columns.forEach((c,i)=>{ let w=10; data.forEach(r=>{ const v=r[i]; if(v!=null) w=Math.max(w, Math.min(42, String(v).length+2)); }); c.width=w; });
+      o.views=[{state:'frozen', ySplit:2}];
+    });
+    if(!sheets){ res.status(400).json({error:'no data found in the uploaded file'}); return; }
+    res.setHeader('Content-Disposition','attachment; filename=formatted-report.xlsx');
+    res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await outWb.xlsx.write(res); res.end();
+  }catch(e){ console.error(e); res.status(400).json({error:String(e.message||e)}); }
+});
+
 // ---------- EXCEL IMPORT (setup) ----------
 app.post('/api/import/setup', upload.single('file'), async (req,res)=>{
   try{
