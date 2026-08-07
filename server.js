@@ -58,9 +58,36 @@ function simpleCrud(route, tbl, cols){
   }));
   app.delete('/api/'+route+'/:id', h(async (req,res)=>{ await run(`DELETE FROM ${tbl} WHERE id=?`, [req.params.id]); res.json({ok:true}); }));
 }
-simpleCrud('classes','tt_class',['name']);
-simpleCrud('subjects','tt_subject',['name']);
+simpleCrud('classes','tt_class',['name','class_teacher_id']);
+simpleCrud('subjects','tt_subject',['name','active']);
 simpleCrud('rooms','tt_room',['name','capacity']);
+
+// ---------- SETUP READINESS (checklist %) ----------
+app.get('/api/readiness', h(async (_,res)=>{
+  const c=getConfig()||{};
+  const cnt=async (sql)=> (await q1(sql)).n;
+  const classes  = await cnt('SELECT COUNT(*)::int n FROM tt_class');
+  const subjects = await cnt('SELECT COUNT(*)::int n FROM tt_subject WHERE active=1');
+  const teachers = await cnt('SELECT COUNT(*)::int n FROM tt_teacher');
+  const rooms    = await cnt('SELECT COUNT(*)::int n FROM tt_room');
+  const quota    = await cnt('SELECT COUNT(*)::int n FROM tt_quota WHERE per_week>0');
+  const cells    = await cnt('SELECT COUNT(*)::int n FROM tt_timetable WHERE subject_id IS NOT NULL');
+  const named    = !!(c.school_name && c.school_name!=='Your School Name');
+  const hours    = !!(c.weekday_start && c.weekday_end && c.period_minutes);
+  const steps = [
+    { key:'classes',   done: classes>0,  count: classes },
+    { key:'subjects',  done: subjects>0, count: subjects },
+    { key:'teachers',  done: teachers>0, count: teachers },
+    { key:'rooms',     done: rooms>0,    count: rooms },
+    { key:'hours',     done: hours },
+    { key:'name',      done: named },
+    { key:'quota',     done: quota>0,    count: quota, optional:true },
+    { key:'generated', done: cells>0,    count: cells },
+  ];
+  const req = steps.filter(s=>!s.optional);
+  const pct = Math.round(100 * req.filter(s=>s.done).length / req.length);
+  res.json({ steps, pct });
+}));
 
 // ---------- CHAPTERS (per subject) ----------
 app.get('/api/chapters', h(async (req,res)=>{
@@ -172,7 +199,8 @@ app.delete('/api/timetable/cell', h(async (req,res)=>{
 // ---------- AUTO-GENERATE (quota-aware, room-aware) ----------
 app.post('/api/timetable/auto-generate', h(async (_,res)=>{
   const classes=await q('SELECT * FROM tt_class ORDER BY id');
-  const subjects=await q('SELECT * FROM tt_subject ORDER BY id');
+  const subjects=await q('SELECT * FROM tt_subject WHERE active=1 ORDER BY id');
+  const activeSet=new Set(subjects.map(s=>s.id));
   const rooms=await q('SELECT * FROM tt_room ORDER BY id');
   const tmap=await q('SELECT * FROM tt_teacher_subject');
   const quotas=await q('SELECT * FROM tt_quota');
@@ -183,9 +211,10 @@ app.post('/api/timetable/auto-generate', h(async (_,res)=>{
 
   // build per-class subject pool honouring quota (fallback: even rotation)
   function poolFor(cid, totalSlots){
-    const qs=quotas.filter(x=>x.class_id===cid);
+    const qs=quotas.filter(x=>x.class_id===cid && activeSet.has(x.subject_id));
     let pool=[];
     if(qs.length){ qs.forEach(x=>{ for(let i=0;i<x.per_week;i++) pool.push(x.subject_id); }); }
+    if(!subjects.length) return [];   // no active subjects → nothing to schedule
     if(pool.length<totalSlots){ let i=0; while(pool.length<totalSlots){ pool.push(subjects[i%subjects.length].id); i++; } }
     return pool.slice(0,totalSlots);
   }
@@ -201,6 +230,7 @@ app.post('/api/timetable/auto-generate', h(async (_,res)=>{
       const usedT=new Set(), usedR=new Set();
       classes.forEach(c=>{
         const sid=pool[c.id][ptr[c.id]++];
+        if(sid==null) return;   // class has no schedulable subjects
         let opts=teachersForSubject(sid).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&(load[t]||0)<maxLoad[t]);
         opts.sort((a,b)=>(load[a]||0)-(load[b]||0));
         let t=opts[0] ?? teachersForSubject(sid).find(x=>!usedT.has(x)&&(load[x]||0)<maxLoad[x]) ?? null;

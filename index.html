@@ -82,7 +82,7 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 /* ============================ i18n ============================ */
 const LANGS=[['en','English'],['hi','हिन्दी'],['mr','मराठी'],['gu','ગુજરાતી'],['ta','தமிழ்'],['te','తెలుగు'],['bn','বাংলা'],['pa','ਪੰਜਾਬੀ'],['sw','Kiswahili'],['ha','Hausa'],['yo','Yorùbá'],['ig','Igbo']];
 const I18N={
- en:{_days:['Mon','Tue','Wed','Thu','Fri','Sat'],
+ en:{class_teacher:'Class teacher',opt_no_ct:'— no class teacher —',subj_active:'Active',subj_inactive:'Inactive',subj_active_hint:'Untick to archive — hidden from quota, builder & auto-generate',readiness_title:'Setup readiness',ready_word:'ready',readiness_hint:'Finish the required steps, then Auto-generate.',optional_word:'(optional)',ready_classes:'Classes added',ready_subjects:'Subjects added',ready_teachers:'Teachers added',ready_rooms:'Rooms added',ready_hours:'Academic hours set',ready_name:'School name set',ready_quota:'Weekly quota set',ready_generated:'Timetable generated',_days:['Mon','Tue','Wed','Thu','Fri','Sat'],
   app_title:'Aumtara — Timetable Module', app_sub:'Create & manage class schedules · live data from your database', saved:'✓ Saved',
   nav_dash:'Dashboard',nav_setup:'Setup',nav_hours:'Academic Hours',nav_quota:'Quota',nav_build:'Builder',nav_class:'Class',nav_teacher:'Teacher',nav_diary:'Teacher Diary',nav_school:'School View',nav_sub:'Substitution',nav_monitor:'Live Monitor',nav_data:'Import / Export',nav_help:'Help & Guide',
   kpi_classrooms:'Classrooms',kpi_subjects:'Subjects',kpi_teachers:'Teachers',kpi_completed:'Completed',
@@ -130,7 +130,7 @@ const I18N={
   monitor_title:'Live Classroom Monitor',monitor_desc:'Real-time status of every classroom (server-computed). Assigned proxies are shown.',lbl_sim_day:'Simulate day',opt_now:'(now)',lbl_sim_time:'Simulate time',btn_real_time:'Use real time',
   st_live:'LIVE',st_break:'BREAK',st_idle:'IDLE',st_proxy:'PROXY',legend_running:'running',legend_absent_covered:'absent/covered'
  },
- hi:{_days:['सोम','मंगल','बुध','गुरु','शुक्र','शनि'],
+ hi:{class_teacher:'क्लास टीचर',opt_no_ct:'— कोई क्लास टीचर नहीं —',subj_active:'सक्रिय',subj_inactive:'निष्क्रिय',subj_active_hint:'आर्काइव करने के लिए अनटिक करें — कोटा, बिल्डर और ऑटो-जनरेट से छिप जाएगा',readiness_title:'सेटअप तैयारी',ready_word:'तैयार',readiness_hint:'जरूरी स्टेप पूरे करें, फिर ऑटो-जनरेट करें।',optional_word:'(वैकल्पिक)',ready_classes:'क्लास जोड़ी',ready_subjects:'विषय जोड़े',ready_teachers:'शिक्षक जोड़े',ready_rooms:'कमरे जोड़े',ready_hours:'स्कूल समय सेट',ready_name:'स्कूल का नाम सेट',ready_quota:'साप्ताहिक कोटा सेट',ready_generated:'टाइमटेबल बन गया',lbl_working_days:'कार्य दिवस',lunch_word:'लंच',lbl_lunch_after:'लंच किस पीरियड के बाद',lbl_lunch_min:'लंच (मिनट)',lbl_short_after:'छोटे ब्रेक किन पीरियड के बाद',lbl_short_min:'छोटा ब्रेक (मिनट)',hint_short_after:'कॉमा से अलग करें, जैसे 2,6 (खाली = कोई नहीं)',lbl_custom_dur:'कस्टम पीरियड अवधि (मिनट)',ph_custom_dur:'जैसे 35,35,40 — खाली = सबके लिए समान',lbl_breaks:'ब्रेक और लंच',_days:['सोम','मंगल','बुध','गुरु','शुक्र','शनि'],
   app_title:'Aumtara — टाइमटेबल मॉड्यूल', app_sub:'क्लास शेड्यूल बनाएँ और मैनेज करें · डेटा सीधे आपके डेटाबेस से', saved:'✓ सेव हो गया',
   nav_dash:'डैशबोर्ड',nav_setup:'सेटअप',nav_hours:'एकेडमिक घंटे',nav_quota:'कोटा',nav_build:'बिल्डर',nav_class:'क्लास',nav_teacher:'शिक्षक',nav_diary:'शिक्षक डायरी',nav_school:'स्कूल व्यू',nav_sub:'सब्स्टिट्यूशन',nav_monitor:'लाइव मॉनिटर',nav_data:'इम्पोर्ट / एक्सपोर्ट',nav_help:'मदद और गाइड',
   kpi_classrooms:'कक्षाएँ',kpi_subjects:'विषय',kpi_teachers:'शिक्षक',kpi_completed:'पूर्ण',
@@ -177,7 +177,7 @@ const I18N={
   monitor_title:'लाइव क्लासरूम मॉनिटर',monitor_desc:'हर कक्षा की रीयल-टाइम स्थिति (सर्वर-गणना)। नियुक्त प्रॉक्सी दिखते हैं।',lbl_sim_day:'दिन सिम्युलेट',opt_now:'(अभी)',lbl_sim_time:'समय सिम्युलेट',btn_real_time:'असली समय',
   st_live:'लाइव',st_break:'ब्रेक',st_idle:'खाली',st_proxy:'प्रॉक्सी',legend_running:'चल रही',legend_absent_covered:'अनुपस्थित/कवर'
  },
- mr:{_days:['सोम','मंगळ','बुध','गुरु','शुक्र','शनि'],
+ mr:{class_teacher:'वर्ग शिक्षक',opt_no_ct:'— वर्ग शिक्षक नाही —',subj_active:'सक्रिय',subj_inactive:'निष्क्रिय',subj_active_hint:'संग्रहित करण्यासाठी अनटिक करा — कोटा, बिल्डर व ऑटो-जनरेटमधून लपेल',readiness_title:'सेटअप तयारी',ready_word:'तयार',readiness_hint:'आवश्यक पायऱ्या पूर्ण करा, नंतर ऑटो-जनरेट करा.',optional_word:'(पर्यायी)',ready_classes:'वर्ग जोडले',ready_subjects:'विषय जोडले',ready_teachers:'शिक्षक जोडले',ready_rooms:'खोल्या जोडल्या',ready_hours:'शाळेचा वेळ सेट',ready_name:'शाळेचे नाव सेट',ready_quota:'साप्ताहिक कोटा सेट',ready_generated:'वेळापत्रक तयार',lbl_working_days:'कामाचे दिवस',lunch_word:'जेवण',lbl_lunch_after:'जेवण कोणत्या तासिकेनंतर',lbl_lunch_min:'जेवण (मिनिटे)',lbl_short_after:'छोटे ब्रेक कोणत्या तासिकांनंतर',lbl_short_min:'छोटा ब्रेक (मिनिटे)',hint_short_after:'स्वल्पविरामाने वेगळे करा, उदा. 2,6 (रिकामे = काहीही नाही)',lbl_custom_dur:'सानुकूल तासिका कालावधी (मिनिटे)',ph_custom_dur:'उदा. 35,35,40 — रिकामे = सर्वांसाठी समान',lbl_breaks:'ब्रेक आणि जेवण',_days:['सोम','मंगळ','बुध','गुरु','शुक्र','शनि'],
   app_title:'Aumtara — वेळापत्रक मॉड्यूल', app_sub:'वर्ग वेळापत्रक तयार करा व व्यवस्थापित करा · डेटा थेट तुमच्या डेटाबेसमधून', saved:'✓ जतन झाले',
   nav_dash:'डॅशबोर्ड',nav_setup:'सेटअप',nav_hours:'शैक्षणिक तास',nav_quota:'कोटा',nav_build:'बिल्डर',nav_class:'वर्ग',nav_teacher:'शिक्षक',nav_diary:'शिक्षक डायरी',nav_school:'शाळा दृश्य',nav_sub:'बदली',nav_monitor:'लाइव्ह मॉनिटर',nav_data:'इम्पोर्ट / एक्सपोर्ट',nav_help:'मदत व मार्गदर्शन',
   kpi_classrooms:'वर्ग',kpi_subjects:'विषय',kpi_teachers:'शिक्षक',kpi_completed:'पूर्ण',
@@ -224,7 +224,7 @@ const I18N={
   monitor_title:'लाइव्ह क्लासरूम मॉनिटर',monitor_desc:'प्रत्येक वर्गाची रिअल-टाइम स्थिती (सर्व्हर-गणना). नेमलेले प्रॉक्सी दिसतात.',lbl_sim_day:'दिवस सिम्युलेट',opt_now:'(आता)',lbl_sim_time:'वेळ सिम्युलेट',btn_real_time:'खरी वेळ',
   st_live:'लाइव्ह',st_break:'विश्रांती',st_idle:'रिकामा',st_proxy:'प्रॉक्सी',legend_running:'सुरू',legend_absent_covered:'गैरहजर/कव्हर'
  },
- gu:{_days:['સોમ','મંગળ','બુધ','ગુરુ','શુક્ર','શનિ'],
+ gu:{class_teacher:'વર્ગ શિક્ષક',opt_no_ct:'— કોઈ વર્ગ શિક્ષક નથી —',subj_active:'સક્રિય',subj_inactive:'નિષ્ક્રિય',subj_active_hint:'આર્કાઇવ કરવા અનટિક કરો — ક્વોટા, બિલ્ડર અને ઓટો-જનરેટમાંથી છુપાઈ જશે',readiness_title:'સેટઅપ તૈયારી',ready_word:'તૈયાર',readiness_hint:'જરૂરી પગલાં પૂરાં કરો, પછી ઓટો-જનરેટ કરો.',optional_word:'(વૈકલ્પિક)',ready_classes:'વર્ગ ઉમેર્યા',ready_subjects:'વિષયો ઉમેર્યા',ready_teachers:'શિક્ષકો ઉમેર્યા',ready_rooms:'રૂમ ઉમેર્યા',ready_hours:'શાળા સમય સેટ',ready_name:'શાળાનું નામ સેટ',ready_quota:'સાપ્તાહિક ક્વોટા સેટ',ready_generated:'ટાઇમટેબલ બન્યું',lbl_working_days:'કામકાજના દિવસો',lunch_word:'લંચ',lbl_lunch_after:'લંચ કયા પિરિયડ પછી',lbl_lunch_min:'લંચ (મિનિટ)',lbl_short_after:'ટૂંકા બ્રેક કયા પિરિયડ પછી',lbl_short_min:'ટૂંકો બ્રેક (મિનિટ)',hint_short_after:'અલ્પવિરામથી અલગ કરો, દા.ત. 2,6 (ખાલી = કોઈ નહીં)',lbl_custom_dur:'કસ્ટમ પિરિયડ સમયગાળો (મિનિટ)',ph_custom_dur:'દા.ત. 35,35,40 — ખાલી = બધા માટે સમાન',lbl_breaks:'બ્રેક અને લંચ',_days:['સોમ','મંગળ','બુધ','ગુરુ','શુક્ર','શનિ'],
   app_title:'Aumtara — ટાઇમટેબલ મોડ્યુલ', app_sub:'વર્ગ સમયપત્રક બનાવો અને સંચાલિત કરો · ડેટા સીધો તમારા ડેટાબેઝમાંથી', saved:'✓ સેવ થયું',
   nav_dash:'ડેશબોર્ડ',nav_setup:'સેટઅપ',nav_hours:'શૈક્ષણિક કલાકો',nav_quota:'ક્વોટા',nav_build:'બિલ્ડર',nav_class:'વર્ગ',nav_teacher:'શિક્ષક',nav_diary:'શિક્ષક ડાયરી',nav_school:'શાળા વ્યૂ',nav_sub:'અવેજી',nav_monitor:'લાઇવ મોનિટર',nav_data:'ઇમ્પોર્ટ / એક્સપોર્ટ',nav_help:'મદદ અને માર્ગદર્શન',
   kpi_classrooms:'વર્ગો',kpi_subjects:'વિષયો',kpi_teachers:'શિક્ષકો',kpi_completed:'પૂર્ણ',
@@ -271,7 +271,7 @@ const I18N={
   monitor_title:'લાઇવ ક્લાસરૂમ મોનિટર',monitor_desc:'દરેક વર્ગની રીઅલ-ટાઇમ સ્થિતિ. નિમેલા પ્રોક્સી દેખાય છે.',lbl_sim_day:'દિવસ સિમ્યુલેટ',opt_now:'(હમણાં)',lbl_sim_time:'સમય સિમ્યુલેટ',btn_real_time:'સાચો સમય',
   st_live:'લાઇવ',st_break:'બ્રેક',st_idle:'ખાલી',st_proxy:'પ્રોક્સી',legend_running:'ચાલુ',legend_absent_covered:'ગેરહાજર/કવર'
  },
- ta:{_days:['திங்','செவ்','புத','வியா','வெள்','சனி'],
+ ta:{class_teacher:'வகுப்பு ஆசிரியர்',opt_no_ct:'— வகுப்பு ஆசிரியர் இல்லை —',subj_active:'செயலில்',subj_inactive:'செயலற்றது',subj_active_hint:'காப்பகப்படுத்த தேர்வுநீக்கவும் — கோட்டா, பில்டர் & ஆட்டோ-ஜெனரேட்டில் மறையும்',readiness_title:'அமைப்பு தயார்நிலை',ready_word:'தயார்',readiness_hint:'தேவையான படிகளை முடித்து, ஆட்டோ-ஜெனரேட் செய்யவும்.',optional_word:'(விருப்பம்)',ready_classes:'வகுப்புகள் சேர்க்கப்பட்டன',ready_subjects:'பாடங்கள் சேர்க்கப்பட்டன',ready_teachers:'ஆசிரியர்கள் சேர்க்கப்பட்டனர்',ready_rooms:'அறைகள் சேர்க்கப்பட்டன',ready_hours:'பள்ளி நேரம் அமைக்கப்பட்டது',ready_name:'பள்ளி பெயர் அமைக்கப்பட்டது',ready_quota:'வார ஒதுக்கீடு அமைக்கப்பட்டது',ready_generated:'கால அட்டவணை உருவாக்கப்பட்டது',lbl_working_days:'வேலை நாட்கள்',lunch_word:'மதிய உணவு',lbl_lunch_after:'எந்த பாடவேளைக்குப் பிறகு மதிய உணவு',lbl_lunch_min:'மதிய உணவு (நிமிடம்)',lbl_short_after:'எந்த பாடவேளைகளுக்குப் பிறகு சிறு இடைவேளை',lbl_short_min:'சிறு இடைவேளை (நிமிடம்)',hint_short_after:'கமாவால் பிரிக்கவும், எ.கா. 2,6 (காலி = எதுவுமில்லை)',lbl_custom_dur:'தனிப்பயன் பாடவேளை கால அளவு (நிமிடம்)',ph_custom_dur:'எ.கா. 35,35,40 — காலி = அனைத்திற்கும் ஒரே மாதிரி',lbl_breaks:'இடைவேளை & மதிய உணவு',_days:['திங்','செவ்','புத','வியா','வெள்','சனி'],
   app_title:'Aumtara — கால அட்டவணை தொகுதி', app_sub:'வகுப்பு அட்டவணைகளை உருவாக்கி நிர்வகிக்கவும் · தரவு உங்கள் தரவுத்தளத்திலிருந்து', saved:'✓ சேமிக்கப்பட்டது',
   nav_dash:'டாஷ்போர்டு',nav_setup:'அமைப்பு',nav_hours:'கல்வி நேரம்',nav_quota:'ஒதுக்கீடு',nav_build:'பில்டர்',nav_class:'வகுப்பு',nav_teacher:'ஆசிரியர்',nav_diary:'ஆசிரியர் நாட்குறிப்பு',nav_school:'பள்ளி காட்சி',nav_sub:'மாற்று',nav_monitor:'நேரடி கண்காணிப்பு',nav_data:'இறக்குமதி / ஏற்றுமதி',nav_help:'உதவி & வழிகாட்டி',
   kpi_classrooms:'வகுப்புகள்',kpi_subjects:'பாடங்கள்',kpi_teachers:'ஆசிரியர்கள்',kpi_completed:'முடிந்தது',
@@ -318,7 +318,7 @@ const I18N={
   monitor_title:'நேரடி வகுப்பறை கண்காணிப்பு',monitor_desc:'ஒவ்வொரு வகுப்பறையின் நேரடி நிலை (சர்வர் கணக்கிடப்பட்டது). நியமிக்கப்பட்ட மாற்றுகள் காட்டப்படும்.',lbl_sim_day:'நாள் உருவகப்படுத்து',opt_now:'(இப்போது)',lbl_sim_time:'நேரம் உருவகப்படுத்து',btn_real_time:'உண்மையான நேரம்',
   st_live:'நேரடி',st_break:'இடைவேளை',st_idle:'காலி',st_proxy:'மாற்று',legend_running:'நடக்கிறது',legend_absent_covered:'இல்லை/மறைக்கப்பட்டது'
  },
- te:{_days:['సోమ','మంగళ','బుధ','గురు','శుక్ర','శని'],
+ te:{class_teacher:'తరగతి ఉపాధ్యాయుడు',opt_no_ct:'— తరగతి ఉపాధ్యాయుడు లేరు —',subj_active:'యాక్టివ్',subj_inactive:'ఇన్‌యాక్టివ్',subj_active_hint:'ఆర్కైవ్ చేయడానికి అన్‌టిక్ చేయండి — కోటా, బిల్డర్ & ఆటో-జనరేట్‌లో దాగి ఉంటుంది',readiness_title:'సెటప్ సంసిద్ధత',ready_word:'సిద్ధం',readiness_hint:'అవసరమైన దశలు పూర్తి చేసి, ఆటో-జనరేట్ చేయండి.',optional_word:'(ఐచ్ఛికం)',ready_classes:'తరగతులు జోడించబడ్డాయి',ready_subjects:'సబ్జెక్టులు జోడించబడ్డాయి',ready_teachers:'ఉపాధ్యాయులు జోడించబడ్డారు',ready_rooms:'గదులు జోడించబడ్డాయి',ready_hours:'పాఠశాల సమయం సెట్',ready_name:'పాఠశాల పేరు సెట్',ready_quota:'వారపు కోటా సెట్',ready_generated:'టైమ్‌టేబుల్ తయారైంది',lbl_working_days:'పని దినాలు',lunch_word:'లంచ్',lbl_lunch_after:'ఏ పీరియడ్ తర్వాత లంచ్',lbl_lunch_min:'లంచ్ (నిమిషాలు)',lbl_short_after:'ఏ పీరియడ్‌ల తర్వాత చిన్న విరామాలు',lbl_short_min:'చిన్న విరామం (నిమిషాలు)',hint_short_after:'కామాతో వేరు చేయండి, ఉదా. 2,6 (ఖాళీ = ఏదీ లేదు)',lbl_custom_dur:'కస్టమ్ పీరియడ్ వ్యవధి (నిమిషాలు)',ph_custom_dur:'ఉదా. 35,35,40 — ఖాళీ = అందరికీ ఒకటే',lbl_breaks:'విరామాలు & లంచ్',_days:['సోమ','మంగళ','బుధ','గురు','శుక్ర','శని'],
   app_title:'Aumtara — టైమ్‌టేబుల్ మాడ్యూల్', app_sub:'తరగతి షెడ్యూల్‌లను సృష్టించి నిర్వహించండి · డేటా నేరుగా మీ డేటాబేస్ నుండి', saved:'✓ సేవ్ అయింది',
   nav_dash:'డాష్‌బోర్డ్',nav_setup:'సెటప్',nav_hours:'విద్యా గంటలు',nav_quota:'కోటా',nav_build:'బిల్డర్',nav_class:'తరగతి',nav_teacher:'ఉపాధ్యాయుడు',nav_diary:'ఉపాధ్యాయ డైరీ',nav_school:'పాఠశాల వీక్షణ',nav_sub:'ప్రత్యామ్నాయం',nav_monitor:'లైవ్ మానిటర్',nav_data:'ఇంపోర్ట్ / ఎక్స్‌పోర్ట్',nav_help:'సహాయం & గైడ్',
   kpi_classrooms:'తరగతులు',kpi_subjects:'విషయాలు',kpi_teachers:'ఉపాధ్యాయులు',kpi_completed:'పూర్తయింది',
@@ -365,7 +365,7 @@ const I18N={
   monitor_title:'లైవ్ క్లాస్‌రూమ్ మానిటర్',monitor_desc:'ప్రతి తరగతి గది రియల్-టైమ్ స్థితి (సర్వర్ లెక్కించినది). కేటాయించిన ప్రాక్సీలు కనిపిస్తాయి.',lbl_sim_day:'రోజు సిమ్యులేట్',opt_now:'(ఇప్పుడు)',lbl_sim_time:'సమయం సిమ్యులేట్',btn_real_time:'నిజ సమయం',
   st_live:'లైవ్',st_break:'విరామం',st_idle:'ఖాళీ',st_proxy:'ప్రాక్సీ',legend_running:'జరుగుతోంది',legend_absent_covered:'గైర్హాజరు/కవర్'
  },
- bn:{_days:['সোম','মঙ্গল','বুধ','বৃহ','শুক্র','শনি'],
+ bn:{class_teacher:'শ্রেণি শিক্ষক',opt_no_ct:'— কোনো শ্রেণি শিক্ষক নেই —',subj_active:'সক্রিয়',subj_inactive:'নিষ্ক্রিয়',subj_active_hint:'সংরক্ষণ করতে আনটিক করুন — কোটা, বিল্ডার ও অটো-জেনারেট থেকে লুকানো থাকবে',readiness_title:'সেটআপ প্রস্তুতি',ready_word:'প্রস্তুত',readiness_hint:'প্রয়োজনীয় ধাপগুলো শেষ করুন, তারপর অটো-জেনারেট করুন।',optional_word:'(ঐচ্ছিক)',ready_classes:'শ্রেণি যোগ হয়েছে',ready_subjects:'বিষয় যোগ হয়েছে',ready_teachers:'শিক্ষক যোগ হয়েছে',ready_rooms:'কক্ষ যোগ হয়েছে',ready_hours:'স্কুল সময় সেট',ready_name:'স্কুলের নাম সেট',ready_quota:'সাপ্তাহিক কোটা সেট',ready_generated:'রুটিন তৈরি হয়েছে',lbl_working_days:'কর্মদিবস',lunch_word:'দুপুরের খাবার',lbl_lunch_after:'কোন পিরিয়ডের পরে দুপুরের খাবার',lbl_lunch_min:'দুপুরের খাবার (মিনিট)',lbl_short_after:'কোন পিরিয়ডের পরে ছোট বিরতি',lbl_short_min:'ছোট বিরতি (মিনিট)',hint_short_after:'কমা দিয়ে আলাদা করুন, যেমন 2,6 (খালি = কোনোটি নয়)',lbl_custom_dur:'কাস্টম পিরিয়ড সময়কাল (মিনিট)',ph_custom_dur:'যেমন 35,35,40 — খালি = সবার জন্য একই',lbl_breaks:'বিরতি ও দুপুরের খাবার',_days:['সোম','মঙ্গল','বুধ','বৃহ','শুক্র','শনি'],
   app_title:'Aumtara — টাইমটেবল মডিউল', app_sub:'ক্লাস সময়সূচি তৈরি ও পরিচালনা করুন · ডেটা সরাসরি আপনার ডেটাবেস থেকে', saved:'✓ সেভ হয়েছে',
   nav_dash:'ড্যাশবোর্ড',nav_setup:'সেটআপ',nav_hours:'শিক্ষাগত সময়',nav_quota:'কোটা',nav_build:'বিল্ডার',nav_class:'ক্লাস',nav_teacher:'শিক্ষক',nav_diary:'শিক্ষক ডায়েরি',nav_school:'স্কুল ভিউ',nav_sub:'বদলি',nav_monitor:'লাইভ মনিটর',nav_data:'ইম্পোর্ট / এক্সপোর্ট',nav_help:'সাহায্য ও গাইড',
   kpi_classrooms:'শ্রেণিকক্ষ',kpi_subjects:'বিষয়',kpi_teachers:'শিক্ষক',kpi_completed:'সম্পন্ন',
@@ -412,7 +412,7 @@ const I18N={
   monitor_title:'লাইভ ক্লাসরুম মনিটর',monitor_desc:'প্রতিটি ক্লাসরুমের রিয়েল-টাইম অবস্থা (সার্ভার-গণনা)। নিয়োগকৃত প্রক্সি দেখানো হয়।',lbl_sim_day:'দিন সিমুলেট',opt_now:'(এখন)',lbl_sim_time:'সময় সিমুলেট',btn_real_time:'আসল সময়',
   st_live:'লাইভ',st_break:'বিরতি',st_idle:'খালি',st_proxy:'প্রক্সি',legend_running:'চলছে',legend_absent_covered:'অনুপস্থিত/কভার'
  },
- pa:{_days:['ਸੋਮ','ਮੰਗਲ','ਬੁੱਧ','ਵੀਰ','ਸ਼ੁੱਕਰ','ਸ਼ਨੀ'],
+ pa:{class_teacher:'ਕਲਾਸ ਟੀਚਰ',opt_no_ct:'— ਕੋਈ ਕਲਾਸ ਟੀਚਰ ਨਹੀਂ —',subj_active:'ਸਰਗਰਮ',subj_inactive:'ਅਕਿਰਿਆਸ਼ੀਲ',subj_active_hint:'ਆਰਕਾਈਵ ਕਰਨ ਲਈ ਅਨਟਿਕ ਕਰੋ — ਕੋਟਾ, ਬਿਲਡਰ ਤੇ ਆਟੋ-ਜਨਰੇਟ ਤੋਂ ਲੁਕ ਜਾਵੇਗਾ',readiness_title:'ਸੈਟਅਪ ਤਿਆਰੀ',ready_word:'ਤਿਆਰ',readiness_hint:'ਲੋੜੀਂਦੇ ਕਦਮ ਪੂਰੇ ਕਰੋ, ਫਿਰ ਆਟੋ-ਜਨਰੇਟ ਕਰੋ।',optional_word:'(ਵਿਕਲਪਿਕ)',ready_classes:'ਕਲਾਸਾਂ ਜੋੜੀਆਂ',ready_subjects:'ਵਿਸ਼ੇ ਜੋੜੇ',ready_teachers:'ਅਧਿਆਪਕ ਜੋੜੇ',ready_rooms:'ਕਮਰੇ ਜੋੜੇ',ready_hours:'ਸਕੂਲ ਸਮਾਂ ਸੈੱਟ',ready_name:'ਸਕੂਲ ਦਾ ਨਾਂ ਸੈੱਟ',ready_quota:'ਹਫ਼ਤਾਵਾਰੀ ਕੋਟਾ ਸੈੱਟ',ready_generated:'ਟਾਈਮਟੇਬਲ ਬਣ ਗਿਆ',lbl_working_days:'ਕੰਮ ਦੇ ਦਿਨ',lunch_word:'ਲੰਚ',lbl_lunch_after:'ਕਿਹੜੇ ਪੀਰੀਅਡ ਤੋਂ ਬਾਅਦ ਲੰਚ',lbl_lunch_min:'ਲੰਚ (ਮਿੰਟ)',lbl_short_after:'ਕਿਹੜੇ ਪੀਰੀਅਡਾਂ ਤੋਂ ਬਾਅਦ ਛੋਟੇ ਬ੍ਰੇਕ',lbl_short_min:'ਛੋਟਾ ਬ੍ਰੇਕ (ਮਿੰਟ)',hint_short_after:'ਕਾਮੇ ਨਾਲ ਵੱਖ ਕਰੋ, ਜਿਵੇਂ 2,6 (ਖਾਲੀ = ਕੋਈ ਨਹੀਂ)',lbl_custom_dur:'ਕਸਟਮ ਪੀਰੀਅਡ ਮਿਆਦ (ਮਿੰਟ)',ph_custom_dur:'ਜਿਵੇਂ 35,35,40 — ਖਾਲੀ = ਸਾਰਿਆਂ ਲਈ ਇੱਕੋ',lbl_breaks:'ਬ੍ਰੇਕ ਅਤੇ ਲੰਚ',_days:['ਸੋਮ','ਮੰਗਲ','ਬੁੱਧ','ਵੀਰ','ਸ਼ੁੱਕਰ','ਸ਼ਨੀ'],
   app_title:'Aumtara — ਟਾਈਮਟੇਬਲ ਮੌਡਿਊਲ', app_sub:'ਕਲਾਸ ਸਮਾਂ-ਸਾਰਣੀਆਂ ਬਣਾਓ ਤੇ ਪ੍ਰਬੰਧ ਕਰੋ · ਡੇਟਾ ਸਿੱਧਾ ਤੁਹਾਡੇ ਡੇਟਾਬੇਸ ਤੋਂ', saved:'✓ ਸੇਵ ਹੋ ਗਿਆ',
   nav_dash:'ਡੈਸ਼ਬੋਰਡ',nav_setup:'ਸੈੱਟਅੱਪ',nav_hours:'ਵਿੱਦਿਅਕ ਘੰਟੇ',nav_quota:'ਕੋਟਾ',nav_build:'ਬਿਲਡਰ',nav_class:'ਕਲਾਸ',nav_teacher:'ਅਧਿਆਪਕ',nav_diary:'ਅਧਿਆਪਕ ਡਾਇਰੀ',nav_school:'ਸਕੂਲ ਵਿਊ',nav_sub:'ਬਦਲੀ',nav_monitor:'ਲਾਈਵ ਮਾਨੀਟਰ',nav_data:'ਇੰਪੋਰਟ / ਐਕਸਪੋਰਟ',nav_help:'ਮਦਦ ਤੇ ਗਾਈਡ',
   kpi_classrooms:'ਕਲਾਸਾਂ',kpi_subjects:'ਵਿਸ਼ੇ',kpi_teachers:'ਅਧਿਆਪਕ',kpi_completed:'ਪੂਰਾ',
@@ -459,7 +459,7 @@ const I18N={
   monitor_title:'ਲਾਈਵ ਕਲਾਸਰੂਮ ਮਾਨੀਟਰ',monitor_desc:'ਹਰ ਕਲਾਸਰੂਮ ਦੀ ਰੀਅਲ-ਟਾਈਮ ਸਥਿਤੀ (ਸਰਵਰ-ਗਣਨਾ)। ਲਾਏ ਪ੍ਰਾਕਸੀ ਦਿਸਦੇ ਹਨ।',lbl_sim_day:'ਦਿਨ ਸਿਮੂਲੇਟ',opt_now:'(ਹੁਣ)',lbl_sim_time:'ਸਮਾਂ ਸਿਮੂਲੇਟ',btn_real_time:'ਅਸਲੀ ਸਮਾਂ',
   st_live:'ਲਾਈਵ',st_break:'ਬਰੇਕ',st_idle:'ਖਾਲੀ',st_proxy:'ਪ੍ਰਾਕਸੀ',legend_running:'ਚੱਲ ਰਹੀ',legend_absent_covered:'ਗ਼ੈਰਹਾਜ਼ਰ/ਕਵਰ'
  },
- sw:{_days:['Jtatu','Jnne','Jtano','Alh','Ijm','Jmosi'],
+ sw:{class_teacher:'Mwalimu wa darasa',opt_no_ct:'— hakuna mwalimu wa darasa —',subj_active:'Inatumika',subj_inactive:'Haitumiki',subj_active_hint:'Ondoa alama ili kuhifadhi — itafichwa kwenye mgao, kijenzi na uundaji-otomatiki',readiness_title:'Utayari wa usanidi',ready_word:'tayari',readiness_hint:'Kamilisha hatua zinazohitajika, kisha Unda-otomatiki.',optional_word:'(hiari)',ready_classes:'Madarasa yameongezwa',ready_subjects:'Masomo yameongezwa',ready_teachers:'Walimu wameongezwa',ready_rooms:'Vyumba vimeongezwa',ready_hours:'Saa za shule zimewekwa',ready_name:'Jina la shule limewekwa',ready_quota:'Mgao wa wiki umewekwa',ready_generated:'Ratiba imeundwa',lbl_working_days:'Siku za kazi',lunch_word:'Chakula cha mchana',lbl_lunch_after:'Chakula cha mchana baada ya kipindi',lbl_lunch_min:'Chakula cha mchana (dakika)',lbl_short_after:'Mapumziko mafupi baada ya vipindi',lbl_short_min:'Pumziko fupi (dakika)',hint_short_after:'tenganisha kwa koma, k.m. 2,6 (wazi = hakuna)',lbl_custom_dur:'Muda maalum wa vipindi (dakika)',ph_custom_dur:'k.m. 35,35,40 — wazi = sawa kwa vyote',lbl_breaks:'Mapumziko na Chakula',_days:['Jtatu','Jnne','Jtano','Alh','Ijm','Jmosi'],
   app_title:'Aumtara — Moduli ya Ratiba', app_sub:'Tengeneza na simamia ratiba za darasa · data moja kwa moja kutoka hifadhidata yako', saved:'✓ Imehifadhiwa',
   nav_dash:'Dashibodi',nav_setup:'Usanidi',nav_hours:'Saa za Masomo',nav_quota:'Mgao',nav_build:'Kijenzi',nav_class:'Darasa',nav_teacher:'Mwalimu',nav_diary:'Shajara ya Mwalimu',nav_school:'Mwonekano wa Shule',nav_sub:'Ubadilishaji',nav_monitor:'Ufuatiliaji Moja kwa Moja',nav_data:'Ingiza / Toa',nav_help:'Msaada na Mwongozo',
   kpi_classrooms:'Madarasa',kpi_subjects:'Masomo',kpi_teachers:'Walimu',kpi_completed:'Imekamilika',
@@ -506,7 +506,7 @@ const I18N={
   monitor_title:'Ufuatiliaji wa Darasa Moja kwa Moja',monitor_desc:'Hali ya wakati halisi ya kila darasa (iliyokokotolewa na seva). Wabadala waliowekwa huonyeshwa.',lbl_sim_day:'Iga siku',opt_now:'(sasa)',lbl_sim_time:'Iga saa',btn_real_time:'Tumia saa halisi',
   st_live:'MOJA',st_break:'MAPUMZIKO',st_idle:'WAZI',st_proxy:'BADALA',legend_running:'linaendelea',legend_absent_covered:'hayupo/amefunikwa'
  },
- ha:{_days:['Lit','Tal','Lar','Alh','Jum','Asa'],
+ ha:{class_teacher:'Malamin aji',opt_no_ct:'— babu malamin aji —',subj_active:'Mai aiki',subj_inactive:'Ba ya aiki',subj_active_hint:'Cire alama don adanawa — za a ɓoye daga rabo, mai gini da sarrafa-kai',readiness_title:'Shirye-shiryen saiti',ready_word:'shiri',readiness_hint:'Kammala matakan da ake buƙata, sannan ka yi sarrafa-kai.',optional_word:'(na zaɓi)',ready_classes:'An ƙara azuzuwa',ready_subjects:'An ƙara darussa',ready_teachers:'An ƙara malamai',ready_rooms:'An ƙara ɗakuna',ready_hours:'An saita lokutan makaranta',ready_name:'An saita sunan makaranta',ready_quota:'An saita rabo na mako',ready_generated:'An ƙirƙiri jadawali',lbl_working_days:'Kwanakin aiki',lunch_word:'Abincin rana',lbl_lunch_after:'Abincin rana bayan lokaci',lbl_lunch_min:'Abincin rana (minti)',lbl_short_after:'Gajerun hutu bayan lokuta',lbl_short_min:'Gajeren hutu (minti)',hint_short_after:'raba da waƙafi, misali 2,6 (fanko = babu)',lbl_custom_dur:'Tsawon lokaci na musamman (minti)',ph_custom_dur:'misali 35,35,40 — fanko = iri ɗaya ga duka',lbl_breaks:'Hutu da Abinci',_days:['Lit','Tal','Lar','Alh','Jum','Asa'],
   app_title:'Aumtara — Sashen Jadawali', app_sub:'Ƙirƙira da sarrafa jadawalin aji · bayanai kai tsaye daga bayananka', saved:'✓ An ajiye',
   nav_dash:'Dashboard',nav_setup:'Saitin',nav_hours:'Sa\'o\'in Karatu',nav_quota:'Rabo',nav_build:'Ginin',nav_class:'Aji',nav_teacher:'Malami',nav_diary:'Diary na Malami',nav_school:'Kallon Makaranta',nav_sub:'Musanya',nav_monitor:'Sa ido Kai tsaye',nav_data:'Shigo / Fitar',nav_help:'Taimako da Jagora',
   kpi_classrooms:'Ajujuwa',kpi_subjects:'Darussa',kpi_teachers:'Malamai',kpi_completed:'An gama',
@@ -553,7 +553,7 @@ const I18N={
   monitor_title:'Sa ido Aji Kai tsaye',monitor_desc:'Halin kowane aji na ainihin lokaci (an ƙididdige shi da seva). Ana nuna musanyar da aka sanya.',lbl_sim_day:'Kwaikwayi rana',opt_now:'(yanzu)',lbl_sim_time:'Kwaikwayi lokaci',btn_real_time:'Yi amfani da ainihin lokaci',
   st_live:'KAI TSAYE',st_break:'HUTU',st_idle:'BABU',st_proxy:'MUSANYA',legend_running:'na gudana',legend_absent_covered:'baya nan/an rufe'
  },
- yo:{_days:['Aj','Ìṣ','Ọjr','Ọjb','Ẹt','Àb'],
+ yo:{class_teacher:'Olùkọ́ kíláàsì',opt_no_ct:'— kò sí olùkọ́ kíláàsì —',subj_active:'Ń ṣiṣẹ́',subj_inactive:'Kò ṣiṣẹ́',subj_active_hint:'Yọ àmì kúrò láti fi pamọ́ — yóò para mọ́ kúrò nínú ìpín, akọ́lé àti ìṣẹ̀dá-ara-ẹni',readiness_title:'Ìmúrasílẹ̀ ètò',ready_word:'ṣetán',readiness_hint:'Parí àwọn ìgbésẹ̀ tí a nílò, lẹ́yìn náà ṣẹ̀dá-ara-ẹni.',optional_word:'(àṣàyàn)',ready_classes:'A fi àwọn kíláàsì kún',ready_subjects:'A fi àwọn kókó kún',ready_teachers:'A fi àwọn olùkọ́ kún',ready_rooms:'A fi àwọn yàrá kún',ready_hours:'A ṣètò àkókò ilé-ìwé',ready_name:'A ṣètò orúkọ ilé-ìwé',ready_quota:'A ṣètò ìpín ọ̀sẹ̀',ready_generated:'A ṣẹ̀dá àkótò àkókò',lbl_working_days:'Ọjọ́ iṣẹ́',lunch_word:'Oúnjẹ ọ̀sán',lbl_lunch_after:'Oúnjẹ ọ̀sán lẹ́yìn àkókò',lbl_lunch_min:'Oúnjẹ ọ̀sán (ìṣẹ́jú)',lbl_short_after:'Ìsinmi kúkúrú lẹ́yìn àwọn àkókò',lbl_short_min:'Ìsinmi kúkúrú (ìṣẹ́jú)',hint_short_after:'yà sọ́tọ̀ pẹ̀lú kọ́mà, àpẹẹrẹ 2,6 (òfo = kò sí)',lbl_custom_dur:'Àkókò àṣàyàn (ìṣẹ́jú)',ph_custom_dur:'àpẹẹrẹ 35,35,40 — òfo = bákan náà fún gbogbo',lbl_breaks:'Ìsinmi àti Oúnjẹ',_days:['Aj','Ìṣ','Ọjr','Ọjb','Ẹt','Àb'],
   app_title:'Aumtara — Ẹ̀ka Àkọ́kọ́', app_sub:'Ṣẹda ati ṣakoso àwọn àkọ́kọ́ kíláàsì · dátà tààrà láti inú dátà rẹ', saved:'✓ Ti fipamọ́',
   nav_dash:'Dasibodu',nav_setup:'Ìṣètò',nav_hours:'Àkókò Ẹ̀kọ́',nav_quota:'Ìpín',nav_build:'Akọ́lé',nav_class:'Kíláàsì',nav_teacher:'Olùkọ́',nav_diary:'Ìwé Olùkọ́',nav_school:'Ìwòye Ilé-ìwé',nav_sub:'Ìrọ́pò',nav_monitor:'Ìbójútó Tààrà',nav_data:'Kó wọlé / Kó jáde',nav_help:'Ìrànlọ́wọ́',
   kpi_classrooms:'Àwọn kíláàsì',kpi_subjects:'Àwọn kókó',kpi_teachers:'Àwọn olùkọ́',kpi_completed:'Ó parí',
@@ -600,7 +600,7 @@ const I18N={
   monitor_title:'Ìbójútó Kíláàsì Tààrà',monitor_desc:'Ipò àkókò gidi ti kíláàsì kọ̀ọ̀kan (a ṣírò rẹ̀ nípasẹ̀ seva). A fi àwọn ìrọ́pò tí a yàn hàn.',lbl_sim_day:'Ṣàpẹẹrẹ ọjọ́',opt_now:'(báyìí)',lbl_sim_time:'Ṣàpẹẹrẹ àkókò',btn_real_time:'Lo àkókò gidi',
   st_live:'TÀÀRÀ',st_break:'ÌSINMI',st_idle:'ÒFO',st_proxy:'ÌRỌ́PÒ',legend_running:'ń lọ',legend_absent_covered:'kò sí/a bò ó'
  },
- ig:{_days:['Mọn','Tuz','Wen','Tọz','Fra','Sat'],
+ ig:{class_teacher:'Onye nkuzi klas',opt_no_ct:'— enweghị onye nkuzi klas —',subj_active:'Na-arụ ọrụ',subj_inactive:'Anaghị arụ ọrụ',subj_active_hint:'Wepụ akara iji chekwaa — a ga-ezo ya na oke, onye nrụpụta na imepụta-onwe',readiness_title:'Njikere nhazi',ready_word:'njikere',readiness_hint:'Mechaa usoro achọrọ, wee mepụta-onwe.',optional_word:'(nhọrọ)',ready_classes:'Agbakwunyere klas',ready_subjects:'Agbakwunyere isiokwu',ready_teachers:'Agbakwunyere ndị nkuzi',ready_rooms:'Agbakwunyere ọnụ ụlọ',ready_hours:'Edobere oge ụlọ akwụkwọ',ready_name:'Edobere aha ụlọ akwụkwọ',ready_quota:'Edobere oke izu',ready_generated:'Emepụtara nhazi oge',lbl_working_days:'Ụbọchị ọrụ',lunch_word:'Nri ehihie',lbl_lunch_after:'Nri ehihie mgbe oge gasịrị',lbl_lunch_min:'Nri ehihie (nkeji)',lbl_short_after:'Ezumike ndị dị mkpirikpi mgbe oge gasịrị',lbl_short_min:'Ezumike dị mkpirikpi (nkeji)',hint_short_after:'jiri rikoma kewaa, dịka 2,6 (efu = ọ dịghị)',lbl_custom_dur:'Ogologo oge ahaziri onwe ya (nkeji)',ph_custom_dur:'dịka 35,35,40 — efu = otu maka niile',lbl_breaks:'Ezumike na Nri',_days:['Mọn','Tuz','Wen','Tọz','Fra','Sat'],
   app_title:'Aumtara — Ngalaba Nhazi Oge', app_sub:'Mepụta ma jikwaa nhazi oge klas · data site na nchekwa data gị', saved:'✓ Echekwara',
   nav_dash:'Dashboard',nav_setup:'Ntọala',nav_hours:'Oge Agụmakwụkwọ',nav_quota:'Òkè',nav_build:'Onye Wuru',nav_class:'Klas',nav_teacher:'Onye nkụzi',nav_diary:'Akwụkwọ Onye nkụzi',nav_school:'Nlele Ụlọ akwụkwọ',nav_sub:'Nnọchi',nav_monitor:'Nlele Ozugbo',nav_data:'Bubata / Bupụ',nav_help:'Enyemaka',
   kpi_classrooms:'Klas',kpi_subjects:'Isiokwu',kpi_teachers:'Ndị nkụzi',kpi_completed:'Emechara',
@@ -691,6 +691,7 @@ function slotsFor(di){
   return s;
 }
 function firstWD(){return WD()[0]??0;}
+const actSubs=()=>subjects.filter(s=>s.active===undefined||s.active===null||+s.active!==0);
 const sName=id=>(subjects.find(s=>s.id===id)||{}).name||"";
 const tName=id=>(teachers.find(t=>t.id===id)||{}).name||"";
 const rName=id=>(rooms.find(r=>r.id===id)||{}).name||"";
@@ -708,7 +709,7 @@ const TABKEYS=[["dash","nav_dash"],["setup","nav_setup"],["hours","nav_hours"],[
 function render(){
   document.getElementById("tabs").innerHTML=TABKEYS.map(([k,lk])=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${t(lk)}</div>`).join("");
   document.getElementById("view").innerHTML=({dash,setup,hours,quota:quotaView,build:builder,class:classView,teacher:teacherView,diary:diaryView,school:schoolView,sub:subView,monitor,data:dataView,help}[tab])();
-  if(tab==="monitor")refreshMonitor(); if(tab==="sub")loadCover(); if(tab==="quota")loadQuota(); if(tab==="diary")loadDiary();
+  if(tab==="monitor")refreshMonitor(); if(tab==="sub")loadCover(); if(tab==="quota")loadQuota(); if(tab==="diary")loadDiary(); if(tab==="dash")loadReadiness();
 }
 function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3>${title}</h3><div class="sub">${sub||''}</div>`;window.print();}
 function printPlain(){document.getElementById('printhead').innerHTML='';window.print();}
@@ -729,13 +730,23 @@ function dash(){return `<div class="kpis">
    <div class="feat">
      <div><b>${t('feat_period_t')}</b><br><span class="small">${t('feat_period_d')}</span></div>
      <div><b>${t('feat_conflict_t')}</b><br><span class="small">${t('feat_conflict_d',{n:conflictCount()})}</span></div>
-     <div><b>${t('feat_sub_t')}</b><br><span class="small">${t('feat_sub_d')}</span></div></div></div>`;}
+     <div><b>${t('feat_sub_t')}</b><br><span class="small">${t('feat_sub_d')}</span></div></div></div>
+   <div class="card" id="readycard"><h2>${t('readiness_title')}</h2><div id="readybox" class="small">…</div></div>`;}
+async function loadReadiness(){const box=document.getElementById('readybox');if(!box)return;let r;try{r=await api('GET','/api/readiness');}catch(e){box.textContent='';return;}
+  const LB={classes:'ready_classes',subjects:'ready_subjects',teachers:'ready_teachers',rooms:'ready_rooms',hours:'ready_hours',name:'ready_name',quota:'ready_quota',generated:'ready_generated'};
+  const bar=`<div style="background:#eef1f9;border-radius:20px;height:16px;overflow:hidden;margin:2px 0 12px"><div style="height:100%;width:${r.pct}%;background:${r.pct>=100?'#1a9d6b':r.pct>=50?'#c9871f':'#dc4b4b'};transition:width .4s"></div></div>`;
+  const items=r.steps.map(s=>{const lbl=t(LB[s.key]||s.key);const cnt=(s.count!=null?' <span class="small" style="color:#8a93b4">('+s.count+')</span>':'');const opt=s.optional?` <span class="small" style="color:#8a93b4">${t('optional_word')}</span>`:'';return `<div style="padding:5px 0;display:flex;align-items:center;gap:9px"><span style="font-size:16px">${s.done?'✅':(s.optional?'⚪':'⬜')}</span><span style="${s.done?'':'color:#57608a'}">${lbl}${cnt}${opt}</span></div>`;}).join('');
+  box.innerHTML=`<div style="font-size:22px;font-weight:800;color:${r.pct>=100?'#1a9d6b':'#1f2b57'};margin-bottom:2px">${r.pct}% ${t('ready_word')}</div>${bar}${items}<div class="small" style="margin-top:8px;color:#8a93b4">${t('readiness_hint')}</div>`;}
 async function autoGen(){const b=event&&event.target;if(b){b.disabled=true;b.dataset.txt=b.textContent;b.textContent=t('btn_generating');}const r=await api('POST','/api/timetable/auto-generate');await loadAll();setTab('class');toast(t('toast_generated',{n:(r&&r.cells)||0}));if(b){b.disabled=false;b.textContent=b.dataset.txt;}}
 
 // ---------- SETUP (CRUD) ----------
 function setup(){
-  const classList=classes.map(c=>`<div class="listrow"><input value="${c.name}" onchange="upd('classes',${c.id},{name:this.value})"><button class="ghost mini red" onclick="del('classes',${c.id})">✕</button></div>`).join('');
-  const subList=subjects.map(s=>`<div class="listrow"><input value="${s.name}" onchange="upd('subjects',${s.id},{name:this.value})"><button class="ghost mini red" onclick="del('subjects',${s.id})">✕</button></div>`).join('');
+  const classList=classes.map(c=>`<div class="listrow"><input value="${c.name}" onchange="upd('classes',${c.id},{name:this.value})">
+     <select title="${t('class_teacher')}" style="max-width:150px" onchange="upd('classes',${c.id},{class_teacher_id:this.value?+this.value:null})"><option value="">${t('opt_no_ct')}</option>${teachers.map(t2=>`<option value="${t2.id}" ${c.class_teacher_id===t2.id?'selected':''}>${t2.name}</option>`).join('')}</select>
+     <button class="ghost mini red" onclick="del('classes',${c.id})">✕</button></div>`).join('');
+  const subList=subjects.map(s=>{const off=+s.active===0;return `<div class="listrow" style="${off?'opacity:.55':''}"><input value="${s.name}" onchange="upd('subjects',${s.id},{name:this.value})">
+     <label class="chk" title="${t('subj_active_hint')}"><input type="checkbox" ${off?'':'checked'} onchange="upd('subjects',${s.id},{active:this.checked?1:0})">${off?t('subj_inactive'):t('subj_active')}</label>
+     <button class="ghost mini red" onclick="del('subjects',${s.id})">✕</button></div>`;}).join('');
   const roomList=rooms.map(r=>`<div class="listrow"><input value="${r.name}" onchange="upd('rooms',${r.id},{name:this.value})"><input type="number" style="width:70px" value="${r.capacity||''}" placeholder="${t('ph_cap')}" onchange="upd('rooms',${r.id},{capacity:+this.value})"><button class="ghost mini red" onclick="del('rooms',${r.id})">✕</button></div>`).join('');
   const tchList=teachers.map(t2=>`<div style="padding:8px 0;border-bottom:1px solid #f0f2f6">
      <div class="listrow"><input value="${t2.name}" onchange="updTeacher(${t2.id},{name:this.value})"><button class="ghost mini red" onclick="delTeacher(${t2.id})">✕</button></div>
@@ -795,7 +806,7 @@ function builder(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slo
   let rows=classes.map(c=>{let pi=0,cells=`<td class="ph">${c.name}</td>`;
     slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}
       const cc=cell(c.id,di,pi),conf=conflictAt(c.id,di,pi);
-      const sopt=`<option value="">${t('opt_free')}</option>`+subjects.map(s=>`<option value="${s.id}" ${cc&&cc.subject_id===s.id?'selected':''}>${s.name}</option>`).join("");
+      const sopt=`<option value="">${t('opt_free')}</option>`+subjects.filter(s=>+s.active!==0||(cc&&cc.subject_id===s.id)).map(s=>`<option value="${s.id}" ${cc&&cc.subject_id===s.id?'selected':''}>${s.name}${+s.active===0?' ('+t('subj_inactive')+')':''}</option>`).join("");
       const tl=cc&&cc.subject_id?tForSub(cc.subject_id):teachers;
       const topt=`<option value="">${t('opt_teacher')}</option>`+tl.map(t2=>`<option value="${t2.id}" ${cc&&cc.teacher_id===t2.id?'selected':''}>${t2.name}</option>`).join("");
       const ropt=`<option value="">${t('opt_room')}</option>`+rooms.map(r=>`<option value="${r.id}" ${cc&&cc.room_id===r.id?'selected':''}>${r.name}</option>`).join("");
@@ -820,7 +831,9 @@ function classView(){const slots0=slotsFor(firstWD());
     slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}const cc=cell(curClass,di,pi);pi++;
       cells+=cc&&cc.subject_id?`<td><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}</div>${cc.room_id?`<div class="rm">${rName(cc.room_id)}</div>`:''}</td>`:`<td class="free">—</td>`;});
     return `<tr>${cells}</tr>`;}).join("");
-  return `<div class="card"><h2>${t('class_title')}</h2><div class="row" style="margin-bottom:12px">
+  const curCls=classes.find(c=>c.id===curClass)||{};
+  const ctName=curCls.class_teacher_id?tName(curCls.class_teacher_id):'';
+  return `<div class="card"><h2>${t('class_title')}</h2>${ctName?`<div class="desc">👤 ${t('class_teacher')}: <b>${ctName}</b></div>`:''}<div class="row" style="margin-bottom:12px">
      <div><label>${t('class_')}</label><select onchange="curClass=+this.value;render()">${classes.map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join("")}</select></div>
      <button class="ghost" onclick="printDoc(t('print_class_title')+' '+document.querySelector('#view select').selectedOptions[0].text,'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="location.href='/api/export/timetable.xlsx'">${t('excel')}</button></div>
@@ -866,7 +879,7 @@ function renderQuota(){ const box=document.getElementById('quotabox'); if(!box)r
   let totalSlots=0; DAYS.forEach((_,di)=>totalSlots+=slotsFor(di).filter(s=>!s.brk).length);
   const q={}; quotaData.forEach(x=>q[x.subject_id]=x.per_week);
   let sum=Object.values(q).reduce((a,b)=>a+(+b||0),0);
-  box.innerHTML=`<table><tr><th>${t('subject')}</th><th>${t('th_periods_week')}</th></tr>${subjects.map(s=>`<tr><td>${s.name}</td>
+  box.innerHTML=`<table><tr><th>${t('subject')}</th><th>${t('th_periods_week')}</th></tr>${actSubs().map(s=>`<tr><td>${s.name}</td>
      <td><input type="number" min="0" style="width:90px" value="${q[s.id]||0}" onchange="setQuota(${s.id},+this.value)"></td></tr>`).join('')}
      <tr><td class="ph">${t('total_assigned')}</td><td class="ph" style="${sum>totalSlots?'color:#991b1b':''}">${t('weekly_slots',{sum,total:totalSlots})}</td></tr></table>
      ${sum>totalSlots?'<div class="errmsg">'+t('err_over_slots')+'</div>':''}`;
