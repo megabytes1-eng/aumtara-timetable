@@ -887,7 +887,35 @@ function renderSchoolsBox(){const box=document.getElementById('schoolsbox');if(!
      <td><select onchange="updSchool(${s.id},{medium:this.value})"><option value="">—</option>${MEDIUMS.map(m=>`<option value="${m}" ${s.medium===m?'selected':''}>${m}</option>`).join('')}</select></td>
      <td style="text-align:center"><input type="checkbox" ${+s.active!==0?'checked':''} onchange="updSchool(${s.id},{active:this.checked?1:0})"></td>
      <td style="white-space:nowrap">${cur?('<span class="small" style="color:#1a9d6b">● '+t('current_word')+'</span>'):`<button class="ghost mini" onclick="switchSchool(${s.id})">${t('open_word')}</button>`} <button class="ghost mini red" onclick="delSchool(${s.id},'${av(s.name).replace(/'/g,"\\'")}')">✕</button></td></tr>`;}).join('')}</table></div>`;}
-function pickLogo(id){const inp=document.createElement('input');inp.type='file';inp.accept='image/png,image/jpeg,image/jpg,image/webp,image/gif';inp.onchange=()=>{const f=inp.files&&inp.files[0];if(!f)return;if(f.size>500*1024){toast(t('logo_too_big'));return;}const rd=new FileReader();rd.onload=()=>updSchool(id,{logo:rd.result});rd.readAsDataURL(f);};inp.click();}
+function pickLogo(id){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+  document.body.appendChild(inp);
+  const cleanup=()=>{try{document.body.removeChild(inp);}catch(e){}};
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0];
+    if(!f){cleanup();return;}
+    const rd=new FileReader();
+    rd.onerror=()=>{cleanup();toast(t('logo_too_big'));};
+    rd.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        try{ let w=img.width,h=img.height; const max=400;
+          if(w>max||h>max){const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r);}
+          const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+          cv.getContext('2d').drawImage(img,0,0,w,h);
+          updSchool(id,{logo:cv.toDataURL('image/png')});
+        }catch(e){ if(String(rd.result).length<650000) updSchool(id,{logo:rd.result}); else toast(t('logo_too_big')); }
+        cleanup();
+      };
+      img.onerror=()=>{ if(String(rd.result).length<650000) updSchool(id,{logo:rd.result}); else toast(t('logo_too_big')); cleanup(); };
+      img.src=rd.result;
+    };
+    rd.readAsDataURL(f);
+  };
+  inp.click();
+}
 function removeLogo(id){updSchool(id,{logo:''});}
 async function addSchool(){const g=id=>document.getElementById(id);const name=g('ns_name').value.trim();if(!name){toast(t('schools_need'));return;}const r=await api('POST','/api/schools',{name,board:g('ns_board').value,medium:g('ns_medium').value});if(r&&r.error){toast(r.error);return;}g('ns_name').value='';try{SCHOOLS=await api('GET','/api/schools');}catch(e){}showSchoolBar();toast(t('schools_added'));await loadSchools();}
 async function updSchool(id,patch){const r=await api('PUT','/api/schools/'+id,patch);if(r&&r.error){toast(r.error);}else toast();try{SCHOOLS=await api('GET','/api/schools');}catch(e){}showSchoolBar();if(tab==='schools')loadSchools();else render();}
