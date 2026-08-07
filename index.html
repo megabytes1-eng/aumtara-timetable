@@ -99,6 +99,7 @@ const I18N={
   hours_title:'Academic Hours',tag_config:'Configuration',hours_desc:'Period slots are generated from this and saved to the database.',
   lbl_school_name:'School name (shown on diary & reports)',lbl_wd_start:'Weekday start',lbl_wd_end:'Weekday end',lbl_sat_end:'Saturday end',lbl_period_min:'Period (min)',lbl_break_after:'Break after period',lbl_break_min:'Break (min)',
   weekdays:'Weekdays',saturdays:'Saturdays',periods_word:'periods',weekday_slots:'Weekday slots:',brk:'Break',
+  lbl_working_days:'Working days',lunch_word:'Lunch',lbl_lunch_after:'Lunch after period',lbl_lunch_min:'Lunch (min)',lbl_short_after:'Short breaks after periods',lbl_short_min:'Short break (min)',hint_short_after:'comma-separated, e.g. 2,6 (blank = none)',lbl_custom_dur:'Custom period durations (min)',ph_custom_dur:'e.g. 35,35,40 — blank = same for all',lbl_breaks:'Breaks & Lunch',
   builder_title:'Set Daily Lectures — Builder',builder_desc:'Subject + teacher + room per class/period. Saved instantly; teacher & room clashes highlighted.',
   th_class_period:'Class \\ Period',opt_free:'— free —',opt_teacher:'teacher…',opt_room:'room…',btn_autogen_all:'⚡ Auto-generate all',warn_teacher:'⚠ teacher:',warn_room:'⚠ room:',
   class_title:'Class Schedule',print_class_title:'Class Timetable —',
@@ -671,7 +672,25 @@ async function loadAll(){
   render();
 }
 function addMin(h,m){let[a,b]=h.split(":").map(Number);let d=new Date(2020,0,1,a,b+m);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
-function slotsFor(di){const end=di===5?config.saturday_end:config.weekday_end;let s=[],t=config.weekday_start,i=0;while(true){const e=addMin(t,config.period_minutes);s.push({i,label:"P"+(i+1),start:t,end:e,brk:false});i++;if(e>=end||i>=10)break;t=e;if(i===config.break_after_period){const be=addMin(t,config.break_minutes);s.push({brk:true,label:"Break",start:t,end:be});t=be;}}return s;}
+function csvNums(s){return String(s||'').split(',').map(x=>parseInt(x,10)).filter(n=>!isNaN(n));}
+function WD(){const w=csvNums(config.working_days);return w.length?w:[0,1,2,3,4,5];}
+function slotsFor(di){
+  if(!WD().includes(di))return [];
+  const end=di===5?config.saturday_end:config.weekday_end;
+  const durs=csvNums(config.period_durations);
+  const shortAfter=new Set(csvNums(config.short_break_after));
+  const shortMin=+config.short_break_minutes||0;
+  const lunchAfter=(config.lunch_after!=null?+config.lunch_after:+config.break_after_period);
+  const lunchMin=(config.lunch_minutes!=null?+config.lunch_minutes:+config.break_minutes)||0;
+  let s=[],t=config.weekday_start,i=0;
+  while(true){const dur=durs[i]||config.period_minutes;const e=addMin(t,dur);
+    s.push({i,label:"P"+(i+1),start:t,end:e,brk:false});i++;
+    if(e>=end||i>=12)break;t=e;
+    if(lunchAfter&&i===lunchAfter&&lunchMin>0){const be=addMin(t,lunchMin);s.push({brk:true,kind:'lunch',label:"Lunch",start:t,end:be});t=be;}
+    if(shortAfter.has(i)&&shortMin>0){const be=addMin(t,shortMin);s.push({brk:true,kind:'short',label:"Break",start:t,end:be});t=be;}}
+  return s;
+}
+function firstWD(){return WD()[0]??0;}
 const sName=id=>(subjects.find(s=>s.id===id)||{}).name||"";
 const tName=id=>(teachers.find(t=>t.id===id)||{}).name||"";
 const rName=id=>(rooms.find(r=>r.id===id)||{}).name||"";
@@ -748,26 +767,33 @@ async function addChapter(){const sid=setupSubj||(subjects[0]||{}).id;const el=d
 async function delChapter(id){await api('DELETE','/api/chapters/'+id);toast();await loadAll();}
 
 // ---------- HOURS ----------
-function hours(){const wd=slotsFor(0);return `<div class="card"><h2>${t('hours_title')} <span class="tag">${t('tag_config')}</span></h2>
+function hours(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new Set(WD());return `<div class="card"><h2>${t('hours_title')} <span class="tag">${t('tag_config')}</span></h2>
    <div class="desc">${t('hours_desc')}</div>
    <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:280px"><label>${t('lbl_school_name')}</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div></div>
+   <div style="margin-bottom:14px"><label>${t('lbl_working_days')}</label>${DAYS.map((d,i)=>`<label class="chk"><input type="checkbox" ${wds.has(i)?'checked':''} onchange="toggleWD(${i},this.checked)">${DD()[i]}</label>`).join('')}</div>
    <div class="row" style="margin-bottom:14px">
      <div><label>${t('lbl_wd_start')}</label><input type="time" value="${config.weekday_start}" onchange="cfg('weekday_start',this.value)"></div>
      <div><label>${t('lbl_wd_end')}</label><input type="time" value="${config.weekday_end}" onchange="cfg('weekday_end',this.value)"></div>
      <div><label>${t('lbl_sat_end')}</label><input type="time" value="${config.saturday_end}" onchange="cfg('saturday_end',this.value)"></div>
-     <div><label>${t('lbl_period_min')}</label><input type="number" value="${config.period_minutes}" style="width:80px" onchange="cfg('period_minutes',+this.value)"></div>
-     <div><label>${t('lbl_break_after')}</label><input type="number" value="${config.break_after_period}" style="width:80px" onchange="cfg('break_after_period',+this.value)"></div>
-     <div><label>${t('lbl_break_min')}</label><input type="number" value="${config.break_minutes}" style="width:80px" onchange="cfg('break_minutes',+this.value)"></div></div>
+     <div><label>${t('lbl_period_min')}</label><input type="number" value="${config.period_minutes}" style="width:80px" onchange="cfg('period_minutes',+this.value)"></div></div>
+   <div style="margin-bottom:6px"><b class="small">${t('lbl_breaks')}</b></div>
+   <div class="row" style="margin-bottom:14px">
+     <div><label>${t('lbl_lunch_after')}</label><input type="number" value="${config.lunch_after??config.break_after_period??''}" style="width:80px" onchange="cfg('lunch_after',+this.value||null)"></div>
+     <div><label>${t('lbl_lunch_min')}</label><input type="number" value="${config.lunch_minutes??config.break_minutes??''}" style="width:80px" onchange="cfg('lunch_minutes',+this.value||0)"></div>
+     <div><label>${t('lbl_short_after')}</label><input value="${config.short_break_after||''}" placeholder="${t('hint_short_after')}" style="width:160px" onchange="cfg('short_break_after',this.value)"></div>
+     <div><label>${t('lbl_short_min')}</label><input type="number" value="${config.short_break_minutes||0}" style="width:90px" onchange="cfg('short_break_minutes',+this.value||0)"></div></div>
+   <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:280px"><label>${t('lbl_custom_dur')}</label><input style="width:100%" value="${config.period_durations||''}" placeholder="${t('ph_custom_dur')}" onchange="cfg('period_durations',this.value)"></div></div>
    <div class="hours-row"><div><b>${t('weekdays')}</b><br><span class="small">${wd.filter(s=>!s.brk).length} ${t('periods_word')} · ${config.period_minutes} min</span></div><div><b>${config.weekday_start} – ${config.weekday_end}</b></div></div>
-   <div class="hours-row sat"><div><b>${t('saturdays')}</b><br><span class="small">${slotsFor(5).filter(s=>!s.brk).length} ${t('periods_word')}</span></div><div><b>${config.weekday_start} – ${config.saturday_end}</b></div></div>
-   <div style="margin-top:10px"><b class="small">${t('weekday_slots')}</b><br>${wd.map(s=>`<span class="tag">${s.brk?'☕ '+t('brk'):s.label} ${s.start}-${s.end}</span>`).join("")}</div></div>`;}
+   <div class="hours-row sat"><div><b>${t('saturdays')}</b><br><span class="small">${wds.has(5)?slotsFor(5).filter(s=>!s.brk).length+' '+t('periods_word'):'—'}</span></div><div><b>${config.weekday_start} – ${config.saturday_end}</b></div></div>
+   <div style="margin-top:10px"><b class="small">${t('weekday_slots')}</b><br>${wd.map(s=>`<span class="tag" ${s.brk?(s.kind==='lunch'?'style="background:#fef3c7;color:#92400e"':'style="background:#e0f2fe;color:#075985"'):''}>${s.brk?(s.kind==='lunch'?'🍽 '+t('lunch_word'):'☕ '+t('brk')):s.label} ${s.start}-${s.end}</span>`).join("")}</div></div>`;}
+function toggleWD(d,on){const w=new Set(WD());on?w.add(d):w.delete(d);if(!w.size)w.add(d);cfg('working_days',[...w].sort((a,b)=>a-b).join(','));}
 async function cfg(k,v){config[k]=v;await api('PUT','/api/timetable/config',config);toast();render();}
 
 // ---------- BUILDER (with rooms) ----------
-function builder(){const di=buildDay,slots=slotsFor(di);
-  let head=`<th>${t('th_class_period')}</th>`+slots.map(s=>`<th>${s.brk?'☕':s.label}<br><span style="font-weight:400;font-size:10px">${s.start}-${s.end}</span></th>`).join("");
+function builder(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slotsFor(di);
+  let head=`<th>${t('th_class_period')}</th>`+slots.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}<br><span style="font-weight:400;font-size:10px">${s.start}-${s.end}</span></th>`).join("");
   let rows=classes.map(c=>{let pi=0,cells=`<td class="ph">${c.name}</td>`;
-    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6">☕</td>`;return;}
+    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}
       const cc=cell(c.id,di,pi),conf=conflictAt(c.id,di,pi);
       const sopt=`<option value="">${t('opt_free')}</option>`+subjects.map(s=>`<option value="${s.id}" ${cc&&cc.subject_id===s.id?'selected':''}>${s.name}</option>`).join("");
       const tl=cc&&cc.subject_id?tForSub(cc.subject_id):teachers;
@@ -779,7 +805,7 @@ function builder(){const di=buildDay,slots=slotsFor(di);
         ${conf?`<div class="badge-bad">${conf.t?t('warn_teacher')+' '+conf.t:''} ${conf.r?t('warn_room')+' '+conf.r:''}</div>`:''}</td>`;pi++;});
     return `<tr>${cells}</tr>`;}).join("");
   return `<div class="card"><h2>${t('builder_title')}</h2><div class="desc">${t('builder_desc')}</div>
-   <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${DAYS.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
+   <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <button class="green" onclick="autoGen()">${t('btn_autogen_all')}</button></div>
    <div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
 async function saveCell(c,d,p,patch){const cc=cell(c,d,p)||{};await api('PUT','/api/timetable/cell',{class_id:c,day:d,period:p,subject_id:cc.subject_id||null,teacher_id:cc.teacher_id||null,room_id:cc.room_id||null,...patch});toast();await loadAll();}
@@ -788,10 +814,10 @@ async function setTea(c,d,p,v){await saveCell(c,d,p,{teacher_id:v||null});}
 async function setRoom(c,d,p,v){await saveCell(c,d,p,{room_id:v||null});}
 
 // ---------- CLASS VIEW ----------
-function classView(){const slots0=slotsFor(0);
-  let head=`<th>${t('day')}</th>`+slots0.map(s=>`<th>${s.brk?'☕':s.label}</th>`).join("");
-  let rows=DAYS.map((d,di)=>{const slots=slotsFor(di);let pi=0,cells=`<td class="ph">${DD()[di]}</td>`;
-    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6">☕</td>`;return;}const cc=cell(curClass,di,pi);pi++;
+function classView(){const slots0=slotsFor(firstWD());
+  let head=`<th>${t('day')}</th>`+slots0.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}</th>`).join("");
+  let rows=WD().map((di)=>{const slots=slotsFor(di);let pi=0,cells=`<td class="ph">${DD()[di]}</td>`;
+    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}const cc=cell(curClass,di,pi);pi++;
       cells+=cc&&cc.subject_id?`<td><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}</div>${cc.room_id?`<div class="rm">${rName(cc.room_id)}</div>`:''}</td>`:`<td class="free">—</td>`;});
     return `<tr>${cells}</tr>`;}).join("");
   return `<div class="card"><h2>${t('class_title')}</h2><div class="row" style="margin-bottom:12px">
@@ -801,30 +827,30 @@ function classView(){const slots0=slotsFor(0);
    <div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
 
 // ---------- TEACHER VIEW ----------
-function teacherView(){const slots0=slotsFor(0);let load=0;
-  let head=`<th>${t('day')}</th>`+slots0.map(s=>`<th>${s.brk?'☕':s.label}</th>`).join("");
-  let rows=DAYS.map((d,di)=>{const slots=slotsFor(di);let pi=0,cells=`<td class="ph">${DD()[di]}${absentDay(curTeacher).includes(di)?' <span class="pill proxy">'+t('absent')+'</span>':''}</td>`;
-    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6">☕</td>`;return;}
+function teacherView(){const slots0=slotsFor(firstWD());let load=0;
+  let head=`<th>${t('day')}</th>`+slots0.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}</th>`).join("");
+  let rows=WD().map((di)=>{const slots=slotsFor(di);let pi=0,cells=`<td class="ph">${DD()[di]}${absentDay(curTeacher).includes(di)?' <span class="pill proxy">'+t('absent')+'</span>':''}</td>`;
+    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}
       let f=null;classes.forEach(c=>{const cc=cell(c.id,di,pi);if(cc&&cc.teacher_id===curTeacher)f={cls:c.name,s:cc.subject_id};});pi++;
       if(f){load++;cells+=`<td><div class="subj">${sName(f.s)}</div><div class="tch">${f.cls}</div></td>`;}else cells+=`<td class="free">${t('free')}</td>`;});
     return `<tr>${cells}</tr>`;}).join("");
   return `<div class="card"><h2>${t('teacher_title')}</h2><div class="row" style="margin-bottom:12px">
      <div><label>${t('teacher')}</label><select onchange="curTeacher=+this.value;render()">${teachers.map(t2=>`<option value="${t2.id}" ${t2.id===curTeacher?'selected':''}>${t2.name}</option>`).join("")}</select></div>
-     <div><label>${t('lbl_mark_absent')}</label><select onchange="setAbsent(${curTeacher},this.value)"><option value="">${t('opt_none')}</option>${DAYS.map((d,i)=>`<option value="${i}" ${absentDay(curTeacher).includes(i)?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
+     <div><label>${t('lbl_mark_absent')}</label><select onchange="setAbsent(${curTeacher},this.value)"><option value="">${t('opt_none')}</option>${WD().map((i)=>`<option value="${i}" ${absentDay(curTeacher).includes(i)?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <div style="align-self:flex-end"><span class="tag" style="${(()=>{const mx=(teachers.find(t2=>t2.id===curTeacher)||{}).max_load;return mx&&load>mx?'background:#fee2e2;color:#991b1b':''})()}">${t('load_word')}: ${load}${(teachers.find(t2=>t2.id===curTeacher)||{}).max_load?' / '+(teachers.find(t2=>t2.id===curTeacher).max_load)+' '+t('max_word'):''}</span></div>
      <button class="ghost" onclick="printDoc(t('print_teacher_title'),'Aumtara')">${t('print_pdf')}</button></div>
    <div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
 async function setAbsent(t2,v){await api('POST','/api/timetable/absence',{teacher_id:t2,day:v===''?null:+v});toast();await loadAll();}
 
 // ---------- SCHOOL-WIDE VIEW ----------
-function schoolView(){const di=buildDay,slots=slotsFor(di);
-  let head=`<th>${t('th_class_period')}</th>`+slots.map(s=>`<th>${s.brk?'☕':s.label}<br><span style="font-weight:400;font-size:10px">${s.start}</span></th>`).join("");
+function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slotsFor(di);
+  let head=`<th>${t('th_class_period')}</th>`+slots.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}<br><span style="font-weight:400;font-size:10px">${s.start}</span></th>`).join("");
   let rows=classes.map(c=>{let pi=0,cells=`<td class="ph">${c.name}</td>`;
-    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6">☕</td>`;return;}const cc=cell(c.id,di,pi);pi++;
+    slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}const cc=cell(c.id,di,pi);pi++;
       cells+=cc&&cc.subject_id?`<td><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}${cc.room_id?' · '+rName(cc.room_id):''}</div></td>`:`<td class="free">—</td>`;});
     return `<tr>${cells}</tr>`;}).join("");
   return `<div class="card"><h2>${t('school_title')}</h2><div class="desc">${t('school_desc')}</div>
-   <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${DAYS.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
+   <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <button class="ghost" onclick="printDoc(t('print_school_title')+' '+DD()[buildDay],'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="location.href='/api/export/timetable.xlsx'">${t('excel_all')}</button></div>
    <div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
@@ -886,7 +912,7 @@ function diaryView(){ if(!diaryDate)diaryDate=new Date().toISOString().slice(0,1
   return `<div class="card"><h2>${t('diary_title')}</h2><div class="desc">${t('diary_desc')}</div>
    <div class="row" style="margin-bottom:12px">
      <div><label>${t('teacher')}</label><select onchange="curTeacher=+this.value;loadDiary()">${teachers.map(t2=>`<option value="${t2.id}" ${t2.id===curTeacher?'selected':''}>${t2.name}</option>`).join('')}</select></div>
-     <div><label>${t('day')}</label><select onchange="diaryDate=dateForDay(+this.value);loadDiary()">${DAYS.map((d,i)=>`<option value="${i}" ${i===dowFromDate(diaryDate)?'selected':''}>${DD()[i]}</option>`).join('')}</select></div>
+     <div><label>${t('day')}</label><select onchange="diaryDate=dateForDay(+this.value);loadDiary()">${WD().map((i)=>`<option value="${i}" ${i===dowFromDate(diaryDate)?'selected':''}>${DD()[i]}</option>`).join('')}</select></div>
      <div><label>${t('r_date').replace(':','')}</label><input type="date" value="${diaryDate}" onchange="diaryDate=this.value;loadDiary()"></div>
      <div style="align-self:flex-end"><button class="${diaryMode==='entry'?'':'ghost'}" onclick="diaryMode='entry';loadDiary()">${t('btn_fill')}</button>
        <button class="${diaryMode==='report'?'purple':'ghost'}" onclick="diaryMode='report';loadDiary()">${t('btn_report')}</button></div>
@@ -979,7 +1005,7 @@ async function delDiary(id){ await api('DELETE','/api/diary/'+id); toast(); load
 
 // ---------- SUBSTITUTION ----------
 function subView(){return `<div class="card"><h2>${t('sub_title')}</h2><div class="desc">${t('sub_desc')}</div>
-   <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="subDay=+this.value;loadCover()">${DAYS.map((d,i)=>`<option value="${i}" ${i===subDay?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
+   <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="subDay=+this.value;loadCover()">${WD().map((i)=>`<option value="${i}" ${i===subDay?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <span class="small">${t('sub_hint')}</span></div>
    <div id="coverbox">Loading…</div></div>`;}
 async function loadCover(){const box=document.getElementById('coverbox');if(!box)return;cover=await api('GET','/api/timetable/cover?day='+subDay);
@@ -995,7 +1021,7 @@ async function assignProxy(class_id,period,v){await api('POST','/api/timetable/s
 function monitor(){return `<div class="card"><h2>${t('monitor_title')}</h2>
    <div class="desc">${t('monitor_desc')}</div>
    <div class="row" style="margin-bottom:6px">
-     <div><label>${t('lbl_sim_day')}</label><select id="mday" onchange="monDay=this.value===''?null:+this.value;refreshMonitor()"><option value="">${t('opt_now')}</option>${DAYS.map((d,i)=>`<option value="${i}" ${monDay===i?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
+     <div><label>${t('lbl_sim_day')}</label><select id="mday" onchange="monDay=this.value===''?null:+this.value;refreshMonitor()"><option value="">${t('opt_now')}</option>${WD().map((i)=>`<option value="${i}" ${monDay===i?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <div><label>${t('lbl_sim_time')}</label><input type="time" id="mtime" value="${monTime||''}" onchange="monTime=this.value;refreshMonitor()"></div>
      <button class="ghost" onclick="monDay=null;monTime=null;refreshMonitor()">${t('btn_real_time')}</button></div>
    <div class="legend"><span><span class="pill live">${t('st_live')}</span> ${t('legend_running')}</span><span><span class="pill break">${t('st_break')}</span></span><span><span class="pill idle">${t('st_idle')}</span></span><span><span class="pill proxy">${t('st_proxy')}</span> ${t('legend_absent_covered')}</span></div>

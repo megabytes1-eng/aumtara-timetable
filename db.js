@@ -104,6 +104,13 @@ async function init() {
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS school_name TEXT`);
   for (const c of ['lesson','learning_outcome','assessment_lo','homework','teaching_aids'])
     await run(`ALTER TABLE tt_diary ADD COLUMN IF NOT EXISTS ${c} TEXT`);
+  // Phase 1 — richer hours: multiple short breaks + separate lunch, per-period durations, working days
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS short_break_minutes INTEGER`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS short_break_after TEXT`);   // CSV of period numbers, e.g. "6"
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS lunch_minutes INTEGER`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS lunch_after INTEGER`);       // period number after which lunch falls
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS period_durations TEXT`);     // CSV per-period minutes, blank = use period_minutes
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS working_days TEXT`);         // CSV day indices 0=Mon..5=Sat
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();
@@ -116,6 +123,16 @@ async function init() {
   const sn = await q1('SELECT school_name FROM tt_config WHERE id=1');
   if (!sn || !sn.school_name)
     await run('UPDATE tt_config SET school_name=? WHERE id=1', ['Your School Name']);
+
+  // backfill Phase-1 hours defaults: map the old single break → Lunch; sensible defaults for the rest
+  await run(`UPDATE tt_config SET
+     working_days       = COALESCE(working_days, '0,1,2,3,4,5'),
+     lunch_after        = COALESCE(lunch_after, break_after_period),
+     lunch_minutes      = COALESCE(lunch_minutes, break_minutes),
+     short_break_minutes= COALESCE(short_break_minutes, 0),
+     short_break_after  = COALESCE(short_break_after, ''),
+     period_durations   = COALESCE(period_durations, '')
+   WHERE id=1`);
 
   await loadConfig();
 }

@@ -22,12 +22,23 @@ const h = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => {
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat'];
 const addMin = (hhmm,min)=>{const[h,m]=hhmm.split(':').map(Number);const d=new Date(2020,0,1,h,m+min);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
 const getConfig = () => getConfigCached();
+const csvNums = s => String(s||'').split(',').map(x=>parseInt(x,10)).filter(n=>!isNaN(n));
+function workingDaysArr(){ const w=csvNums(getConfig().working_days); return w.length?w:[0,1,2,3,4,5]; }
 function slotsForDay(dayIdx){
-  const c=getConfig(); const end=dayIdx===5?c.saturday_end:c.weekday_end;
+  const c=getConfig();
+  if(!workingDaysArr().includes(dayIdx)) return [];   // non-working day → no periods
+  const end=dayIdx===5?c.saturday_end:c.weekday_end;
+  const durs=csvNums(c.period_durations);
+  const shortAfter=new Set(csvNums(c.short_break_after));
+  const shortMin=+c.short_break_minutes||0;
+  const lunchAfter=(c.lunch_after!=null?+c.lunch_after:+c.break_after_period);
+  const lunchMin=(c.lunch_minutes!=null?+c.lunch_minutes:+c.break_minutes)||0;
   const slots=[]; let t=c.weekday_start, idx=0;
-  while(true){ const e=addMin(t,c.period_minutes); slots.push({index:idx,label:'P'+(idx+1),start:t,end:e,is_break:false}); idx++;
-    if(e>=end||idx>=10)break; t=e;
-    if(idx===c.break_after_period){ const be=addMin(t,c.break_minutes); slots.push({index:null,label:'Break',start:t,end:be,is_break:true}); t=be; } }
+  while(true){ const dur=durs[idx]||c.period_minutes; const e=addMin(t,dur);
+    slots.push({index:idx,label:'P'+(idx+1),start:t,end:e,is_break:false}); idx++;
+    if(e>=end||idx>=12)break; t=e;
+    if(lunchAfter&&idx===lunchAfter&&lunchMin>0){ const be=addMin(t,lunchMin); slots.push({index:null,label:'Lunch',start:t,end:be,is_break:true,kind:'lunch'}); t=be; }
+    if(shortAfter.has(idx)&&shortMin>0){ const be=addMin(t,shortMin); slots.push({index:null,label:'Break',start:t,end:be,is_break:true,kind:'short'}); t=be; } }
   return slots;
 }
 const teachingSlots = di=>slotsForDay(di).filter(s=>!s.is_break);
@@ -99,9 +110,11 @@ async function setSubjects(tid, subs){
 // ---------- CONFIG / SLOTS ----------
 app.get('/api/timetable/config', h(async (_,res)=>res.json(getConfig())));
 app.put('/api/timetable/config', h(async (req,res)=>{
-  const c=getConfig(), b=req.body;
-  await run(`UPDATE tt_config SET weekday_start=?,weekday_end=?,saturday_end=?,period_minutes=?,break_after_period=?,break_minutes=?,school_name=? WHERE id=1`,
-    [b.weekday_start??c.weekday_start,b.weekday_end??c.weekday_end,b.saturday_end??c.saturday_end,b.period_minutes??c.period_minutes,b.break_after_period??c.break_after_period,b.break_minutes??c.break_minutes,b.school_name??c.school_name]);
+  const c=getConfig(), b=req.body, v=(k)=>b[k]!==undefined?b[k]:c[k];
+  await run(`UPDATE tt_config SET weekday_start=?,weekday_end=?,saturday_end=?,period_minutes=?,break_after_period=?,break_minutes=?,school_name=?,
+       short_break_minutes=?,short_break_after=?,lunch_minutes=?,lunch_after=?,period_durations=?,working_days=? WHERE id=1`,
+    [v('weekday_start'),v('weekday_end'),v('saturday_end'),v('period_minutes'),v('break_after_period'),v('break_minutes'),v('school_name'),
+     v('short_break_minutes'),v('short_break_after'),v('lunch_minutes'),v('lunch_after'),v('period_durations'),v('working_days')]);
   await loadConfig();
   res.json(getConfig());
 }));
