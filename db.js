@@ -125,6 +125,7 @@ async function init() {
     await run(`ALTER TABLE tt_class ADD COLUMN IF NOT EXISTS ${c} TEXT`);
   // Phase 4 — academic session label + saved timetable versions (snapshots)
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS academic_session TEXT`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS board TEXT`);   // school board (CBSE/State/IB/…)
   await run(`CREATE TABLE IF NOT EXISTS tt_snapshot (
      id SERIAL PRIMARY KEY, name TEXT NOT NULL, session TEXT, created_at TEXT, cell_count INTEGER)`);
   await run(`CREATE TABLE IF NOT EXISTS tt_snapshot_cell (

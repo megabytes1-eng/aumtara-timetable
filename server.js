@@ -28,14 +28,36 @@ async function currentUser(req){
   if(!s) return null;
   return await q1('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id FROM tt_user WHERE id=? AND active=1',[s.user_id]);
 }
-// public: sign in
+// public: sign in — identifier can be login_id OR email OR mobile
 app.post('/api/login', h(async (req,res)=>{
   const b=req.body||{};
-  const u=await q1('SELECT * FROM tt_user WHERE lower(login_id)=lower(?) AND active=1',[String(b.login_id||'').trim()]);
+  const idf=String(b.login_id||'').trim();
+  const u=await q1('SELECT * FROM tt_user WHERE (lower(login_id)=lower(?) OR lower(email)=lower(?) OR mobile=?) AND active=1 LIMIT 1',[idf,idf,idf]);
   if(!u || !verifyPw(b.password, u.password_hash)){ res.status(401).json({error:'invalid credentials'}); return; }
   const token=crypto.randomBytes(24).toString('hex');
   await run('INSERT INTO tt_session(token,user_id,created_at) VALUES(?,?,now()::text)',[token,u.id]);
   res.json({ token, user:{ id:u.id, name:u.name, role:u.role, login_id:u.login_id } });
+}));
+// public: self sign-up — creates a school admin account and signs in
+app.post('/api/signup', h(async (req,res)=>{
+  const b=req.body||{};
+  const username=String(b.username||'').trim();
+  const password=String(b.password||'');
+  const school=String(b.school_name||'').trim();
+  const email=String(b.email||'').trim()||null;
+  const mobile=String(b.mobile||'').trim()||null;
+  if(!school || !username || !password){ res.status(400).json({error:'school name, user name and password are required'}); return; }
+  if(await q1('SELECT 1 FROM tt_user WHERE lower(login_id)=lower(?)',[username])){ res.status(400).json({error:'user name already taken'}); return; }
+  if(email && await q1('SELECT 1 FROM tt_user WHERE lower(email)=lower(?)',[email])){ res.status(400).json({error:'email already registered'}); return; }
+  if(mobile && await q1('SELECT 1 FROM tt_user WHERE mobile=?',[mobile])){ res.status(400).json({error:'mobile already registered'}); return; }
+  const row=await q1(`INSERT INTO tt_user(name,role,login_id,email,mobile,password_hash,active,created_at)
+     VALUES(?,?,?,?,?,?,1,now()::text) RETURNING id`, [b.name||username,'admin',username,email,mobile,hashPw(password)]);
+  const cfg=getConfigCached()||{};
+  const board=String(b.board||'').trim()||null;
+  if(!cfg.school_name || cfg.school_name==='Your School Name'){ await run('UPDATE tt_config SET school_name=?, board=COALESCE(?,board) WHERE id=1',[school,board]); await loadConfig(); }
+  const token=crypto.randomBytes(24).toString('hex');
+  await run('INSERT INTO tt_session(token,user_id,created_at) VALUES(?,?,now()::text)',[token,row.id]);
+  res.json({ token, user:{ id:row.id, name:b.name||username, role:'admin', login_id:username } });
 }));
 // public: sign out (harmless if unauthenticated)
 app.post('/api/logout', h(async (req,res)=>{
