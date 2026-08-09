@@ -661,11 +661,14 @@ app.delete('/api/leaves/:id', h(async (req,res)=>{ if(!isAdminRole(req)){ res.st
 
 // ---------- LIVE MONITOR ----------
 app.get('/api/timetable/monitor', h(async (req,res)=>{
-  let day,hhmm;
-  if(req.query.day!=null&&req.query.time){day=Number(req.query.day);hhmm=req.query.time;}
-  else{const d=new Date();day=(d.getDay()+6)%7;if(day>5)day=5;hhmm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+  let day,hhmm,dateStr=null; const p2=n=>String(n).padStart(2,'0');
+  if(req.query.day!=null&&req.query.time){day=Number(req.query.day);hhmm=req.query.time;dateStr=req.query.date||null;}
+  else{const d=new Date();day=(d.getDay()+6)%7;if(day>5)day=5;hhmm=p2(d.getHours())+':'+p2(d.getMinutes());dateStr=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
   const sid=req.sid;
   const absent={}; (await q('SELECT * FROM tt_absence WHERE school_id=?',[sid])).forEach(a=>{(absent[a.teacher_id]=absent[a.teacher_id]||new Set()).add(a.day_of_week);});
+  // date-based subs for the actual date take precedence over recurring weekday subs
+  const dsMap={};
+  if(dateStr){ (await q('SELECT class_id,period_index,proxy_teacher_id,is_free FROM tt_datesub WHERE school_id=? AND sub_date=?',[sid,dateStr])).forEach(r=>{ dsMap[r.class_id+'_'+r.period_index]=r; }); }
   const slots=slotsForDay(day, sid);
   const classes=await q('SELECT * FROM tt_class WHERE school_id=? ORDER BY id',[sid]);
   const out=[];
@@ -677,11 +680,18 @@ app.get('/api/timetable/monitor', h(async (req,res)=>{
         const cell=await q1('SELECT * FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=? AND school_id=?',[c.id,day,pi,sid]);
         if(cell&&cell.subject_id){
           const subj=(await q1('SELECT name FROM tt_subject WHERE id=?',[cell.subject_id])).name;
-          const sub=await q1('SELECT proxy_teacher_id FROM tt_substitution WHERE day_of_week=? AND class_id=? AND period_index=?',[day,c.id,pi]);
-          const absentTeacher=cell.teacher_id&&absent[cell.teacher_id]&&absent[cell.teacher_id].has(day);
-          if(absentTeacher && sub && sub.proxy_teacher_id){ status='proxy'; text=subj+' · Proxy: '+(await q1('SELECT name FROM tt_teacher WHERE id=?',[sub.proxy_teacher_id])).name; }
-          else if(absentTeacher){ status='proxy'; text=subj+' · Proxy needed'; }
-          else { const tch=cell.teacher_id?(await q1('SELECT name FROM tt_teacher WHERE id=?',[cell.teacher_id])).name:'—'; status='live'; text=subj+' · '+tch; }
+          const ds=dsMap[c.id+'_'+pi];
+          if(ds){
+            if(+ds.is_free===1){ status='idle'; text=subj+' · Free (no cover today)'; }
+            else if(ds.proxy_teacher_id){ status='proxy'; text=subj+' · Proxy: '+(await q1('SELECT name FROM tt_teacher WHERE id=?',[ds.proxy_teacher_id])).name; }
+            else { status='proxy'; text=subj+' · Proxy needed'; }
+          } else {
+            const sub=await q1('SELECT proxy_teacher_id FROM tt_substitution WHERE day_of_week=? AND class_id=? AND period_index=?',[day,c.id,pi]);
+            const absentTeacher=cell.teacher_id&&absent[cell.teacher_id]&&absent[cell.teacher_id].has(day);
+            if(absentTeacher && sub && sub.proxy_teacher_id){ status='proxy'; text=subj+' · Proxy: '+(await q1('SELECT name FROM tt_teacher WHERE id=?',[sub.proxy_teacher_id])).name; }
+            else if(absentTeacher){ status='proxy'; text=subj+' · Proxy needed'; }
+            else { const tch=cell.teacher_id?(await q1('SELECT name FROM tt_teacher WHERE id=?',[cell.teacher_id])).name:'—'; status='live'; text=subj+' · '+tch; }
+          }
         } else { status='idle'; text='Free period'; }
         break;
       }
