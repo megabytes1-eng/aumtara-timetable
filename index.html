@@ -26,7 +26,11 @@ header h1{font-size:18px;margin:0;} header .sub{font-size:12px;opacity:.8;}
 .navtoggle:hover{background:#345592;}
 #shell{display:flex;align-items:flex-start;}
 .tabs{display:flex;flex-direction:column;gap:1px;background:#fff;border-right:1px solid var(--line);padding:8px 8px 26px;width:216px;flex:0 0 216px;position:sticky;top:0;align-self:flex-start;max-height:100vh;overflow-y:auto;}
-.navgrp{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:#9aa3b8;padding:14px 10px 5px;}
+.navgrp{font-size:13.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);padding:13px 10px 6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;}
+.navgrp:hover{color:var(--blue);}
+.navgrp .car{font-size:11px;color:#9aa3b8;transition:transform .15s;}
+.navgrp.collapsed .car{transform:rotate(-90deg);}
+.navsec{display:flex;flex-direction:column;gap:1px;}
 .tab{padding:9px 11px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--muted);border-radius:8px;white-space:nowrap;border-left:3px solid transparent;}
 .tab:hover{background:#f4f7fc;color:var(--navy);}
 .tab.active{color:var(--navy);background:#eef3fd;border-left-color:var(--blue);}
@@ -828,8 +832,10 @@ function render(){
   const allowSet=new Set(allow.map(([k])=>k)), TABLABEL=Object.fromEntries(TABKEYS);
   const seen=new Set();
   let navHtml=NAVGROUPS.map(g=>{const items=g.tabs.filter(k=>allowSet.has(k));items.forEach(k=>seen.add(k));if(!items.length)return"";
-    const head=g.key?`<div class="navgrp">${t(g.key)}</div>`:"";
-    return head+items.map(k=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${t(TABLABEL[k])}</div>`).join("");}).join("");
+    const itemHtml=items.map(k=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${t(TABLABEL[k])}</div>`).join("");
+    if(!g.key)return itemHtml;// standalone (dash / bottom items) — no pulldown
+    const hasActive=items.includes(tab);const collapsed=!!GRPCOLL[g.key]&&!hasActive;// active group always open
+    return `<div class="navgrp ${collapsed?'collapsed':''}" onclick="toggleGrp('${g.key}')">${t(g.key)}<span class="car">▾</span></div><div class="navsec"${collapsed?' style="display:none"':''}>${itemHtml}</div>`;}).join("");
   const extra=allow.filter(([k])=>!seen.has(k));// any allowed tab not placed in a group
   if(extra.length)navHtml+=extra.map(([k,lk])=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${t(lk)}</div>`).join("");
   document.getElementById("tabs").innerHTML=navHtml;
@@ -840,15 +846,16 @@ function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3
 function printPlain(){document.getElementById('printhead').innerHTML='';window.print();}
 function setTab(t){tab=t;if(window.innerWidth<820)document.body.classList.add('sidenav-off');render();}
 function toggleSidebar(){document.body.classList.toggle('sidenav-off');try{localStorage.setItem('tt_sidenav',document.body.classList.contains('sidenav-off')?'off':'on');}catch(e){}}
+let GRPCOLL={};try{GRPCOLL=JSON.parse(localStorage.getItem('tt_grpcoll')||'{}')||{};}catch(e){GRPCOLL={};}
+function toggleGrp(k){GRPCOLL[k]=!GRPCOLL[k];try{localStorage.setItem('tt_grpcoll',JSON.stringify(GRPCOLL));}catch(e){}render();}
 try{const _sp=localStorage.getItem('tt_sidenav');if(_sp==='off'||(_sp===null&&window.innerWidth<820))document.body.classList.add('sidenav-off');}catch(e){}
 // sidebar groups — Master/Timetable/Daily/Admin; dash & help stand alone
 const NAVGROUPS=[
   {key:null, tabs:['dash']},
-  {key:'grp_master', tabs:['setup','hours','class','teacher']},
+  {key:'grp_master', tabs:['setup','hours','class','teacher','schools','users']},
   {key:'grp_build', tabs:['quota','build','school','reports','versions']},
   {key:'grp_daily', tabs:['sub','monitor','diary']},
-  {key:'grp_admin', tabs:['data','schools','users']},
-  {key:null, tabs:['help']},
+  {key:null, tabs:['data','help']},
 ];
 
 // ---------- DASHBOARD ----------
