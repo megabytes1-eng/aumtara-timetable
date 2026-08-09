@@ -149,6 +149,10 @@ async function init() {
      id SERIAL PRIMARY KEY, school_id INTEGER, sub_date TEXT, class_id INTEGER, period_index INTEGER,
      absent_teacher_id INTEGER, proxy_teacher_id INTEGER, is_free INTEGER DEFAULT 0, created_at TEXT,
      UNIQUE(school_id, sub_date, class_id, period_index))`);
+  // Leave applications (teacher applies → admin approves → auto proxy cover)
+  await run(`CREATE TABLE IF NOT EXISTS tt_leave (
+     id SERIAL PRIMARY KEY, school_id INTEGER, teacher_id INTEGER,
+     date_from TEXT, date_to TEXT, reason TEXT, status TEXT DEFAULT 'pending', created_at TEXT)`);
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived

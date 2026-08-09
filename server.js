@@ -624,6 +624,41 @@ app.post('/api/datesub', h(async (req,res)=>{
   res.json({ok:true});
 }));
 
+// ---------- LEAVE APPLICATIONS (apply → approve → auto proxy cover) ----------
+async function myTeacherId(req){ if(!req.user) return null; const t=await q1('SELECT id FROM tt_teacher WHERE lower(name)=lower(?) AND school_id=? LIMIT 1',[req.user.name, req.sid]); return t?t.id:null; }
+const isAdminRole = req => req.user && ['master','admin','principal','supervisor'].includes(req.user.role);
+app.get('/api/leaves', h(async (req,res)=>{
+  let rows;
+  if(req.user && req.user.role==='teacher'){ const tid=await myTeacherId(req); rows=tid?await q('SELECT * FROM tt_leave WHERE school_id=? AND teacher_id=? ORDER BY id DESC',[req.sid,tid]):[]; }
+  else rows=await q('SELECT * FROM tt_leave WHERE school_id=? ORDER BY id DESC',[req.sid]);
+  const tmap={}; (await q('SELECT id,name FROM tt_teacher WHERE school_id=?',[req.sid])).forEach(t=>tmap[t.id]=t.name);
+  res.json(rows.map(r=>({...r, teacher_name: tmap[r.teacher_id]||''})));
+}));
+app.post('/api/leaves', h(async (req,res)=>{
+  const b=req.body; let teacher_id=b.teacher_id;
+  if(req.user && req.user.role==='teacher'){ teacher_id=await myTeacherId(req); if(!teacher_id){ res.status(400).json({error:'Your teacher profile was not found — your user name must match a teacher name.'}); return; } }
+  if(!teacher_id||!b.date_from||!b.date_to){ res.status(400).json({error:'Teacher and both dates are required.'}); return; }
+  if(b.date_to<b.date_from){ res.status(400).json({error:'End date is before start date.'}); return; }
+  const r=await q1('INSERT INTO tt_leave(school_id,teacher_id,date_from,date_to,reason,status,created_at) VALUES(?,?,?,?,?,?,now()::text) RETURNING id',[req.sid,teacher_id,b.date_from,b.date_to,b.reason||null,'pending']);
+  res.json({ok:true,id:r.id});
+}));
+app.post('/api/leaves/:id/approve', h(async (req,res)=>{
+  if(!isAdminRole(req)){ res.status(403).json({error:'forbidden'}); return; }
+  const id=req.params.id, sid=req.sid;
+  const lv=await q1('SELECT * FROM tt_leave WHERE id=? AND school_id=?',[id,sid]); if(!lv){ res.status(404).json({error:'not found'}); return; }
+  await run('UPDATE tt_leave SET status=? WHERE id=? AND school_id=?',['approved',id,sid]);
+  const wdays=new Set(workingDaysArr(sid));
+  const myCells=await q('SELECT day_of_week,period_index,class_id FROM tt_timetable WHERE teacher_id=? AND school_id=?',[lv.teacher_id,sid]);
+  const byDow={}; myCells.forEach(c=>{ (byDow[c.day_of_week]=byDow[c.day_of_week]||[]).push(c); });
+  let created=0;
+  for(const date of datesBetween(lv.date_from,lv.date_to)){ const dow=dowFromISO(date); if(!wdays.has(dow)) continue;
+    for(const c of (byDow[dow]||[])){ await run(`INSERT INTO tt_datesub(school_id,sub_date,class_id,period_index,absent_teacher_id,proxy_teacher_id,is_free,created_at)
+       VALUES(?,?,?,?,?,?,0,now()::text) ON CONFLICT(school_id,sub_date,class_id,period_index) DO NOTHING`,[sid,date,c.class_id,c.period_index,lv.teacher_id,null]); created++; } }
+  res.json({ok:true, periods:created, teacher_id:lv.teacher_id, date_from:lv.date_from, date_to:lv.date_to});
+}));
+app.post('/api/leaves/:id/reject', h(async (req,res)=>{ if(!isAdminRole(req)){ res.status(403).json({error:'forbidden'}); return; } await run('UPDATE tt_leave SET status=? WHERE id=? AND school_id=?',['rejected',req.params.id,req.sid]); res.json({ok:true}); }));
+app.delete('/api/leaves/:id', h(async (req,res)=>{ if(!isAdminRole(req)){ res.status(403).json({error:'forbidden'}); return; } await run('DELETE FROM tt_leave WHERE id=? AND school_id=?',[req.params.id,req.sid]); res.json({ok:true}); }));
+
 // ---------- LIVE MONITOR ----------
 app.get('/api/timetable/monitor', h(async (req,res)=>{
   let day,hhmm;
