@@ -12,12 +12,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Aumtara">
 <style>
-:root{--navy:#1F3864;--blue:#2f5fd0;--accent:#7030A0;--green:#0e9f6e;--amber:#c98a00;--red:#c0392b;--bg:#f4f7fc;--line:#e2e6ee;--muted:#6b7280;}
+:root{--navy:#1F3864;--blue:#2f5fd0;--accent:#7030A0;--green:#0e9f6e;--amber:#c98a00;--red:#c0392b;--bg:#f4f7fc;--line:#e2e6ee;--muted:#555d70;}
 *{box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif;}
 body{margin:0;background:var(--bg);color:#222;}
 header{background:var(--navy);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:12px;}
 header .logo{width:30px;height:30px;background:linear-gradient(135deg,#4f8cff,#7030A0);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;}
-header h1{font-size:18px;margin:0;} header .sub{font-size:12px;opacity:.8;}
+header h1{font-size:18px;margin:0;} header .sub{font-size:12.5px;opacity:.92;}
 .langsel{margin-left:auto;background:#2c4a7c;color:#fff;border:1px solid #3f5f95;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer;}
 .langsel option{background:#fff;color:#222;}
 .savebadge{font-size:12px;background:#0e9f6e;color:#fff;padding:4px 10px;border-radius:20px;opacity:0;transition:.3s;}
@@ -28,7 +28,7 @@ header h1{font-size:18px;margin:0;} header .sub{font-size:12px;opacity:.8;}
 .tabs{display:flex;flex-direction:column;gap:1px;background:#fff;border-right:1px solid var(--line);padding:8px 8px 26px;width:216px;flex:0 0 216px;position:sticky;top:0;align-self:flex-start;max-height:100vh;overflow-y:auto;}
 .navgrp{font-size:13.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);padding:13px 10px 6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;}
 .navgrp:hover{color:var(--blue);}
-.navgrp .car{font-size:11px;color:#9aa3b8;transition:transform .15s;}
+.navgrp .car{font-size:12px;color:#6b7590;transition:transform .15s;}
 .navgrp.collapsed .car{transform:rotate(-90deg);}
 .navsec{display:flex;flex-direction:column;gap:1px;}
 .tab{padding:9px 11px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--muted);border-radius:8px;white-space:nowrap;border-left:3px solid transparent;}
@@ -42,7 +42,7 @@ body.sidenav-off .tabs{display:none;}
 }
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
 .kpi{background:linear-gradient(135deg,#eaf1ff,#ffffff);border:1px solid #d3e2ff;border-radius:12px;padding:16px;border-top:4px solid var(--blue);}
-.kpi .n{font-size:28px;font-weight:800;color:var(--navy);} .kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;}
+.kpi .n{font-size:28px;font-weight:800;color:var(--navy);} .kpi .l{font-size:12.5px;color:#454d61;text-transform:uppercase;letter-spacing:.4px;font-weight:700;}
 .kpi.g{background:linear-gradient(135deg,#e6faf0,#ffffff);border-color:#c2edd6;border-top-color:var(--green);}
 .kpi.a{background:linear-gradient(135deg,#fff5e3,#ffffff);border-color:#f1dcae;border-top-color:var(--amber);}
 .kpi.p{background:linear-gradient(135deg,#f3eaff,#ffffff);border-color:#e0cef5;border-top-color:var(--accent);}
@@ -52,8 +52,8 @@ body.sidenav-off .tabs{display:none;}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
 .card h2{margin:0 0 4px;font-size:17px;color:var(--navy);} .card .desc{color:#414a63;font-size:14.5px;line-height:1.5;margin-bottom:14px;font-weight:500;}
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
-label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;}
-input,select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;}
+label{font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;}
+input,select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;color:#222;}
 button{background:var(--blue);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;}
 button.ghost{background:#fff;color:var(--navy);border:1px solid var(--line);} button.green{background:var(--green);}button.purple{background:var(--accent);}button.red{background:var(--red);}button.amber{background:var(--amber);}button.teal{background:#0e8f9c;}
 button.mini{padding:4px 9px;font-size:12px;} button:hover{opacity:.92;}
@@ -62,18 +62,18 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .cell{min-width:118px;} .cell select{width:100%;font-size:12.5px;padding:3px;border:none;background:transparent;margin:1px 0;}
 .subj{font-weight:800;color:var(--navy);font-size:14.5px;} .tch{font-size:13.5px;font-weight:700;color:#33415a;} .rm{font-size:11.5px;color:var(--accent);}
 .conflict{background:#ffe1e1 !important;outline:2px solid var(--red);}
-.free{color:#bbb;font-style:italic;}
-.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+.free{color:#8b90a0;font-style:italic;}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:700;}
 .pill.live{background:#d1fae5;color:#065f46;}.pill.break{background:#fef3c7;color:#92400e;}.pill.idle{background:#e5e7eb;color:#374151;}.pill.proxy{background:#ede9fe;color:#5b21b6;}
 .mon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
 .mon{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;border-left:5px solid var(--line);}
 .mon.live{border-left-color:var(--green);}.mon.break{border-left-color:var(--amber);}.mon.idle{border-left-color:#9ca3af;}.mon.proxy{border-left-color:var(--accent);}
 .mon .cn{font-weight:800;color:var(--navy);font-size:15px;} .mon .info{font-size:12.5px;color:var(--muted);margin-top:6px;}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 0 16px;}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:8px 0 16px;}
 .note{background:#fff8e1;border-left:4px solid #f1c40f;padding:9px 12px;border-radius:0 6px 6px 0;font-size:12.5px;margin-bottom:16px;}
 .hours-row{display:flex;justify-content:space-between;padding:10px 12px;border-left:4px solid var(--green);background:#f6fbff;border-radius:6px;margin-bottom:8px;} .hours-row.sat{border-left-color:var(--blue);}
-.tag{background:#eef2fb;color:var(--navy);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;}
-.small{font-size:11px;color:var(--muted);} .badge-bad{color:var(--red);font-weight:700;font-size:10px;}
+.tag{background:#eef2fb;color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;}
+.small{font-size:12px;color:var(--muted);} .badge-bad{color:var(--red);font-weight:700;font-size:11px;}
 .feat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;} .feat div{background:#f6f8fc;border:1px solid var(--line);border-radius:10px;padding:13px;font-size:12.5px;border-left:4px solid var(--line);} .feat b{color:var(--navy);}
 .feat div:nth-child(1){background:linear-gradient(135deg,#eaf1ff,#fbfdff);border-color:#d3e2ff;border-left-color:var(--blue);}
 .feat div:nth-child(2){background:linear-gradient(135deg,#fff0ef,#fffbfb);border-color:#f4d3d1;border-left-color:var(--red);}
@@ -81,7 +81,7 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .feat div[onclick]{cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;} .feat div[onclick]:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(37,99,235,.14);}
 .setcols{display:grid;grid-template-columns:1fr 1fr;gap:16px;} @media(max-width:820px){.setcols{grid-template-columns:1fr;}.kpis{grid-template-columns:1fr 1fr;}}
 .listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
-.chk{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#eef2fb;padding:3px 7px;border-radius:12px;margin:2px;cursor:pointer;} .chk input{margin:0;}
+.chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
 .guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
 .dropzone{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted);}
 .okmsg{background:#d1fae5;color:#065f46;padding:8px 12px;border-radius:8px;font-size:13px;margin-top:10px;}
@@ -713,7 +713,7 @@ function renderLogin(){loggedOut=false;const tb=document.getElementById('tabs');
   document.getElementById('view').innerHTML=`<div class="card" style="max-width:400px;margin:48px auto">
     <h2>${t('login_title')}</h2><div class="desc">${t('login_sub')}</div>
     <div style="margin-bottom:4px"><label>${t('login_id')}</label><input id="li_user" style="width:100%" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <div class="small" style="color:#8a93b4;margin-bottom:10px">${t('login_hint')}</div>
+    <div class="small" style="color:#5c6580;margin-bottom:10px">${t('login_hint')}</div>
     <div style="margin-bottom:14px"><label>${t('login_pw')}</label><input id="li_pw" type="password" style="width:100%" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <button class="green" style="width:100%" onclick="doLogin()">${t('login_btn')}</button>
     <div id="li_err" class="errmsg" style="display:none;margin-top:10px"></div>
@@ -889,11 +889,11 @@ async function loadVersions(){const box=document.getElementById('versionbox');if
   const all=Array.isArray(list)?list:[];
   const terms=[...new Set(all.map(v=>v.term_name||v.session).filter(Boolean))];
   const fb=document.getElementById('verfilterbox');
-  if(fb){fb.innerHTML=terms.length>1?`<label class="small" style="color:#8a93b4">${t('terms_title')}: </label><select onchange="verFilter=this.value;loadVersions()"><option value="">${t('all_terms')}</option>${terms.map(x=>`<option value="${(x||'').replace(/"/g,'&quot;')}" ${verFilter===x?'selected':''}>${(x||'').replace(/</g,'&lt;')}</option>`).join('')}</select>`:'';}
+  if(fb){fb.innerHTML=terms.length>1?`<label class="small" style="color:#5c6580">${t('terms_title')}: </label><select onchange="verFilter=this.value;loadVersions()"><option value="">${t('all_terms')}</option>${terms.map(x=>`<option value="${(x||'').replace(/"/g,'&quot;')}" ${verFilter===x?'selected':''}>${(x||'').replace(/</g,'&lt;')}</option>`).join('')}</select>`:'';}
   const rows=all.filter(v=>!verFilter||((v.term_name||v.session||'')===verFilter));
-  if(!rows.length){box.innerHTML='<span class="small" style="color:#8a93b4">'+t('versions_none')+'</span>';return;}
+  if(!rows.length){box.innerHTML='<span class="small" style="color:#5c6580">'+t('versions_none')+'</span>';return;}
   box.innerHTML=`<table><tr><th>${t('th_version')}</th><th>${t('th_session')}</th><th>${t('th_cells')}</th><th></th></tr>${rows.map(v=>`<tr>
-     <td>${(v.name||'').replace(/</g,'&lt;')}<br><span class="small" style="color:#8a93b4">${(v.created_at||'').slice(0,16).replace('T',' ')}</span></td>
+     <td>${(v.name||'').replace(/</g,'&lt;')}<br><span class="small" style="color:#5c6580">${(v.created_at||'').slice(0,16).replace('T',' ')}</span></td>
      <td>${(v.term_name||v.session||'—')}${v.has_config?` <span class="tag" style="background:#eef2ff;color:#4338ca">🕐 ${t('hours_word')}</span>`:''}</td><td>${v.cell_count??''}</td>
      <td style="white-space:nowrap"><button class="ghost mini" onclick="restoreVersion(${v.id},'${(v.name||'').replace(/'/g,"\\'").replace(/</g,'&lt;')}')">${t('btn_restore')}</button>
        <button class="ghost mini red" onclick="delVersion(${v.id})">✕</button></td></tr>`).join('')}</table>`;}
@@ -951,7 +951,7 @@ function renderSchoolsBox(){const box=document.getElementById('schoolsbox');if(!
   if(!SCH_LIST.length){box.innerHTML='<span class="small">'+t('none')+'</span>';return;}
   box.innerHTML=`<div style="overflow:auto"><table><tr><th>${t('su_school')}</th><th>${t('logo_word')}</th><th>${t('su_board')}</th><th>${t('su_medium')}</th><th>${t('u_active')}</th><th></th></tr>${SCH_LIST.map(s=>{const cur=String(s.id)===String(SCHOOL);return `<tr${cur?' style="background:#f0f7ff"':''}>
      <td><input value="${av(s.name)}" onchange="updSchool(${s.id},{name:this.value})" style="width:170px"></td>
-     <td style="white-space:nowrap">${s.logo?`<img src="${s.logo}" style="height:28px;max-width:70px;border-radius:4px;vertical-align:middle;border:1px solid #e2e8f0">`:'<span class="small" style="color:#8a93b4">—</span>'} <button class="ghost mini" onclick="pickLogo(${s.id})">${s.logo?t('logo_change'):t('logo_upload')}</button>${s.logo?` <button class="ghost mini red" onclick="removeLogo(${s.id})">${t('logo_remove')}</button>`:''}</td>
+     <td style="white-space:nowrap">${s.logo?`<img src="${s.logo}" style="height:28px;max-width:70px;border-radius:4px;vertical-align:middle;border:1px solid #e2e8f0">`:'<span class="small" style="color:#5c6580">—</span>'} <button class="ghost mini" onclick="pickLogo(${s.id})">${s.logo?t('logo_change'):t('logo_upload')}</button>${s.logo?` <button class="ghost mini red" onclick="removeLogo(${s.id})">${t('logo_remove')}</button>`:''}</td>
      <td><select onchange="updSchool(${s.id},{board:this.value})"><option value="">—</option>${BOARDS.map(b=>`<option value="${b}" ${s.board===b?'selected':''}>${b}</option>`).join('')}</select></td>
      <td><select onchange="updSchool(${s.id},{medium:this.value})"><option value="">—</option>${MEDIUMS.map(m=>`<option value="${m}" ${s.medium===m?'selected':''}>${m}</option>`).join('')}</select></td>
      <td style="text-align:center"><input type="checkbox" ${+s.active!==0?'checked':''} onchange="updSchool(${s.id},{active:this.checked?1:0})"></td>
@@ -995,15 +995,15 @@ function removeLogo(id){updSchool(id,{logo:''});}
 function reportsView(){const cur=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};
   return `<div class="card"><h2>${t('reports_title')}</h2><div class="desc">${t('reports_desc')}</div>
    <button class="green" style="font-size:15px;padding:11px 20px" onclick="dl('/api/export/reports.xlsx')">📊 ${t('btn_download_reports')}</button>
-   <div class="small" style="margin-top:8px;color:#8a93b4">${(cur.name||'')} ${cur.board?'· '+cur.board:''}</div>
+   <div class="small" style="margin-top:8px;color:#5c6580">${(cur.name||'')} ${cur.board?'· '+cur.board:''}</div>
    <div style="margin-top:18px"><b class="small">${t('reports_includes')}</b>
      <div class="small" style="color:#57608a;margin-top:6px;line-height:1.9">${t('reports_list')}</div></div>
-   <div class="small" style="margin-top:14px;color:#8a93b4">${t('reports_note')}</div></div>
+   <div class="small" style="margin-top:14px;color:#5c6580">${t('reports_note')}</div></div>
 
    <div class="card"><h2>📄 ${t('tpl_title')}</h2><div class="desc">${t('tpl_desc')}</div>
      <div class="row" style="gap:10px"><button class="ghost" onclick="dl('/api/reports/template-sample.xlsx')">⬇ ${t('tpl_sample')}</button>
        <button class="green" onclick="fillTemplate()">⬆ ${t('tpl_upload')}</button></div>
-     <div class="small" style="margin-top:10px;color:#8a93b4">${t('tpl_hint')}</div></div>
+     <div class="small" style="margin-top:10px;color:#5c6580">${t('tpl_hint')}</div></div>
 
    <div class="card"><h2>✨ ${t('fmt_title')}</h2><div class="desc">${t('fmt_desc')}</div>
      <div class="row" style="margin-bottom:8px"><div style="flex:1;min-width:220px"><label>${t('fmt_title_ph')}</label><input id="fmt_title" placeholder="${(cur.name||'')}" style="width:100%"></div></div>
@@ -1032,9 +1032,9 @@ async function delSchool(id,name){if(!confirm(t('schools_confirm_del',{name})))r
 async function loadReadiness(){const box=document.getElementById('readybox');if(!box)return;let r;try{r=await api('GET','/api/readiness');}catch(e){box.textContent='';return;}
   const LB={classes:'ready_classes',subjects:'ready_subjects',teachers:'ready_teachers',rooms:'ready_rooms',hours:'ready_hours',name:'ready_name',quota:'ready_quota',generated:'ready_generated'};
   const bar=`<div style="background:#eef1f9;border-radius:20px;height:16px;overflow:hidden;margin:2px 0 12px"><div style="height:100%;width:${r.pct}%;background:${r.pct>=100?'#1a9d6b':r.pct>=50?'#c9871f':'#dc4b4b'};transition:width .4s"></div></div>`;
-  const items=r.steps.map(s=>{const lbl=t(LB[s.key]||s.key);const cnt=(s.count!=null?' <span style="color:#2f5fd0;font-size:16px;font-weight:800">('+s.count+')</span>':'');const opt=s.optional?` <span style="color:#8a93b4;font-size:12.5px">${t('optional_word')}</span>`:'';return `<div style="padding:6px 2px;display:flex;align-items:center;gap:10px;font-size:15px"><span style="font-size:19px">${s.done?'✅':(s.optional?'⚪':'⬜')}</span><span style="${s.done?'color:#1f2b57':'color:#57608a'};font-weight:600">${lbl}${cnt}${opt}</span></div>`;}).join('');
+  const items=r.steps.map(s=>{const lbl=t(LB[s.key]||s.key);const cnt=(s.count!=null?' <span style="color:#2f5fd0;font-size:16px;font-weight:800">('+s.count+')</span>':'');const opt=s.optional?` <span style="color:#5c6580;font-size:12.5px">${t('optional_word')}</span>`:'';return `<div style="padding:6px 2px;display:flex;align-items:center;gap:10px;font-size:15px"><span style="font-size:19px">${s.done?'✅':(s.optional?'⚪':'⬜')}</span><span style="${s.done?'color:#1f2b57':'color:#57608a'};font-weight:600">${lbl}${cnt}${opt}</span></div>`;}).join('');
   const grid=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 30px">${items}</div>`;
-  box.innerHTML=`<div style="font-size:25px;font-weight:800;color:${r.pct>=100?'#1a9d6b':'#1f2b57'};margin-bottom:2px">${r.pct}% ${t('ready_word')}</div>${bar}${grid}<div style="margin-top:10px;color:#8a93b4;font-size:13px">${t('readiness_hint')}</div>`;}
+  box.innerHTML=`<div style="font-size:25px;font-weight:800;color:${r.pct>=100?'#1a9d6b':'#1f2b57'};margin-bottom:2px">${r.pct}% ${t('ready_word')}</div>${bar}${grid}<div style="margin-top:10px;color:#5c6580;font-size:13px">${t('readiness_hint')}</div>`;}
 async function autoGen(){const b=event&&event.target;if(b){b.disabled=true;b.dataset.txt=b.textContent;b.textContent=t('btn_generating');}const r=await api('POST','/api/timetable/auto-generate');await loadAll();setTab('class');toast(t('toast_generated',{n:(r&&r.cells)||0}));if(b){b.disabled=false;b.textContent=b.dataset.txt;}}
 
 // ---------- SETUP (CRUD) ----------
@@ -1086,7 +1086,7 @@ function hours(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new
    <div class="desc">${t('hours_desc')}</div>
    <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:220px"><label>${t('lbl_school_name')}</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div>
      <div style="width:160px"><label>${t('lbl_session')}</label><input style="width:100%" value="${(config.academic_session||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_session')}" onchange="cfg('academic_session',this.value)"></div></div>
-   ${(()=>{const cs=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};return `<div class="row" style="margin-bottom:14px;align-items:center;gap:12px"><div><label>${t('logo_word')}</label><br>${cs.logo?`<img src="${cs.logo}" style="height:48px;max-width:130px;border:1px solid #e2e8f0;border-radius:6px;vertical-align:middle;padding:2px">`:'<span class="small" style="color:#8a93b4">'+t('none')+'</span>'}</div>${SCHOOL?`<div style="align-self:flex-end"><button class="ghost" onclick="pickLogo(${SCHOOL})">${cs.logo?t('logo_change'):t('logo_upload')}</button>${cs.logo?` <button class="ghost red" onclick="removeLogo(${SCHOOL})">${t('logo_remove')}</button>`:''}<div class="small" style="color:#8a93b4;margin-top:3px">${t('logo_hint')}</div></div>`:''}</div>`;})()}
+   ${(()=>{const cs=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};return `<div class="row" style="margin-bottom:14px;align-items:center;gap:12px"><div><label>${t('logo_word')}</label><br>${cs.logo?`<img src="${cs.logo}" style="height:48px;max-width:130px;border:1px solid #e2e8f0;border-radius:6px;vertical-align:middle;padding:2px">`:'<span class="small" style="color:#5c6580">'+t('none')+'</span>'}</div>${SCHOOL?`<div style="align-self:flex-end"><button class="ghost" onclick="pickLogo(${SCHOOL})">${cs.logo?t('logo_change'):t('logo_upload')}</button>${cs.logo?` <button class="ghost red" onclick="removeLogo(${SCHOOL})">${t('logo_remove')}</button>`:''}<div class="small" style="color:#5c6580;margin-top:3px">${t('logo_hint')}</div></div>`:''}</div>`;})()}
    <div style="margin-bottom:14px"><label>${t('lbl_working_days')}</label>${DAYS.map((d,i)=>`<label class="chk"><input type="checkbox" ${wds.has(i)?'checked':''} onchange="toggleWD(${i},this.checked)">${DD()[i]}</label>`).join('')}</div>
    <div class="row" style="margin-bottom:14px">
      <div><label>${t('lbl_wd_start')}</label><input type="time" value="${config.weekday_start}" onchange="cfg('weekday_start',this.value)"></div>
@@ -1102,7 +1102,7 @@ function hours(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new
      <div><label>${t('lbl_short_after')}</label><input value="${config.short_break_after||''}" placeholder="${t('hint_short_after')}" style="width:160px" onchange="cfg('short_break_after',this.value)"></div>
      <div><label>${t('lbl_short_min')}</label><input type="number" value="${config.short_break_minutes||0}" style="width:90px" onchange="cfg('short_break_minutes',+this.value||0)"></div></div>
    <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:280px"><label>${t('lbl_custom_dur')}</label><input style="width:100%" value="${config.period_durations||''}" placeholder="${t('ph_custom_dur')}" onchange="cfg('period_durations',this.value)"></div></div>
-   ${wds.has(5)?`<div style="margin:8px 0 6px;padding-top:8px;border-top:1px dashed #e2e8f0"><b class="small" style="color:#5a3ec8">🗓 ${t('sat_timings_title')}</b> <span class="small" style="color:#8a93b4">— ${t('sat_timings_hint')}</span></div>
+   ${wds.has(5)?`<div style="margin:8px 0 6px;padding-top:8px;border-top:1px dashed #e2e8f0"><b class="small" style="color:#5a3ec8">🗓 ${t('sat_timings_title')}</b> <span class="small" style="color:#5c6580">— ${t('sat_timings_hint')}</span></div>
    <div class="row" style="margin-bottom:8px">
      <div><label>${t('lbl_period_min')}</label><input type="number" value="${config.sat_period_minutes??config.period_minutes}" style="width:80px" onchange="cfg('sat_period_minutes',+this.value||null)"></div>
      <div><label>${t('lbl_num_periods')}</label><input type="number" value="${config.sat_num_periods||''}" placeholder="${t('hint_num_periods')}" style="width:90px" onchange="cfg('sat_num_periods',+this.value||null)"></div>
@@ -1128,7 +1128,7 @@ async function doHoursImport(){
   const f=document.getElementById('hrsfile').files[0]; const box=document.getElementById('hrsresult');
   if(!f){showErr(t('err_choose_file'));return;}
   if(!/\.xlsx$/i.test(f.name)){showErr(t('err_need_xlsx')+' ('+f.name+')');return;}
-  box.innerHTML='<div class="small" style="color:#8a93b4">'+t('please_wait')+'</div>';
+  box.innerHTML='<div class="small" style="color:#5c6580">'+t('please_wait')+'</div>';
   const fd=new FormData(); fd.append('file',f);
   const hd={}; if(AUTH)hd['Authorization']='Bearer '+AUTH; if(SCHOOL)hd['X-School-Id']=SCHOOL;
   let r,d=null;
@@ -1145,8 +1145,8 @@ function termsSection(){
   const rows=list.length?list.map(tm=>{
     const typ=(TERM_TYPES().find(x=>x[0]===tm.type)||[null,tm.type||''])[1];
     const dates=[tm.start_date,tm.end_date].filter(Boolean).join(' → ')||'—';
-    return `<div class="hours-row" style="align-items:center"><div><b>${(tm.name||'').replace(/</g,'&lt;')}</b> <span class="tag">${typ}</span>${+tm.active?` <span class="tag" style="background:#dcfce7;color:#166534">✓ ${t('term_active')}</span>`:''}<br><span class="small" style="color:#8a93b4">${dates}</span></div><div>${+tm.active?'':`<button class="ghost" onclick="activateTerm(${tm.id})">${t('btn_activate')}</button> `}<button class="ghost red" onclick="delTerm(${tm.id})">🗑</button></div></div>`;
-  }).join(''):`<div class="small" style="color:#8a93b4;padding:8px 0">${t('terms_none')}</div>`;
+    return `<div class="hours-row" style="align-items:center"><div><b>${(tm.name||'').replace(/</g,'&lt;')}</b> <span class="tag">${typ}</span>${+tm.active?` <span class="tag" style="background:#dcfce7;color:#166534">✓ ${t('term_active')}</span>`:''}<br><span class="small" style="color:#5c6580">${dates}</span></div><div>${+tm.active?'':`<button class="ghost" onclick="activateTerm(${tm.id})">${t('btn_activate')}</button> `}<button class="ghost red" onclick="delTerm(${tm.id})">🗑</button></div></div>`;
+  }).join(''):`<div class="small" style="color:#5c6580;padding:8px 0">${t('terms_none')}</div>`;
   const opts=TERM_TYPES().map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');
   return `<div class="card"><h2>📅 ${t('terms_title')}</h2><div class="desc">${t('terms_desc')}</div>
     <div class="row" style="margin-bottom:12px;align-items:flex-end">
@@ -1171,7 +1171,7 @@ async function delTerm(id){const r=await api('DELETE','/api/terms/'+id);if(r&&r.
 
 // ---------- BUILDER (with rooms) ----------
 function builder(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slotsFor(di);
-  let head=`<th>${t('th_class_period')}</th>`+slots.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}<br><span style="font-weight:400;font-size:10px">${s.start}-${s.end}</span></th>`).join("");
+  let head=`<th>${t('th_class_period')}</th>`+slots.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}<br><span style="font-weight:400;font-size:11.5px">${s.start}-${s.end}</span></th>`).join("");
   let rows=filteredClasses().map(c=>{let pi=0,cells=`<td class="ph">${c.name}</td>`;
     slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}
       const cc=cell(c.id,di,pi),conf=conflictAt(c.id,di,pi);
@@ -1226,7 +1226,7 @@ async function setAbsent(t2,v){await api('POST','/api/timetable/absence',{teache
 
 // ---------- SCHOOL-WIDE VIEW ----------
 function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slotsFor(di);
-  let head=`<th>${t('th_class_period')}</th>`+slots.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}<br><span style="font-weight:400;font-size:10px">${s.start}</span></th>`).join("");
+  let head=`<th>${t('th_class_period')}</th>`+slots.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}<br><span style="font-weight:400;font-size:11.5px">${s.start}</span></th>`).join("");
   let rows=filteredClasses().map(c=>{let pi=0,cells=`<td class="ph">${c.name}</td>`;
     slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}const cc=cell(c.id,di,pi);pi++;
       cells+=cc&&cc.subject_id?`<td><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}${cc.room_id?' · '+rName(cc.room_id):''}</div></td>`:`<td class="free">—</td>`;});
@@ -1268,7 +1268,7 @@ function dataView(){ return `<div class="setcols">
 async function doImport(){ const f=document.getElementById('impfile').files[0]; const box=document.getElementById('impresult');
   if(!f){box.innerHTML='<div class="errmsg">'+t('err_choose_file')+'</div>';showErr(t('err_choose_file'));return;}
   if(!/\.xlsx$/i.test(f.name)){box.innerHTML='<div class="errmsg">'+t('err_need_xlsx')+'</div>';showErr(t('err_need_xlsx')+' ('+f.name+')');return;}
-  box.innerHTML='<div class="small" style="color:#8a93b4">'+t('please_wait')+'</div>';
+  box.innerHTML='<div class="small" style="color:#5c6580">'+t('please_wait')+'</div>';
   const fd=new FormData(); fd.append('file',f);
   const hd={}; if(AUTH)hd['Authorization']='Bearer '+AUTH; if(SCHOOL)hd['X-School-Id']=SCHOOL;   // send current school!
   let r,d=null;
@@ -1398,7 +1398,7 @@ async function delDiary(id){ await api('DELETE','/api/diary/'+id); toast(); load
 // ---------- SUBSTITUTION ----------
 function subView(){ if(!dsTeacher&&teachers[0])dsTeacher=teachers[0].id; return `<div class="card"><h2>${t('sub_title')}</h2><div class="desc">${t('sub_desc')}</div>
    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:16px;background:#f0fdf4">
-     <div style="margin-bottom:8px"><b style="color:#166534">📝 ${t('leave_title')}</b> <span class="small" style="color:#8a93b4">${t('leave_desc')}</span></div>
+     <div style="margin-bottom:8px"><b style="color:#166534">📝 ${t('leave_title')}</b> <span class="small" style="color:#5c6580">${t('leave_desc')}</span></div>
      <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
        <div style="min-width:160px"><label>${t('leave_teacher')}</label><select id="lv_teacher">${teachers.map(t2=>`<option value="${t2.id}">${t2.name}</option>`).join('')}</select></div>
        <div><label>${t('dsub_from')}</label><input id="lv_from" type="date"></div>
@@ -1409,7 +1409,7 @@ function subView(){ if(!dsTeacher&&teachers[0])dsTeacher=teachers[0].id; return 
      <div id="leavebox" style="margin-top:10px"></div>
    </div>
    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:16px;background:#faf9ff">
-     <div style="margin-bottom:8px"><b style="color:#5a3ec8">📅 ${t('dsub_title')}</b> <span class="small" style="color:#8a93b4">${t('dsub_desc')}</span></div>
+     <div style="margin-bottom:8px"><b style="color:#5a3ec8">📅 ${t('dsub_title')}</b> <span class="small" style="color:#5c6580">${t('dsub_desc')}</span></div>
      <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
        <div style="min-width:170px"><label>${t('dsub_teacher')}</label><select id="ds_teacher">${teachers.map(t2=>`<option value="${t2.id}" ${t2.id===dsTeacher?'selected':''}>${t2.name}</option>`).join('')}</select></div>
        <div><label>${t('dsub_from')}</label><input id="ds_from" type="date" value="${dsFrom||''}"></div>
@@ -1430,7 +1430,7 @@ function dsQuick(which){ const iso=d=>d.toISOString().slice(0,10); const today=n
   const f=document.getElementById('ds_from'),g=document.getElementById('ds_to'); if(f)f.value=dsFrom; if(g)g.value=dsTo; }
 async function fetchDateSub(){ dsTeacher=+document.getElementById('ds_teacher').value; dsFrom=document.getElementById('ds_from').value; dsTo=document.getElementById('ds_to').value;
   const box=document.getElementById('dsresult'); if(!dsTeacher||!dsFrom||!dsTo){ showErr(t('dsub_need')); return; }
-  box.innerHTML='<div class="small" style="color:#8a93b4">'+t('please_wait')+'</div>';
+  box.innerHTML='<div class="small" style="color:#5c6580">'+t('please_wait')+'</div>';
   const r=await api('GET',`/api/datesub/fetch?teacher_id=${dsTeacher}&from=${dsFrom}&to=${dsTo}`);
   if(r&&r.error){ box.innerHTML=`<div class="errmsg">${r.error}</div>`; return; }
   dsData=(r&&r.periods)||[]; renderDateSub(); }
@@ -1438,8 +1438,8 @@ function renderDateSub(){ const box=document.getElementById('dsresult'); if(!box
   if(!dsData.length){ box.innerHTML='<div class="note">'+t('dsub_none')+'</div>'; return; }
   const total=dsData.length, assigned=dsData.filter(p=>p.proxy_teacher_id).length, free=dsData.filter(p=>+p.is_free===1).length, pending=total-assigned-free;
   const rows=dsData.map((p,i)=>`<tr>
-    <td>${p.sub_date}<br><span class="small" style="color:#8a93b4">${DD()[p.dow]}</span></td>
-    <td>P${p.period_index+1}<br><span class="small" style="color:#8a93b4">${p.start||''}-${p.end||''}</span></td>
+    <td>${p.sub_date}<br><span class="small" style="color:#5c6580">${DD()[p.dow]}</span></td>
+    <td>P${p.period_index+1}<br><span class="small" style="color:#5c6580">${p.start||''}-${p.end||''}</span></td>
     <td>${(p.cls||'').replace(/</g,'&lt;')}</td>
     <td>${(p.subj||'—').replace(/</g,'&lt;')}</td>
     <td><select ${+p.is_free===1?'disabled':''} onchange="setDateProxy(${i},this.value)"><option value="">${t('opt_pick_free')}</option>${(p.free||[]).map(f=>`<option value="${f.id}" ${p.proxy_teacher_id===f.id?'selected':''}>${f.name}</option>`).join('')}</select></td>
@@ -1453,7 +1453,7 @@ async function setDateFree(i,checked){ const p=dsData[i]; p.is_free=checked?1:0;
   const r=await api('POST','/api/datesub',{sub_date:p.sub_date,class_id:p.class_id,period_index:p.period_index,absent_teacher_id:dsTeacher,proxy_teacher_id:null,is_free:checked?1:0});
   if(r&&r.error){showErr(r.error);return;} toast(); renderDateSub(); }
 function leaveBadge(st){ return st==='approved'?'<span class="tag" style="background:#dcfce7;color:#166534">✓ '+t('leave_approved')+'</span>':st==='rejected'?'<span class="tag" style="background:#fee2e2;color:#991b1b">✕ '+t('leave_rejected')+'</span>':'<span class="tag" style="background:#fef9c3;color:#854d0e">● '+t('leave_pending')+'</span>'; }
-function leaveTable(list,admin){ if(!list.length)return '<span class="small" style="color:#8a93b4">'+t('leave_none')+'</span>';
+function leaveTable(list,admin){ if(!list.length)return '<span class="small" style="color:#5c6580">'+t('leave_none')+'</span>';
   return `<table><tr><th>${t('leave_teacher')}</th><th>${t('leave_dates')}</th><th>${t('leave_reason')}</th><th>${t('leave_status')}</th>${admin?'<th></th>':''}</tr>${list.map(l=>`<tr>
     <td>${(l.teacher_name||'').replace(/</g,'&lt;')}</td><td>${l.date_from} → ${l.date_to}</td><td>${(l.reason||'—').replace(/</g,'&lt;')}</td><td>${leaveBadge(l.status)}</td>
     ${admin?`<td style="white-space:nowrap">${l.status==='pending'?`<button class="ghost mini" onclick="approveLeave(${l.id})">${t('leave_approve')}</button> <button class="ghost mini" onclick="rejectLeave(${l.id})">${t('leave_reject')}</button> `:''}<button class="ghost mini red" onclick="delLeave(${l.id})">✕</button></td>`:''}</tr>`).join('')}</table>`; }
