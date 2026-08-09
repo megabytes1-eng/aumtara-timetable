@@ -937,6 +937,81 @@ app.post('/api/import/setup', upload.single('file'), async (req,res)=>{
   }catch(e){ res.status(400).json({ok:false,error:String(e.message||e)}); }
 });
 
+// ---------- AUTO-FILL HOURS FROM EXCEL (deterministic, no AI) ----------
+function hm(v){
+  if(v==null) return '';
+  if(v instanceof Date){ return String(v.getUTCHours()).padStart(2,'0')+':'+String(v.getUTCMinutes()).padStart(2,'0'); }
+  if(typeof v==='object' && v.text!=null) v=v.text;
+  if(typeof v==='number'){ let mins=Math.round(v*24*60)%(24*60); if(mins<0)mins+=24*60; return String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0'); }
+  const s=String(v).trim(); const m=s.match(/(\d{1,2}):(\d{2})/); return m?String(+m[1]).padStart(2,'0')+':'+m[2]:'';
+}
+function toMins(hhmm){ const m=String(hhmm).match(/(\d{1,2}):(\d{2})/); return m?(+m[1])*60+(+m[2]):null; }
+function parseHoursSheet(ws){
+  if(!ws) return null;
+  const rows=[];
+  ws.eachRow((row,n)=>{ if(n===1) return;
+    const lv=row.getCell(1).value; const label=String((lv&&(lv.text!=null?lv.text:lv))||'').trim();
+    const start=hm(row.getCell(2).value), end=hm(row.getCell(3).value);
+    if(!start||!end) return;
+    let kind='period';
+    if(/lunch/i.test(label)) kind='lunch';
+    else if(/break|recess|short|interval|assembly/i.test(label)) kind='short';
+    rows.push({label,start,end,kind,s:toMins(start),e:toMins(end)});
+  });
+  const periods=rows.filter(r=>r.kind==='period' && r.s!=null && r.e!=null);
+  if(!periods.length) return null;
+  const startT=periods[0].start, endT=periods[periods.length-1].end;
+  const durs=periods.map(r=>Math.max(1,r.e-r.s));
+  const freq={}; durs.forEach(d=>freq[d]=(freq[d]||0)+1);
+  const periodMin=+Object.keys(freq).sort((a,b)=>freq[b]-freq[a])[0];
+  const allSame=durs.every(d=>d===periodMin);
+  const afterCount=r=>periods.filter(p=>p.s<r.s).length;
+  const lunchRow=rows.find(r=>r.kind==='lunch');
+  const breakRows=rows.filter(r=>r.kind==='short');
+  return { start:startT, end:endT, num:periods.length, period_minutes:periodMin,
+    period_durations: allSame?'':durs.join(','),
+    lunch_after: lunchRow?afterCount(lunchRow):null,
+    lunch_minutes: lunchRow?Math.max(1,lunchRow.e-lunchRow.s):0,
+    short_break_after: breakRows.length?[...new Set(breakRows.map(afterCount))].sort((a,b)=>a-b).join(','):'',
+    short_break_minutes: breakRows.length?Math.max(1,breakRows[0].e-breakRows[0].s):0 };
+}
+app.get('/api/export/hours-template.xlsx', h(async (_,res)=>{
+  const wb=new ExcelJS.Workbook();
+  const mk=(name,rows)=>{ const w=wb.addWorksheet(name); w.addRow(['Label','Start','End']); styleHeader(w.getRow(1));
+    rows.forEach(r=>w.addRow(r)); [16,12,12].forEach((wd,i)=>w.getColumn(i+1).width=wd);
+    w.getColumn(2).numFmt='@'; w.getColumn(3).numFmt='@'; };
+  mk('Weekday',[['Period 1','07:30','08:05'],['Period 2','08:05','08:40'],['Period 3','08:40','09:15'],['Lunch','09:15','09:40'],['Period 4','09:40','10:15'],['Period 5','10:15','10:50'],['Break','10:50','11:00'],['Period 6','11:00','11:35']]);
+  mk('Saturday',[['Period 1','08:00','08:35'],['Period 2','08:35','09:10'],['Period 3','09:10','09:45'],['Period 4','09:45','10:20']]);
+  const g=wb.addWorksheet('How to use'); g.addRow(['Fill the Weekday sheet (and Saturday if different). One row per period/break.']);
+  g.addRow(['Column A = Label: write "Period 1", "Period 2"... for classes; "Lunch" for lunch; "Break" for a short break.']);
+  g.addRow(['Column B/C = Start/End time as HH:MM (24-hour), e.g. 07:30 and 08:05.']);
+  g.addRow(['The app auto-detects start, end, number of periods, period length, lunch and breaks.']);
+  g.getColumn(1).width=95;
+  res.setHeader('Content-Disposition','attachment; filename=hours-template.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+app.post('/api/import/hours', upload.single('file'), async (req,res)=>{
+  try{
+    const sid=req.sid;
+    const wb=new ExcelJS.Workbook(); await wb.xlsx.load(req.file.buffer);
+    const findWs=(names)=>{ for(const w of wb.worksheets){ if(names.includes(w.name.trim().toLowerCase())) return w; } return null; };
+    const wdWs=findWs(['weekday','weekdays','regular','mon-fri','mon–fri'])||wb.worksheets[0];
+    const satWs=findWs(['saturday','saturdays','sat']);
+    const wd=parseHoursSheet(wdWs);
+    if(!wd) return res.status(400).json({ok:false,error:'No period rows found. Use the template: columns Label, Start, End; label rows Period 1, Period 2, Lunch, Break.'});
+    await run(`UPDATE tt_config SET weekday_start=?,weekday_end=?,num_periods=?,period_minutes=?,period_durations=?,lunch_after=?,lunch_minutes=?,short_break_after=?,short_break_minutes=? WHERE school_id=?`,
+      [wd.start,wd.end,wd.num,wd.period_minutes,wd.period_durations,wd.lunch_after,wd.lunch_minutes,wd.short_break_after,wd.short_break_minutes, sid]);
+    const sat=(satWs&&satWs!==wdWs)?parseHoursSheet(satWs):null;
+    if(sat){
+      await run(`UPDATE tt_config SET saturday_start=?,saturday_end=?,sat_num_periods=?,sat_period_minutes=?,sat_period_durations=?,sat_lunch_after=?,sat_lunch_minutes=?,sat_short_break_after=?,sat_short_break_minutes=? WHERE school_id=?`,
+        [sat.start,sat.end,sat.num,sat.period_minutes,sat.period_durations,sat.lunch_after,sat.lunch_minutes,sat.short_break_after,sat.short_break_minutes, sid]);
+    }
+    await loadConfig(sid);
+    res.json({ok:true, weekday:wd, saturday:sat});
+  }catch(e){ res.status(400).json({ok:false,error:String(e.message||e)}); }
+});
+
 // ---------- STARTUP ----------
 (async () => {
   await init();
