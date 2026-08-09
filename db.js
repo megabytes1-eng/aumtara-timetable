@@ -138,6 +138,9 @@ async function init() {
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS sat_lunch_minutes INTEGER`);
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS sat_short_break_after TEXT`);
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS sat_short_break_minutes INTEGER`);
+  // Explicit period counts (NULL/0 = derive count from end time — the original behaviour)
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS num_periods INTEGER`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS sat_num_periods INTEGER`);
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived
