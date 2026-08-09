@@ -119,6 +119,7 @@ async function init() {
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS lunch_after INTEGER`);       // period number after which lunch falls
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS period_durations TEXT`);     // CSV per-period minutes, blank = use period_minutes
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS working_days TEXT`);         // CSV day indices 0=Mon..5=Sat
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS saturday_start TEXT`);       // Saturday-only start time; blank = same as weekday_start
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived
@@ -179,7 +180,8 @@ async function init() {
      lunch_minutes      = COALESCE(lunch_minutes, break_minutes),
      short_break_minutes= COALESCE(short_break_minutes, 0),
      short_break_after  = COALESCE(short_break_after, ''),
-     period_durations   = COALESCE(period_durations, '')
+     period_durations   = COALESCE(period_durations, ''),
+     saturday_start     = COALESCE(saturday_start, weekday_start)
    WHERE id=1`);
 
   // ---- MULTI-SCHOOL seed: create "School 1" from the current config and adopt all existing data ----
@@ -203,9 +205,9 @@ async function init() {
 async function seedConfigForSchool(schoolId, schoolName, board, medium) {
   const nid = (await q1('SELECT COALESCE(MAX(id),0)+1 AS n FROM tt_config')).n;
   await run(`INSERT INTO tt_config(id,school_id,weekday_start,weekday_end,saturday_end,period_minutes,break_after_period,break_minutes,
-       school_name,board,medium,working_days,lunch_after,lunch_minutes,short_break_minutes,short_break_after,period_durations)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [nid, schoolId, '07:30','13:00','11:30',35,3,20, schoolName||'New School', board||null, medium||null, '0,1,2,3,4,5', 3, 20, 0, '', '']);
+       school_name,board,medium,working_days,lunch_after,lunch_minutes,short_break_minutes,short_break_after,period_durations,saturday_start)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [nid, schoolId, '07:30','13:00','11:30',35,3,20, schoolName||'New School', board||null, medium||null, '0,1,2,3,4,5', 3, 20, 0, '', '', '07:30']);
   await loadConfig(schoolId);
   return nid;
 }

@@ -221,7 +221,8 @@ function slotsForDay(dayIdx, sid){
   const shortMin=+c.short_break_minutes||0;
   const lunchAfter=(c.lunch_after!=null?+c.lunch_after:+c.break_after_period);
   const lunchMin=(c.lunch_minutes!=null?+c.lunch_minutes:+c.break_minutes)||0;
-  const slots=[]; let t=c.weekday_start, idx=0;
+  const start=(dayIdx===5&&c.saturday_start)?c.saturday_start:c.weekday_start;
+  const slots=[]; let t=start, idx=0;
   while(true){ const dur=durs[idx]||c.period_minutes; const e=addMin(t,dur);
     slots.push({index:idx,label:'P'+(idx+1),start:t,end:e,is_break:false}); idx++;
     if(e>=end||idx>=12)break; t=e;
@@ -326,9 +327,9 @@ async function setSubjects(tid, subs){
 app.get('/api/timetable/config', h(async (req,res)=>res.json(getConfig(req.sid))));
 app.put('/api/timetable/config', h(async (req,res)=>{
   const c=getConfig(req.sid)||{}, b=req.body, v=(k)=>b[k]!==undefined?b[k]:c[k];
-  await run(`UPDATE tt_config SET weekday_start=?,weekday_end=?,saturday_end=?,period_minutes=?,break_after_period=?,break_minutes=?,school_name=?,
+  await run(`UPDATE tt_config SET weekday_start=?,weekday_end=?,saturday_start=?,saturday_end=?,period_minutes=?,break_after_period=?,break_minutes=?,school_name=?,
        short_break_minutes=?,short_break_after=?,lunch_minutes=?,lunch_after=?,period_durations=?,working_days=?,academic_session=? WHERE school_id=?`,
-    [v('weekday_start'),v('weekday_end'),v('saturday_end'),v('period_minutes'),v('break_after_period'),v('break_minutes'),v('school_name'),
+    [v('weekday_start'),v('weekday_end'),v('saturday_start'),v('saturday_end'),v('period_minutes'),v('break_after_period'),v('break_minutes'),v('school_name'),
      v('short_break_minutes'),v('short_break_after'),v('lunch_minutes'),v('lunch_after'),v('period_durations'),v('working_days'),v('academic_session'), req.sid]);
   // keep the school registry name in sync if the school name was edited here
   if(b.school_name!==undefined) await run('UPDATE tt_school SET name=? WHERE id=?',[b.school_name, req.sid]);
