@@ -108,6 +108,17 @@ async function init() {
      UNIQUE (teacher_id, entry_date, class_id, period_index));
   `);
 
+  // Academic Terms / sessions (structured, per-school; one active at a time)
+  await run(`CREATE TABLE IF NOT EXISTS tt_term (
+     id SERIAL PRIMARY KEY,
+     school_id INTEGER,
+     name TEXT,
+     type TEXT,
+     start_date TEXT,
+     end_date TEXT,
+     active INTEGER DEFAULT 0,
+     created_at TEXT)`);
+
   // idempotent safety migrations (no-ops on a fresh DB)
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS school_name TEXT`);
   for (const c of ['lesson','learning_outcome','assessment_lo','homework','teaching_aids'])

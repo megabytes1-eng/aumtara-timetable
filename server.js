@@ -342,6 +342,31 @@ app.put('/api/timetable/config', h(async (req,res)=>{
 }));
 app.get('/api/timetable/slots', h(async (req,res)=>res.json(slotsForDay(Number(req.query.day||0), req.sid))));
 
+// ---------- ACADEMIC TERMS (structured sessions; one active at a time) ----------
+async function syncActiveTerm(sid){
+  const t=await q1('SELECT name FROM tt_term WHERE school_id=? AND active=1 ORDER BY id LIMIT 1',[sid]);
+  if(t) await run('UPDATE tt_config SET academic_session=? WHERE school_id=?',[t.name, sid]);
+}
+app.get('/api/terms', h(async (req,res)=> res.json(await q('SELECT * FROM tt_term WHERE school_id=? ORDER BY active DESC, start_date NULLS LAST, id',[req.sid]))));
+app.post('/api/terms', h(async (req,res)=>{
+  const b=req.body; const active=b.active?1:0;
+  const row=await q1('INSERT INTO tt_term(school_id,name,type,start_date,end_date,active,created_at) VALUES(?,?,?,?,?,?,now()::text) RETURNING id',
+    [req.sid, b.name||'Untitled', b.type||'regular', b.start_date||null, b.end_date||null, active]);
+  if(active){ await run('UPDATE tt_term SET active=0 WHERE school_id=? AND id<>?',[req.sid, row.id]); await syncActiveTerm(req.sid); await loadConfig(req.sid); }
+  res.json({id:row.id});
+}));
+app.put('/api/terms/:id', h(async (req,res)=>{
+  const id=req.params.id, b=req.body;
+  const own=await q1('SELECT id FROM tt_term WHERE id=? AND school_id=?',[id, req.sid]);
+  if(!own){ res.status(404).json({error:'not found'}); return; }
+  const cols=['name','type','start_date','end_date','active'].filter(k=>b[k]!==undefined);
+  if(cols.length) await run(`UPDATE tt_term SET ${cols.map(c=>c+'=?').join(',')} WHERE id=? AND school_id=?`,
+    [...cols.map(c=>c==='active'?(b[c]?1:0):b[c]), id, req.sid]);
+  if(b.active){ await run('UPDATE tt_term SET active=0 WHERE school_id=? AND id<>?',[req.sid, id]); await syncActiveTerm(req.sid); await loadConfig(req.sid); }
+  res.json({ok:true});
+}));
+app.delete('/api/terms/:id', h(async (req,res)=>{ await run('DELETE FROM tt_term WHERE id=? AND school_id=?',[req.params.id, req.sid]); res.json({ok:true}); }));
+
 // ---------- QUOTA (subject periods/week per class) ----------
 app.get('/api/quota', h(async (req,res)=>res.json(await q('SELECT * FROM tt_quota WHERE class_id=? AND school_id=?',[req.query.class_id, req.sid]))));
 app.put('/api/quota', h(async (req,res)=>{
