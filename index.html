@@ -30,6 +30,8 @@ header h1{font-size:18px;margin:0;} header .sub{font-size:12px;opacity:.8;}
 .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;}
 .kpi .n{font-size:26px;font-weight:800;color:var(--navy);} .kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
 .kpi.g .n{color:var(--green);}.kpi.a .n{color:var(--amber);}.kpi.p .n{color:var(--accent);}
+.kpi[onclick]{cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;}
+.kpi[onclick]:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(37,99,235,.13);transform:translateY(-2px);}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
 .card h2{margin:0 0 4px;font-size:16px;color:var(--navy);} .card .desc{color:var(--muted);font-size:13px;margin-bottom:14px;}
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
@@ -56,6 +58,7 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .tag{background:#eef2fb;color:var(--navy);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;}
 .small{font-size:11px;color:var(--muted);} .badge-bad{color:var(--red);font-weight:700;font-size:10px;}
 .feat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;} .feat div{background:#f6f8fc;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12.5px;} .feat b{color:var(--navy);}
+.feat div[onclick]{cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s;} .feat div[onclick]:hover{border-color:var(--accent);background:#eef3fd;box-shadow:0 3px 10px rgba(37,99,235,.10);}
 .setcols{display:grid;grid-template-columns:1fr 1fr;gap:16px;} @media(max-width:820px){.setcols{grid-template-columns:1fr;}.kpis{grid-template-columns:1fr 1fr;}}
 .listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#eef2fb;padding:3px 7px;border-radius:12px;margin:2px;cursor:pointer;} .chk input{margin:0;}
@@ -819,10 +822,10 @@ function setTab(t){tab=t;render();}
 
 // ---------- DASHBOARD ----------
 function dash(){return `<div class="kpis">
-   <div class="kpi"><div class="n">${classes.length}</div><div class="l">${t('kpi_classrooms')}</div></div>
-   <div class="kpi g"><div class="n">${subjects.length}</div><div class="l">${t('kpi_subjects')}</div></div>
-   <div class="kpi a"><div class="n">${teachers.length}</div><div class="l">${t('kpi_teachers')}</div></div>
-   <div class="kpi p"><div class="n">${completed()}/${classes.length}</div><div class="l">${t('kpi_completed')}</div></div></div>
+   <div class="kpi" onclick="setTab('class')" title="${t('kpi_classrooms')}"><div class="n">${classes.length}</div><div class="l">${t('kpi_classrooms')}</div></div>
+   <div class="kpi g" onclick="setTab('setup')" title="${t('kpi_subjects')}"><div class="n">${subjects.length}</div><div class="l">${t('kpi_subjects')}</div></div>
+   <div class="kpi a" onclick="setTab('teacher')" title="${t('kpi_teachers')}"><div class="n">${teachers.length}</div><div class="l">${t('kpi_teachers')}</div></div>
+   <div class="kpi p" onclick="setTab('class')" title="${t('kpi_completed')}"><div class="n">${completed()}/${classes.length}</div><div class="l">${t('kpi_completed')}</div></div></div>
    <div class="card"><h2>${t('dash_title')}</h2><div class="desc">${t('dash_desc',{rooms:rooms.length,n:conflictCount()})}</div>
    <div class="row"><button class="green" onclick="autoGen()">${t('btn_autogen')}</button>
      <button class="ghost" onclick="setTab('setup')">${t('btn_manage')}</button>
@@ -830,9 +833,9 @@ function dash(){return `<div class="kpis">
      <button class="purple" onclick="setTab('sub')">${t('btn_sub')}</button>
      <button class="ghost" onclick="setTab('monitor')">${t('btn_monitor')}</button></div>
    <div class="feat">
-     <div><b>${t('feat_period_t')}</b><br><span class="small">${t('feat_period_d')}</span></div>
-     <div><b>${t('feat_conflict_t')}</b><br><span class="small">${t('feat_conflict_d',{n:conflictCount()})}</span></div>
-     <div><b>${t('feat_sub_t')}</b><br><span class="small">${t('feat_sub_d')}</span></div></div></div>
+     <div onclick="setTab('build')"><b>${t('feat_period_t')}</b><br><span class="small">${t('feat_period_d')}</span></div>
+     <div onclick="setTab('build')"><b>${t('feat_conflict_t')}</b><br><span class="small">${t('feat_conflict_d',{n:conflictCount()})}</span></div>
+     <div onclick="setTab('sub')"><b>${t('feat_sub_t')}</b><br><span class="small">${t('feat_sub_d')}</span></div></div></div>
    <div class="card" id="readycard"><h2>${t('readiness_title')}</h2><div id="readybox" class="small">…</div></div>
    <div class="card" id="versioncard"><h2>${t('versions_title')}</h2><div class="desc">${t('versions_desc')}</div>
      <div class="row" style="margin-bottom:10px"><input id="vname" placeholder="${t('ph_version_name')}" style="flex:1;min-width:180px"><button class="green" onclick="saveVersion()">${t('btn_save_version')}</button></div>
