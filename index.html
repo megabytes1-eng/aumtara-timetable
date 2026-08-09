@@ -106,7 +106,7 @@ const I18N={
   chapters_title:'Chapters (per subject)',chapters_desc:'Chapters show as a pulldown while filling the Teacher’s Diary — fast & consistent.',ph_new_chapter:'New chapter name',no_chapters:'No chapters yet.',
   hours_title:'Academic Hours',tag_config:'Configuration',hours_desc:'Period slots are generated from this and saved to the database.',
   lbl_school_name:'School name (shown on diary & reports)',lbl_wd_start:'Weekday start',lbl_wd_end:'Weekday end',lbl_sat_end:'Saturday end',lbl_sat_start:'Saturday start',lbl_period_min:'Period (min)',lbl_break_after:'Break after period',lbl_break_min:'Break (min)',
-  weekdays:'Weekdays',saturdays:'Saturdays',periods_word:'periods',weekday_slots:'Weekday slots:',saturday_slots:'Saturday slots:',brk:'Break',
+  weekdays:'Weekdays',saturdays:'Saturdays',periods_word:'periods',weekday_slots:'Weekday slots:',saturday_slots:'Saturday slots:',sat_timings_title:'Saturday timings (separate)',sat_timings_hint:'Blank = same as weekday',brk:'Break',
   lbl_working_days:'Working days',lunch_word:'Lunch',lbl_lunch_after:'Lunch after period',lbl_lunch_min:'Lunch (min)',lbl_short_after:'Short breaks after periods',lbl_short_min:'Short break (min)',hint_short_after:'comma-separated, e.g. 2,6 (blank = none)',lbl_custom_dur:'Custom period durations (min)',ph_custom_dur:'e.g. 35,35,40 — blank = same for all',lbl_breaks:'Breaks & Lunch',
   builder_title:'Set Daily Lectures — Builder',builder_desc:'Subject + teacher + room per class/period. Saved instantly; teacher & room clashes highlighted.',
   th_class_period:'Class \\ Period',opt_free:'— free —',opt_teacher:'teacher…',opt_room:'room…',btn_autogen_all:'⚡ Auto-generate all',warn_teacher:'⚠ teacher:',warn_room:'⚠ room:',
@@ -154,7 +154,7 @@ const I18N={
   chapters_title:'अध्याय (प्रति विषय)',chapters_desc:'शिक्षक डायरी भरते समय अध्याय पुलडाउन में दिखते हैं — तेज़ और एक जैसा।',ph_new_chapter:'नए अध्याय का नाम',no_chapters:'अभी कोई अध्याय नहीं।',
   hours_title:'एकेडमिक घंटे',tag_config:'कॉन्फ़िगरेशन',hours_desc:'पीरियड स्लॉट इसी से बनते हैं और डेटाबेस में सेव होते हैं।',
   lbl_school_name:'स्कूल का नाम (डायरी और रिपोर्ट में दिखेगा)',lbl_wd_start:'सप्ताह के दिन शुरू',lbl_wd_end:'सप्ताह के दिन समाप्त',lbl_sat_end:'शनिवार समाप्त',lbl_sat_start:'शनिवार शुरू',lbl_period_min:'पीरियड (मिनट)',lbl_break_after:'ब्रेक किस पीरियड बाद',lbl_break_min:'ब्रेक (मिनट)',
-  weekdays:'सप्ताह के दिन',saturdays:'शनिवार',periods_word:'पीरियड',weekday_slots:'सप्ताह के दिन के स्लॉट:',saturday_slots:'शनिवार के स्लॉट:',brk:'ब्रेक',
+  weekdays:'सप्ताह के दिन',saturdays:'शनिवार',periods_word:'पीरियड',weekday_slots:'सप्ताह के दिन के स्लॉट:',saturday_slots:'शनिवार के स्लॉट:',sat_timings_title:'शनिवार का समय (अलग)',sat_timings_hint:'खाली = सप्ताह के दिन जैसा',brk:'ब्रेक',
   builder_title:'दैनिक लेक्चर सेट करें — बिल्डर',builder_desc:'हर क्लास/पीरियड के लिए विषय + शिक्षक + कमरा। तुरंत सेव; शिक्षक और कमरे के टकराव हाइलाइट।',
   th_class_period:'क्लास \\ पीरियड',opt_free:'— खाली —',opt_teacher:'शिक्षक…',opt_room:'कमरा…',btn_autogen_all:'⚡ सब ऑटो-जेनरेट',warn_teacher:'⚠ शिक्षक:',warn_room:'⚠ कमरा:',
   class_title:'क्लास शेड्यूल',print_class_title:'क्लास टाइमटेबल —',
@@ -201,7 +201,7 @@ const I18N={
   chapters_title:'धडे (विषयानुसार)',chapters_desc:'शिक्षक डायरी भरताना धडे पुलडाउनमध्ये दिसतात — जलद व सुसंगत.',ph_new_chapter:'नवीन धड्याचे नाव',no_chapters:'अद्याप धडे नाहीत.',
   hours_title:'शैक्षणिक तास',tag_config:'कॉन्फिगरेशन',hours_desc:'तासिका स्लॉट यावरून तयार होतात व डेटाबेसमध्ये जतन होतात.',
   lbl_school_name:'शाळेचे नाव (डायरी व अहवालात दिसेल)',lbl_wd_start:'आठवड्याचे दिवस सुरू',lbl_wd_end:'आठवड्याचे दिवस समाप्त',lbl_sat_end:'शनिवार समाप्त',lbl_sat_start:'शनिवार सुरू',lbl_period_min:'तासिका (मिनिटे)',lbl_break_after:'ब्रेक कोणत्या तासिकेनंतर',lbl_break_min:'ब्रेक (मिनिटे)',
-  weekdays:'आठवड्याचे दिवस',saturdays:'शनिवार',periods_word:'तासिका',weekday_slots:'आठवड्याचे स्लॉट:',saturday_slots:'शनिवारचे स्लॉट:',brk:'ब्रेक',
+  weekdays:'आठवड्याचे दिवस',saturdays:'शनिवार',periods_word:'तासिका',weekday_slots:'आठवड्याचे स्लॉट:',saturday_slots:'शनिवारचे स्लॉट:',sat_timings_title:'शनिवारची वेळ (वेगळी)',sat_timings_hint:'रिकामे = आठवड्याच्या दिवसाप्रमाणे',brk:'ब्रेक',
   builder_title:'दैनिक तासिका सेट करा — बिल्डर',builder_desc:'प्रत्येक वर्ग/तासिकेसाठी विषय + शिक्षक + खोली. लगेच जतन; शिक्षक व खोली संघर्ष हायलाइट.',
   th_class_period:'वर्ग \\ तासिका',opt_free:'— रिकामा —',opt_teacher:'शिक्षक…',opt_room:'खोली…',btn_autogen_all:'⚡ सर्व स्वयं-तयार करा',warn_teacher:'⚠ शिक्षक:',warn_room:'⚠ खोली:',
   class_title:'वर्ग वेळापत्रक',print_class_title:'वर्ग वेळापत्रक —',
@@ -248,7 +248,7 @@ const I18N={
   chapters_title:'પ્રકરણો (વિષય દીઠ)',chapters_desc:'શિક્ષક ડાયરી ભરતી વખતે પ્રકરણો પુલડાઉનમાં દેખાય છે — ઝડપી અને સુસંગત.',ph_new_chapter:'નવા પ્રકરણનું નામ',no_chapters:'હજી કોઈ પ્રકરણ નથી.',
   hours_title:'શૈક્ષણિક કલાકો',tag_config:'કન્ફિગરેશન',hours_desc:'પીરિયડ સ્લોટ આમાંથી બને છે અને ડેટાબેઝમાં સેવ થાય છે.',
   lbl_school_name:'શાળાનું નામ (ડાયરી અને રિપોર્ટમાં દેખાશે)',lbl_wd_start:'અઠવાડિયાના દિવસ શરૂ',lbl_wd_end:'અઠવાડિયાના દિવસ પૂરા',lbl_sat_end:'શનિવાર પૂરો',lbl_sat_start:'શનિવાર શરૂ',lbl_period_min:'પીરિયડ (મિનિટ)',lbl_break_after:'બ્રેક કયા પીરિયડ પછી',lbl_break_min:'બ્રેક (મિનિટ)',
-  weekdays:'અઠવાડિયાના દિવસ',saturdays:'શનિવાર',periods_word:'પીરિયડ',weekday_slots:'અઠવાડિયાના સ્લોટ:',saturday_slots:'શનિવારના સ્લોટ:',brk:'બ્રેક',
+  weekdays:'અઠવાડિયાના દિવસ',saturdays:'શનિવાર',periods_word:'પીરિયડ',weekday_slots:'અઠવાડિયાના સ્લોટ:',saturday_slots:'શનિવારના સ્લોટ:',sat_timings_title:'શનિવારનો સમય (અલગ)',sat_timings_hint:'ખાલી = અઠવાડિયાના દિવસ જેવું',brk:'બ્રેક',
   builder_title:'દૈનિક લેક્ચર સેટ કરો — બિલ્ડર',builder_desc:'દરેક વર્ગ/પીરિયડ માટે વિષય + શિક્ષક + રૂમ. તરત સેવ; શિક્ષક અને રૂમ અથડામણ હાઇલાઇટ.',
   th_class_period:'વર્ગ \\ પીરિયડ',opt_free:'— ખાલી —',opt_teacher:'શિક્ષક…',opt_room:'રૂમ…',btn_autogen_all:'⚡ બધું ઓટો-જનરેટ',warn_teacher:'⚠ શિક્ષક:',warn_room:'⚠ રૂમ:',
   class_title:'વર્ગ સમયપત્રક',print_class_title:'વર્ગ સમયપત્રક —',
@@ -295,7 +295,7 @@ const I18N={
   chapters_title:'பாடங்கள் (பாடத்திற்கு)',chapters_desc:'ஆசிரியர் நாட்குறிப்பை நிரப்பும்போது பாடங்கள் புல்டவுனாக தோன்றும் — வேகமாகவும் சீராகவும்.',ph_new_chapter:'புதிய பாடப் பெயர்',no_chapters:'இன்னும் பாடங்கள் இல்லை.',
   hours_title:'கல்வி நேரம்',tag_config:'கட்டமைப்பு',hours_desc:'கால ஸ்லாட்கள் இதிலிருந்து உருவாகி தரவுத்தளத்தில் சேமிக்கப்படும்.',
   lbl_school_name:'பள்ளி பெயர் (நாட்குறிப்பு & அறிக்கைகளில் காட்டப்படும்)',lbl_wd_start:'வார நாள் தொடக்கம்',lbl_wd_end:'வார நாள் முடிவு',lbl_sat_end:'சனி முடிவு',lbl_sat_start:'சனி தொடக்கம்',lbl_period_min:'காலம் (நிமிடம்)',lbl_break_after:'எந்த காலத்திற்குப் பிறகு இடைவேளை',lbl_break_min:'இடைவேளை (நிமிடம்)',
-  weekdays:'வார நாட்கள்',saturdays:'சனிக்கிழமை',periods_word:'காலங்கள்',weekday_slots:'வார நாள் ஸ்லாட்கள்:',saturday_slots:'சனிக்கிழமை ஸ்லாட்கள்:',brk:'இடைவேளை',
+  weekdays:'வார நாட்கள்',saturdays:'சனிக்கிழமை',periods_word:'காலங்கள்',weekday_slots:'வார நாள் ஸ்லாட்கள்:',saturday_slots:'சனிக்கிழமை ஸ்லாட்கள்:',sat_timings_title:'சனிக்கிழமை நேரம் (தனி)',sat_timings_hint:'காலி = வார நாள் போல',brk:'இடைவேளை',
   builder_title:'தினசரி வகுப்புகளை அமை — பில்டர்',builder_desc:'ஒவ்வொரு வகுப்பு/காலத்திற்கும் பாடம் + ஆசிரியர் + அறை. உடனே சேமிக்கப்படும்; ஆசிரியர் & அறை முரண்கள் சிறப்பிக்கப்படும்.',
   th_class_period:'வகுப்பு \\ காலம்',opt_free:'— காலி —',opt_teacher:'ஆசிரியர்…',opt_room:'அறை…',btn_autogen_all:'⚡ அனைத்தையும் தானாக உருவாக்கு',warn_teacher:'⚠ ஆசிரியர்:',warn_room:'⚠ அறை:',
   class_title:'வகுப்பு அட்டவணை',print_class_title:'வகுப்பு அட்டவணை —',
@@ -342,7 +342,7 @@ const I18N={
   chapters_title:'అధ్యాయాలు (విషయానికి)',chapters_desc:'ఉపాధ్యాయ డైరీ నింపేటప్పుడు అధ్యాయాలు పుల్‌డౌన్‌గా కనిపిస్తాయి — వేగంగా & స్థిరంగా.',ph_new_chapter:'కొత్త అధ్యాయం పేరు',no_chapters:'ఇంకా అధ్యాయాలు లేవు.',
   hours_title:'విద్యా గంటలు',tag_config:'కాన్ఫిగరేషన్',hours_desc:'పీరియడ్ స్లాట్‌లు దీని నుండి తయారై డేటాబేస్‌లో సేవ్ అవుతాయి.',
   lbl_school_name:'పాఠశాల పేరు (డైరీ & నివేదికలలో కనిపిస్తుంది)',lbl_wd_start:'వారపు రోజు ప్రారంభం',lbl_wd_end:'వారపు రోజు ముగింపు',lbl_sat_end:'శనివారం ముగింపు',lbl_sat_start:'శనివారం ప్రారంభం',lbl_period_min:'పీరియడ్ (నిమిషాలు)',lbl_break_after:'ఏ పీరియడ్ తర్వాత విరామం',lbl_break_min:'విరామం (నిమిషాలు)',
-  weekdays:'వారపు రోజులు',saturdays:'శనివారం',periods_word:'పీరియడ్‌లు',weekday_slots:'వారపు స్లాట్‌లు:',saturday_slots:'శనివారం స్లాట్‌లు:',brk:'విరామం',
+  weekdays:'వారపు రోజులు',saturdays:'శనివారం',periods_word:'పీరియడ్‌లు',weekday_slots:'వారపు స్లాట్‌లు:',saturday_slots:'శనివారం స్లాట్‌లు:',sat_timings_title:'శనివారం సమయం (విడిగా)',sat_timings_hint:'ఖాళీ = వారపు రోజు లాగా',brk:'విరామం',
   builder_title:'రోజువారీ పాఠాలను సెట్ చేయి — బిల్డర్',builder_desc:'ప్రతి తరగతి/పీరియడ్‌కు విషయం + ఉపాధ్యాయుడు + గది. వెంటనే సేవ్; ఉపాధ్యాయుడు & గది ఘర్షణలు హైలైట్.',
   th_class_period:'తరగతి \\ పీరియడ్',opt_free:'— ఖాళీ —',opt_teacher:'ఉపాధ్యాయుడు…',opt_room:'గది…',btn_autogen_all:'⚡ అన్నీ ఆటో-జనరేట్',warn_teacher:'⚠ ఉపాధ్యాయుడు:',warn_room:'⚠ గది:',
   class_title:'తరగతి షెడ్యూల్',print_class_title:'తరగతి టైమ్‌టేబుల్ —',
@@ -389,7 +389,7 @@ const I18N={
   chapters_title:'অধ্যায় (বিষয় অনুযায়ী)',chapters_desc:'শিক্ষক ডায়েরি পূরণের সময় অধ্যায় পুলডাউনে দেখায় — দ্রুত ও সামঞ্জস্যপূর্ণ।',ph_new_chapter:'নতুন অধ্যায়ের নাম',no_chapters:'এখনও কোনো অধ্যায় নেই।',
   hours_title:'শিক্ষাগত সময়',tag_config:'কনফিগারেশন',hours_desc:'পিরিয়ড স্লট এখান থেকে তৈরি হয় ও ডেটাবেসে সেভ হয়।',
   lbl_school_name:'স্কুলের নাম (ডায়েরি ও রিপোর্টে দেখাবে)',lbl_wd_start:'কর্মদিবস শুরু',lbl_wd_end:'কর্মদিবস শেষ',lbl_sat_end:'শনিবার শেষ',lbl_sat_start:'শনিবার শুরু',lbl_period_min:'পিরিয়ড (মিনিট)',lbl_break_after:'কোন পিরিয়ডের পর বিরতি',lbl_break_min:'বিরতি (মিনিট)',
-  weekdays:'কর্মদিবস',saturdays:'শনিবার',periods_word:'পিরিয়ড',weekday_slots:'কর্মদিবসের স্লট:',saturday_slots:'শনিবারের স্লট:',brk:'বিরতি',
+  weekdays:'কর্মদিবস',saturdays:'শনিবার',periods_word:'পিরিয়ড',weekday_slots:'কর্মদিবসের স্লট:',saturday_slots:'শনিবারের স্লট:',sat_timings_title:'শনিবারের সময় (আলাদা)',sat_timings_hint:'খালি = কর্মদিবসের মতো',brk:'বিরতি',
   builder_title:'দৈনিক ক্লাস সেট করুন — বিল্ডার',builder_desc:'প্রতি ক্লাস/পিরিয়ডে বিষয় + শিক্ষক + কক্ষ। সঙ্গে সঙ্গে সেভ; শিক্ষক ও কক্ষ সংঘর্ষ হাইলাইট।',
   th_class_period:'ক্লাস \\ পিরিয়ড',opt_free:'— খালি —',opt_teacher:'শিক্ষক…',opt_room:'কক্ষ…',btn_autogen_all:'⚡ সব অটো-জেনারেট',warn_teacher:'⚠ শিক্ষক:',warn_room:'⚠ কক্ষ:',
   class_title:'ক্লাস সময়সূচি',print_class_title:'ক্লাস সময়সূচি —',
@@ -436,7 +436,7 @@ const I18N={
   chapters_title:'ਅਧਿਆਏ (ਵਿਸ਼ੇ ਅਨੁਸਾਰ)',chapters_desc:'ਅਧਿਆਪਕ ਡਾਇਰੀ ਭਰਦੇ ਸਮੇਂ ਅਧਿਆਏ ਪੁਲਡਾਊਨ ਵਿੱਚ ਦਿਸਦੇ ਹਨ — ਤੇਜ਼ ਤੇ ਇਕਸਾਰ।',ph_new_chapter:'ਨਵੇਂ ਅਧਿਆਏ ਦਾ ਨਾਮ',no_chapters:'ਅਜੇ ਕੋਈ ਅਧਿਆਏ ਨਹੀਂ।',
   hours_title:'ਵਿੱਦਿਅਕ ਘੰਟੇ',tag_config:'ਕੌਂਫਿਗਰੇਸ਼ਨ',hours_desc:'ਪੀਰੀਅਡ ਸਲਾਟ ਇਸ ਤੋਂ ਬਣਦੇ ਹਨ ਤੇ ਡੇਟਾਬੇਸ ਵਿੱਚ ਸੇਵ ਹੁੰਦੇ ਹਨ।',
   lbl_school_name:'ਸਕੂਲ ਦਾ ਨਾਮ (ਡਾਇਰੀ ਤੇ ਰਿਪੋਰਟ ਵਿੱਚ ਦਿਸੇਗਾ)',lbl_wd_start:'ਹਫ਼ਤੇ ਦੇ ਦਿਨ ਸ਼ੁਰੂ',lbl_wd_end:'ਹਫ਼ਤੇ ਦੇ ਦਿਨ ਸਮਾਪਤ',lbl_sat_end:'ਸ਼ਨੀਵਾਰ ਸਮਾਪਤ',lbl_sat_start:'ਸ਼ਨੀਵਾਰ ਸ਼ੁਰੂ',lbl_period_min:'ਪੀਰੀਅਡ (ਮਿੰਟ)',lbl_break_after:'ਕਿਸ ਪੀਰੀਅਡ ਬਾਅਦ ਬਰੇਕ',lbl_break_min:'ਬਰੇਕ (ਮਿੰਟ)',
-  weekdays:'ਹਫ਼ਤੇ ਦੇ ਦਿਨ',saturdays:'ਸ਼ਨੀਵਾਰ',periods_word:'ਪੀਰੀਅਡ',weekday_slots:'ਹਫ਼ਤੇ ਦੇ ਦਿਨ ਦੇ ਸਲਾਟ:',saturday_slots:'ਸ਼ਨੀਵਾਰ ਦੇ ਸਲਾਟ:',brk:'ਬਰੇਕ',
+  weekdays:'ਹਫ਼ਤੇ ਦੇ ਦਿਨ',saturdays:'ਸ਼ਨੀਵਾਰ',periods_word:'ਪੀਰੀਅਡ',weekday_slots:'ਹਫ਼ਤੇ ਦੇ ਦਿਨ ਦੇ ਸਲਾਟ:',saturday_slots:'ਸ਼ਨੀਵਾਰ ਦੇ ਸਲਾਟ:',sat_timings_title:'ਸ਼ਨੀਵਾਰ ਦਾ ਸਮਾਂ (ਵੱਖਰਾ)',sat_timings_hint:'ਖਾਲੀ = ਹਫ਼ਤੇ ਦੇ ਦਿਨ ਵਾਂਗ',brk:'ਬਰੇਕ',
   builder_title:'ਰੋਜ਼ਾਨਾ ਲੈਕਚਰ ਸੈੱਟ ਕਰੋ — ਬਿਲਡਰ',builder_desc:'ਹਰ ਕਲਾਸ/ਪੀਰੀਅਡ ਲਈ ਵਿਸ਼ਾ + ਅਧਿਆਪਕ + ਕਮਰਾ। ਤੁਰੰਤ ਸੇਵ; ਅਧਿਆਪਕ ਤੇ ਕਮਰਾ ਟਕਰਾਅ ਹਾਈਲਾਈਟ।',
   th_class_period:'ਕਲਾਸ \\ ਪੀਰੀਅਡ',opt_free:'— ਖਾਲੀ —',opt_teacher:'ਅਧਿਆਪਕ…',opt_room:'ਕਮਰਾ…',btn_autogen_all:'⚡ ਸਭ ਆਟੋ-ਜਨਰੇਟ',warn_teacher:'⚠ ਅਧਿਆਪਕ:',warn_room:'⚠ ਕਮਰਾ:',
   class_title:'ਕਲਾਸ ਸਮਾਂ-ਸਾਰਣੀ',print_class_title:'ਕਲਾਸ ਸਮਾਂ-ਸਾਰਣੀ —',
@@ -483,7 +483,7 @@ const I18N={
   chapters_title:'Sura (kwa somo)',chapters_desc:'Sura huonekana kama orodha ya kushuka wakati wa kujaza Shajara ya Mwalimu — haraka na thabiti.',ph_new_chapter:'Jina la sura mpya',no_chapters:'Bado hakuna sura.',
   hours_title:'Saa za Masomo',tag_config:'Usanidi',hours_desc:'Nafasi za vipindi hutengenezwa kutoka hapa na kuhifadhiwa katika hifadhidata.',
   lbl_school_name:'Jina la shule (huonekana kwenye shajara na ripoti)',lbl_wd_start:'Mwanzo wa siku za wiki',lbl_wd_end:'Mwisho wa siku za wiki',lbl_sat_end:'Mwisho wa Jumamosi',lbl_sat_start:'Mwanzo wa Jumamosi',lbl_period_min:'Kipindi (dakika)',lbl_break_after:'Mapumziko baada ya kipindi kipi',lbl_break_min:'Mapumziko (dakika)',
-  weekdays:'Siku za wiki',saturdays:'Jumamosi',periods_word:'vipindi',weekday_slots:'Nafasi za siku za wiki:',saturday_slots:'Nafasi za Jumamosi:',brk:'Mapumziko',
+  weekdays:'Siku za wiki',saturdays:'Jumamosi',periods_word:'vipindi',weekday_slots:'Nafasi za siku za wiki:',saturday_slots:'Nafasi za Jumamosi:',sat_timings_title:'Muda wa Jumamosi (tofauti)',sat_timings_hint:'Wazi = sawa na siku ya wiki',brk:'Mapumziko',
   builder_title:'Weka Vipindi vya Kila Siku — Kijenzi',builder_desc:'Somo + mwalimu + chumba kwa kila darasa/kipindi. Huhifadhiwa papo hapo; migongano ya mwalimu na chumba huangaziwa.',
   th_class_period:'Darasa \\ Kipindi',opt_free:'— huru —',opt_teacher:'mwalimu…',opt_room:'chumba…',btn_autogen_all:'⚡ Tengeneza vyote kiotomatiki',warn_teacher:'⚠ mwalimu:',warn_room:'⚠ chumba:',
   class_title:'Ratiba ya Darasa',print_class_title:'Ratiba ya Darasa —',
@@ -530,7 +530,7 @@ const I18N={
   chapters_title:'Surori (bisa darasi)',chapters_desc:'Surori suna bayyana a matsayin jerin lokacin cika Diary na Malami — mai sauri da daidaito.',ph_new_chapter:'Sunan sabuwar sura',no_chapters:'Har yanzu babu surori.',
   hours_title:'Sa\'o\'in Karatu',tag_config:'Saiti',hours_desc:'Wuraren lokuta suna fitowa daga wannan kuma a ajiye su a bayanai.',
   lbl_school_name:'Sunan makaranta (ana nunawa a diary da rahotanni)',lbl_wd_start:'Farkon ranakun mako',lbl_wd_end:'Ƙarshen ranakun mako',lbl_sat_end:'Ƙarshen Asabar',lbl_sat_start:'Farkon Asabar',lbl_period_min:'Lokaci (minti)',lbl_break_after:'Hutu bayan lokaci na nawa',lbl_break_min:'Hutu (minti)',
-  weekdays:'Ranakun mako',saturdays:'Asabar',periods_word:'lokuta',weekday_slots:'Wuraren ranakun mako:',saturday_slots:'Wuraren Asabar:',brk:'Hutu',
+  weekdays:'Ranakun mako',saturdays:'Asabar',periods_word:'lokuta',weekday_slots:'Wuraren ranakun mako:',saturday_slots:'Wuraren Asabar:',sat_timings_title:'Lokacin Asabar (daban)',sat_timings_hint:'Fanko = kamar ranar mako',brk:'Hutu',
   builder_title:'Saita Darussa na Yau da Kullum — Ginin',builder_desc:'Darasi + malami + daki ga kowane aji/lokaci. Ana ajiye nan take; ana haskaka karon malami da daki.',
   th_class_period:'Aji \\ Lokaci',opt_free:'— babu —',opt_teacher:'malami…',opt_room:'daki…',btn_autogen_all:'⚡ Ƙirƙiri duka kai tsaye',warn_teacher:'⚠ malami:',warn_room:'⚠ daki:',
   class_title:'Jadawalin Aji',print_class_title:'Jadawalin Aji —',
@@ -577,7 +577,7 @@ const I18N={
   chapters_title:'Àwọn orí (fún kókó)',chapters_desc:'Àwọn orí máa ń hàn gẹ́gẹ́ bí àtòjọ nígbà tí a ń kún Ìwé Olùkọ́ — yára àti déédéé.',ph_new_chapter:'Orúkọ orí tuntun',no_chapters:'Kò sí orí síbẹ̀.',
   hours_title:'Àkókò Ẹ̀kọ́',tag_config:'Ìṣètò',hours_desc:'Àwọn àyè àkókò ni a ṣẹda láti ibi yìí tí a sì fipamọ́ sínú dátà.',
   lbl_school_name:'Orúkọ ilé-ìwé (yóò hàn lórí ìwé àti ìjábọ̀)',lbl_wd_start:'Ìbẹ̀rẹ̀ ọjọ́ ọ̀sẹ̀',lbl_wd_end:'Ìparí ọjọ́ ọ̀sẹ̀',lbl_sat_end:'Ìparí Ọjọ́ Àbámẹ́ta',lbl_sat_start:'Ìbẹ̀rẹ̀ Ọjọ́ Àbámẹ́ta',lbl_period_min:'Àkókò (ìṣẹ́jú)',lbl_break_after:'Ìsinmi lẹ́yìn àkókò wo',lbl_break_min:'Ìsinmi (ìṣẹ́jú)',
-  weekdays:'Ọjọ́ ọ̀sẹ̀',saturdays:'Ọjọ́ Àbámẹ́ta',periods_word:'àkókò',weekday_slots:'Àwọn àyè ọjọ́ ọ̀sẹ̀:',saturday_slots:'Àwọn àyè Ọjọ́ Àbámẹ́ta:',brk:'Ìsinmi',
+  weekdays:'Ọjọ́ ọ̀sẹ̀',saturdays:'Ọjọ́ Àbámẹ́ta',periods_word:'àkókò',weekday_slots:'Àwọn àyè ọjọ́ ọ̀sẹ̀:',saturday_slots:'Àwọn àyè Ọjọ́ Àbámẹ́ta:',sat_timings_title:'Àkókò Ọjọ́ Àbámẹ́ta (ọ̀tọ̀)',sat_timings_hint:'Òfo = bíi ọjọ́ ọ̀sẹ̀',brk:'Ìsinmi',
   builder_title:'Ṣètò Ẹ̀kọ́ Ojoojúmọ́ — Akọ́lé',builder_desc:'Kókó + olùkọ́ + yàrá fún kíláàsì/àkókò kọ̀ọ̀kan. A fipamọ́ lẹ́sẹ̀kẹsẹ̀; ìforígbárí olùkọ́ àti yàrá ni a tẹnumọ́.',
   th_class_period:'Kíláàsì \\ Àkókò',opt_free:'— òfo —',opt_teacher:'olùkọ́…',opt_room:'yàrá…',btn_autogen_all:'⚡ Ṣẹda gbogbo fúnra rẹ̀',warn_teacher:'⚠ olùkọ́:',warn_room:'⚠ yàrá:',
   class_title:'Àkọ́kọ́ Kíláàsì',print_class_title:'Àkọ́kọ́ Kíláàsì —',
@@ -624,7 +624,7 @@ const I18N={
   chapters_title:'Isi (kwa isiokwu)',chapters_desc:'Isi na-egosi dị ka ndepụta mgbe ị na-ejupụta Akwụkwọ Onye nkụzi — ngwa ngwa na nkwekọ.',ph_new_chapter:'Aha isi ọhụrụ',no_chapters:'Enwebeghị isi.',
   hours_title:'Oge Agụmakwụkwọ',tag_config:'Nhazi',hours_desc:'A na-emepụta oghere oge site na nke a ma chekwaa ya na nchekwa data.',
   lbl_school_name:'Aha ụlọ akwụkwọ (na-egosi na akwụkwọ na akụkọ)',lbl_wd_start:'Mmalite ụbọchị izu',lbl_wd_end:'Njedebe ụbọchị izu',lbl_sat_end:'Njedebe Satọde',lbl_sat_start:'Mmalite Satọde',lbl_period_min:'Oge (nkeji)',lbl_break_after:'Ezumike mgbe oge ole gasịrị',lbl_break_min:'Ezumike (nkeji)',
-  weekdays:'Ụbọchị izu',saturdays:'Satọde',periods_word:'oge',weekday_slots:'Oghere ụbọchị izu:',saturday_slots:'Oghere Satọde:',brk:'Ezumike',
+  weekdays:'Ụbọchị izu',saturdays:'Satọde',periods_word:'oge',weekday_slots:'Oghere ụbọchị izu:',saturday_slots:'Oghere Satọde:',sat_timings_title:'Oge Satọde (iche)',sat_timings_hint:'Ọ tọgbọrọ chakoo = ka ụbọchị izu',brk:'Ezumike',
   builder_title:'Hazie Ihe Ọmụmụ Kwa Ụbọchị — Onye Wuru',builder_desc:'Isiokwu + onye nkụzi + ọnụụlọ kwa klas/oge. A na-echekwa ozugbo; a na-egosi esemokwu onye nkụzi na ọnụụlọ.',
   th_class_period:'Klas \\ Oge',opt_free:'— efu —',opt_teacher:'onye nkụzi…',opt_room:'ọnụụlọ…',btn_autogen_all:'⚡ Mepụta niile na-akpaghị aka',warn_teacher:'⚠ onye nkụzi:',warn_room:'⚠ ọnụụlọ:',
   class_title:'Nhazi Oge Klas',print_class_title:'Nhazi Oge Klas —',
@@ -758,14 +758,16 @@ function csvNums(s){return String(s||'').split(',').map(x=>parseInt(x,10)).filte
 function WD(){const w=csvNums(config.working_days);return w.length?w:[0,1,2,3,4,5];}
 function slotsFor(di){
   if(!WD().includes(di))return [];
-  const end=di===5?config.saturday_end:config.weekday_end;
-  const durs=csvNums(config.period_durations);
-  const shortAfter=new Set(csvNums(config.short_break_after));
-  const shortMin=+config.short_break_minutes||0;
-  const lunchAfter=(config.lunch_after!=null?+config.lunch_after:+config.break_after_period);
-  const lunchMin=(config.lunch_minutes!=null?+config.lunch_minutes:+config.break_minutes)||0;
-  let s=[],t=(di===5&&config.saturday_start)?config.saturday_start:config.weekday_start,i=0;
-  while(true){const dur=durs[i]||config.period_minutes;const e=addMin(t,dur);
+  const sat=di===5;
+  const end=sat?config.saturday_end:config.weekday_end;
+  const periodMin=+(sat&&config.sat_period_minutes!=null?config.sat_period_minutes:config.period_minutes);
+  const durs=csvNums(sat&&config.sat_period_durations!=null?config.sat_period_durations:config.period_durations);
+  const shortAfter=new Set(csvNums(sat&&config.sat_short_break_after!=null?config.sat_short_break_after:config.short_break_after));
+  const shortMin=+(sat&&config.sat_short_break_minutes!=null?config.sat_short_break_minutes:config.short_break_minutes)||0;
+  const lunchAfter=+(sat&&config.sat_lunch_after!=null?config.sat_lunch_after:(config.lunch_after!=null?config.lunch_after:config.break_after_period));
+  const lunchMin=+(sat&&config.sat_lunch_minutes!=null?config.sat_lunch_minutes:(config.lunch_minutes!=null?config.lunch_minutes:config.break_minutes))||0;
+  let s=[],t=(sat&&config.saturday_start)?config.saturday_start:config.weekday_start,i=0;
+  while(true){const dur=durs[i]||periodMin;const e=addMin(t,dur);
     s.push({i,label:"P"+(i+1),start:t,end:e,brk:false});i++;
     if(e>=end||i>=12)break;t=e;
     if(lunchAfter&&i===lunchAfter&&lunchMin>0){const be=addMin(t,lunchMin);s.push({brk:true,kind:'lunch',label:"Lunch",start:t,end:be});t=be;}
@@ -1040,6 +1042,14 @@ function hours(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new
      <div><label>${t('lbl_short_after')}</label><input value="${config.short_break_after||''}" placeholder="${t('hint_short_after')}" style="width:160px" onchange="cfg('short_break_after',this.value)"></div>
      <div><label>${t('lbl_short_min')}</label><input type="number" value="${config.short_break_minutes||0}" style="width:90px" onchange="cfg('short_break_minutes',+this.value||0)"></div></div>
    <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:280px"><label>${t('lbl_custom_dur')}</label><input style="width:100%" value="${config.period_durations||''}" placeholder="${t('ph_custom_dur')}" onchange="cfg('period_durations',this.value)"></div></div>
+   ${wds.has(5)?`<div style="margin:8px 0 6px;padding-top:8px;border-top:1px dashed #e2e8f0"><b class="small" style="color:#5a3ec8">🗓 ${t('sat_timings_title')}</b> <span class="small" style="color:#8a93b4">— ${t('sat_timings_hint')}</span></div>
+   <div class="row" style="margin-bottom:8px">
+     <div><label>${t('lbl_period_min')}</label><input type="number" value="${config.sat_period_minutes??config.period_minutes}" style="width:80px" onchange="cfg('sat_period_minutes',+this.value||null)"></div>
+     <div><label>${t('lbl_lunch_after')}</label><input type="number" value="${config.sat_lunch_after??config.lunch_after??config.break_after_period??''}" style="width:80px" onchange="cfg('sat_lunch_after',+this.value||null)"></div>
+     <div><label>${t('lbl_lunch_min')}</label><input type="number" value="${config.sat_lunch_minutes??config.lunch_minutes??config.break_minutes??''}" style="width:80px" onchange="cfg('sat_lunch_minutes',+this.value||0)"></div>
+     <div><label>${t('lbl_short_after')}</label><input value="${config.sat_short_break_after??config.short_break_after??''}" placeholder="${t('hint_short_after')}" style="width:160px" onchange="cfg('sat_short_break_after',this.value)"></div>
+     <div><label>${t('lbl_short_min')}</label><input type="number" value="${config.sat_short_break_minutes??config.short_break_minutes??0}" style="width:90px" onchange="cfg('sat_short_break_minutes',+this.value||0)"></div></div>
+   <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:280px"><label>${t('lbl_custom_dur')} · ${t('saturdays')}</label><input style="width:100%" value="${config.sat_period_durations??config.period_durations??''}" placeholder="${t('ph_custom_dur')}" onchange="cfg('sat_period_durations',this.value)"></div></div>`:''}
    <div class="hours-row"><div><b>${t('weekdays')}</b><br><span class="small">${wd.filter(s=>!s.brk).length} ${t('periods_word')} · ${config.period_minutes} min</span></div><div><b>${config.weekday_start} – ${config.weekday_end}</b></div></div>
    <div class="hours-row sat"><div><b>${t('saturdays')}</b><br><span class="small">${wds.has(5)?slotsFor(5).filter(s=>!s.brk).length+' '+t('periods_word'):'—'}</span></div><div><b>${(config.saturday_start||config.weekday_start)} – ${config.saturday_end}</b></div></div>
    <div style="margin-top:10px"><b class="small">${t('weekday_slots')}</b><br>${wd.map(s=>`<span class="tag" ${s.brk?(s.kind==='lunch'?'style="background:#fef3c7;color:#92400e"':'style="background:#e0f2fe;color:#075985"'):''}>${s.brk?(s.kind==='lunch'?'🍽 '+t('lunch_word'):'☕ '+t('brk')):s.label} ${s.start}-${s.end}</span>`).join("")}</div>
