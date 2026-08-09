@@ -580,6 +580,50 @@ app.post('/api/timetable/substitute', h(async (req,res)=>{
   res.json({ok:true});
 }));
 
+// ---------- DATE-BASED SUBSTITUTION (proxy by calendar date + range) ----------
+function dowFromISO(s){ const p=String(s).split('-').map(Number); if(p.length<3||p.some(isNaN)) return 0; const dt=new Date(Date.UTC(p[0],p[1]-1,p[2])); return (dt.getUTCDay()+6)%7; }
+function datesBetween(from,to){ const out=[]; const a=new Date(from+'T00:00:00Z'), b=new Date(to+'T00:00:00Z'); let g=0; for(let d=a; d<=b && g<62; d.setUTCDate(d.getUTCDate()+1),g++) out.push(d.toISOString().slice(0,10)); return out; }
+// list the absent teacher's periods across a date range, with free-teacher candidates + any saved assignment
+app.get('/api/datesub/fetch', h(async (req,res)=>{
+  const sid=req.sid, teacher_id=Number(req.query.teacher_id), from=req.query.from, to=req.query.to;
+  if(!teacher_id||!from||!to){ res.status(400).json({error:'Select a teacher and a date range.'}); return; }
+  if(to<from){ res.status(400).json({error:'End date is before start date.'}); return; }
+  const dates=datesBetween(from,to); if(dates.length>31){ res.status(400).json({error:'Date range too large (max 31 days).'}); return; }
+  const wdays=new Set(workingDaysArr(sid));
+  const allTeachers=await q('SELECT id,name FROM tt_teacher WHERE school_id=? ORDER BY name',[sid]);
+  const cells=await q('SELECT day_of_week,period_index,teacher_id FROM tt_timetable WHERE teacher_id IS NOT NULL AND school_id=?',[sid]);
+  const busy={}; cells.forEach(c=>{ const k=c.day_of_week+'_'+c.period_index; (busy[k]=busy[k]||new Set()).add(c.teacher_id); });
+  const myCells=await q(`SELECT tt.day_of_week,tt.period_index,tt.class_id,tt.subject_id,c.name cls,s.name subj
+     FROM tt_timetable tt JOIN tt_class c ON c.id=tt.class_id LEFT JOIN tt_subject s ON s.id=tt.subject_id
+     WHERE tt.teacher_id=? AND tt.school_id=?`,[teacher_id,sid]);
+  const byDow={}; myCells.forEach(c=>{ (byDow[c.day_of_week]=byDow[c.day_of_week]||[]).push(c); });
+  const ex=await q('SELECT sub_date,class_id,period_index,proxy_teacher_id,is_free FROM tt_datesub WHERE school_id=? AND absent_teacher_id=? AND sub_date>=? AND sub_date<=?',[sid,teacher_id,from,to]);
+  const exMap={}; ex.forEach(e=>exMap[e.sub_date+'_'+e.class_id+'_'+e.period_index]=e);
+  const out=[];
+  for(const date of dates){ const dow=dowFromISO(date); if(!wdays.has(dow)) continue; const list=byDow[dow]||[]; if(!list.length) continue;
+    const slots=teachingSlots(dow,sid);
+    for(const c of list){ const busySet=busy[dow+'_'+c.period_index]||new Set();
+      const free=allTeachers.filter(t=>t.id!==teacher_id && !busySet.has(t.id));
+      const e=exMap[date+'_'+c.class_id+'_'+c.period_index]; const sl=slots[c.period_index];
+      out.push({ sub_date:date, dow, period_index:c.period_index, class_id:c.class_id, cls:c.cls, subject_id:c.subject_id, subj:c.subj||'',
+        start:sl?sl.start:'', end:sl?sl.end:'', free:free.map(f=>({id:f.id,name:f.name})),
+        proxy_teacher_id: e?e.proxy_teacher_id:null, is_free: e?+e.is_free:0 }); }
+  }
+  res.json({periods:out});
+}));
+// save/clear one date-based assignment (proxy teacher, or mark free, or clear)
+app.post('/api/datesub', h(async (req,res)=>{
+  const sid=req.sid, b=req.body; const sub_date=b.sub_date, class_id=b.class_id, period_index=b.period_index;
+  if(!sub_date||class_id==null||period_index==null){ res.status(400).json({error:'missing fields'}); return; }
+  const is_free=b.is_free?1:0; const proxy=(!is_free && b.proxy_teacher_id)?Number(b.proxy_teacher_id):null;
+  if(!is_free && !proxy){ await run('DELETE FROM tt_datesub WHERE school_id=? AND sub_date=? AND class_id=? AND period_index=?',[sid,sub_date,class_id,period_index]); res.json({ok:true,cleared:true}); return; }
+  await run(`INSERT INTO tt_datesub(school_id,sub_date,class_id,period_index,absent_teacher_id,proxy_teacher_id,is_free,created_at)
+     VALUES(?,?,?,?,?,?,?,now()::text)
+     ON CONFLICT(school_id,sub_date,class_id,period_index) DO UPDATE SET absent_teacher_id=excluded.absent_teacher_id,proxy_teacher_id=excluded.proxy_teacher_id,is_free=excluded.is_free`,
+     [sid,sub_date,class_id,period_index,b.absent_teacher_id||null,proxy,is_free]);
+  res.json({ok:true});
+}));
+
 // ---------- LIVE MONITOR ----------
 app.get('/api/timetable/monitor', h(async (req,res)=>{
   let day,hhmm;

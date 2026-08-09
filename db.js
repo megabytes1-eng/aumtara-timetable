@@ -144,6 +144,11 @@ async function init() {
   // Timetable windows: bind a saved version to a term + capture its School Hours config
   await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS term_id INTEGER`);
   await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS config_json TEXT`);
+  // Date-based substitution / proxy (specific calendar dates, not just weekday)
+  await run(`CREATE TABLE IF NOT EXISTS tt_datesub (
+     id SERIAL PRIMARY KEY, school_id INTEGER, sub_date TEXT, class_id INTEGER, period_index INTEGER,
+     absent_teacher_id INTEGER, proxy_teacher_id INTEGER, is_free INTEGER DEFAULT 0, created_at TEXT,
+     UNIQUE(school_id, sub_date, class_id, period_index))`);
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived
