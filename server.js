@@ -481,18 +481,24 @@ function shuffleStable(arr, seed){ // deterministic light shuffle so subjects sp
   return a;
 }
 
-// ---------- TIMETABLE VERSIONS (saved snapshots) ----------
+// ---------- TIMETABLE VERSIONS (saved snapshots) = per-term "windows" ----------
+const HOURS_FIELDS=['weekday_start','weekday_end','saturday_start','saturday_end','period_minutes','period_durations','lunch_after','lunch_minutes','short_break_after','short_break_minutes','working_days','num_periods','sat_num_periods','sat_period_minutes','sat_period_durations','sat_lunch_after','sat_lunch_minutes','sat_short_break_after','sat_short_break_minutes','academic_session'];
 app.get('/api/versions', h(async (req,res)=>{
-  res.json(await q('SELECT id,name,session,created_at,cell_count FROM tt_snapshot WHERE school_id=? ORDER BY id DESC',[req.sid]));
+  res.json(await q(`SELECT s.id,s.name,s.session,s.created_at,s.cell_count,s.term_id,(s.config_json IS NOT NULL) AS has_config, t.name AS term_name
+     FROM tt_snapshot s LEFT JOIN tt_term t ON t.id=s.term_id WHERE s.school_id=? ORDER BY s.id DESC`,[req.sid]));
 }));
-// save the current live timetable as a named version
+// save the current live timetable + School Hours as a named version, bound to the active term
 app.post('/api/versions', h(async (req,res)=>{
   const sid=req.sid;
   const name=(req.body.name||'').trim()||('Version '+((await q1('SELECT COUNT(*)::int n FROM tt_snapshot WHERE school_id=?',[sid])).n+1));
-  const session=(getConfig(sid)||{}).academic_session||null;
+  const cfg=getConfig(sid)||{};
+  const term=await q1('SELECT id,name FROM tt_term WHERE school_id=? AND active=1 ORDER BY id LIMIT 1',[sid]);
+  const session=(term&&term.name)||cfg.academic_session||null;
+  const configSnap={}; HOURS_FIELDS.forEach(k=>configSnap[k]=cfg[k]);
+  const config_json=JSON.stringify(configSnap);
   const cells=await q('SELECT class_id,day_of_week,period_index,subject_id,teacher_id,room_id FROM tt_timetable WHERE school_id=?',[sid]);
   const snap=await tx(async (cq,cq1)=>{
-    const s=await cq1('INSERT INTO tt_snapshot(name,session,created_at,cell_count,school_id) VALUES(?,?,now()::text,?,?) RETURNING id',[name,session,cells.length,sid]);
+    const s=await cq1('INSERT INTO tt_snapshot(name,session,created_at,cell_count,school_id,term_id,config_json) VALUES(?,?,now()::text,?,?,?,?) RETURNING id',[name,session,cells.length,sid,(term&&term.id)||null,config_json]);
     for(const c of cells)
       await cq('INSERT INTO tt_snapshot_cell(snapshot_id,class_id,day_of_week,period_index,subject_id,teacher_id,room_id) VALUES(?,?,?,?,?,?,?)',
         [s.id,c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id]);
@@ -500,7 +506,7 @@ app.post('/api/versions', h(async (req,res)=>{
   });
   res.json({ok:true, id:snap.id, name, cells:cells.length});
 }));
-// restore a saved version → overwrites the live timetable (only if the snapshot belongs to this school)
+// restore a saved version → overwrites the live timetable AND its School Hours (window switch), and re-activates its term
 app.post('/api/versions/:id/restore', h(async (req,res)=>{
   const id=Number(req.params.id), sid=req.sid;
   const snap=await q1('SELECT * FROM tt_snapshot WHERE id=? AND school_id=?',[id,sid]);
@@ -512,7 +518,14 @@ app.post('/api/versions/:id/restore', h(async (req,res)=>{
       await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id) VALUES(?,?,?,?,?,?,?)',
         [c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id,sid]);
   });
-  res.json({ok:true, cells:cells.length});
+  // restore the School Hours captured with this window
+  let hoursRestored=false;
+  if(snap.config_json){ try{ const cs=JSON.parse(snap.config_json); const ks=HOURS_FIELDS.filter(k=>k in cs);
+    if(ks.length){ await run(`UPDATE tt_config SET ${ks.map(k=>k+'=?').join(',')} WHERE school_id=?`,[...ks.map(k=>cs[k]), sid]); hoursRestored=true; } }catch(e){} }
+  // re-activate this window's term (switch the active term to match)
+  if(snap.term_id){ await run('UPDATE tt_term SET active=CASE WHEN id=? THEN 1 ELSE 0 END WHERE school_id=?',[snap.term_id, sid]); await syncActiveTerm(sid); }
+  await loadConfig(sid);
+  res.json({ok:true, cells:cells.length, hoursRestored});
 }));
 app.put('/api/versions/:id', h(async (req,res)=>{
   if(req.body.name!==undefined) await run('UPDATE tt_snapshot SET name=? WHERE id=? AND school_id=?',[req.body.name, req.params.id, req.sid]);
