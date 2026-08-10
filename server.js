@@ -423,6 +423,23 @@ app.delete('/api/timetable/cell', h(async (req,res)=>{
   res.json({ok:true});
 }));
 
+// ---------- SUBJECT PLACEMENT RULES (honoured by auto-generate) ----------
+app.get('/api/rules', h(async (req,res)=>{
+  res.json(await q('SELECT * FROM tt_rule WHERE school_id=? ORDER BY id DESC',[req.sid]));
+}));
+app.post('/api/rules', h(async (req,res)=>{
+  const b=req.body||{};
+  const type=(b.type==='not_consecutive')?'not_consecutive':'not_same_day';
+  if(!b.subject_a_id||!b.subject_b_id||+b.subject_a_id===+b.subject_b_id){ res.status(400).json({error:'pick two different subjects'}); return; }
+  const r=await q1('INSERT INTO tt_rule(school_id,type,subject_a_id,subject_b_id,class_id,active,created_at) VALUES(?,?,?,?,?,1,now()::text) RETURNING id',
+    [req.sid, type, +b.subject_a_id, +b.subject_b_id, b.class_id?+b.class_id:null]);
+  res.json({ok:true,id:r.id});
+}));
+app.delete('/api/rules/:id', h(async (req,res)=>{
+  await run('DELETE FROM tt_rule WHERE id=? AND school_id=?',[req.params.id, req.sid]);
+  res.json({ok:true});
+}));
+
 // ---------- AUTO-GENERATE (quota-aware, room-aware) ----------
 app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const sid=req.sid;
@@ -444,6 +461,17 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const capOk=(t,di,pi)=> (dayCount[t+'_'+di]||0)<capDay[t] && predRun(t,di,pi)<=capCons[t];
   const teachersForSubject=sid=>tmap.filter(m=>m.subject_id===sid).map(m=>m.teacher_id);
 
+  // subject placement rules (not_same_day / not_consecutive), resolved per class
+  const allRules=await q('SELECT * FROM tt_rule WHERE school_id=? AND active=1',[sid]);
+  const rkey=(a,b)=>a<b?a+'_'+b:b+'_'+a;
+  const clsRules={};
+  classes.forEach(c=>{
+    const rs=allRules.filter(r=>r.class_id==null||r.class_id===c.id);
+    const sameDay=new Set(), notAdj=new Set();
+    rs.forEach(r=>{ const k=rkey(r.subject_a_id,r.subject_b_id); if(r.type==='not_consecutive') notAdj.add(k); else sameDay.add(k); });
+    clsRules[c.id]={sameDay,notAdj};
+  });
+
   // build per-class subject pool honouring quota (fallback: even rotation)
   function poolFor(cid, totalSlots){
     const qs=quotas.filter(x=>x.class_id===cid && activeSet.has(x.subject_id));
@@ -456,15 +484,30 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
 
   // compute the assignment in memory, then persist in one transaction
   let totalSlots=0; DAYS.forEach((_,di)=>totalSlots+=teachingSlots(di, sid).length);
-  const pool={}; classes.forEach(c=>{ pool[c.id]=shuffleStable(poolFor(c.id,totalSlots),c.id); });
-  const ptr={}; classes.forEach(c=>ptr[c.id]=0);
+  const remaining={}; classes.forEach(c=>{ remaining[c.id]=shuffleStable(poolFor(c.id,totalSlots),c.id).slice(); });
+  const daySubs={}, prevSub={};   // per class+day: subjects already placed, and the previous period's subject
+  function pickSubject(cid,di,pi){
+    const rem=remaining[cid]; if(!rem.length) return null;
+    const R=clsRules[cid]; const ds=daySubs[cid+'_'+di]; const prev=prevSub[cid+'_'+di];
+    let idx=-1;
+    for(let i=0;i<rem.length;i++){ const s=rem[i]; let ok=true;
+      if(ds){ for(const x of ds){ if(R.sameDay.has(rkey(s,x))){ ok=false; break; } } }
+      if(ok && prev!=null && R.notAdj.has(rkey(s,prev))) ok=false;
+      if(ok){ idx=i; break; }
+    }
+    if(idx<0) idx=0;   // nothing satisfies the rules → take next to avoid leaving a gap
+    const s=rem.splice(idx,1)[0];
+    (daySubs[cid+'_'+di]=daySubs[cid+'_'+di]||new Set()).add(s);
+    prevSub[cid+'_'+di]=s;
+    return s;
+  }
   const toInsert=[];
   DAYS.forEach((_,di)=>{
     const slots=teachingSlots(di, sid);
     slots.forEach((_,pi)=>{
       const usedT=new Set(), usedR=new Set();
       classes.forEach(c=>{
-        const subjId=pool[c.id][ptr[c.id]++];
+        const subjId=pickSubject(c.id,di,pi);
         if(subjId==null) return;   // class has no schedulable subjects
         let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
         opts.sort((a,b)=>(load[a]||0)-(load[b]||0));

@@ -153,6 +153,11 @@ async function init() {
   await run(`CREATE TABLE IF NOT EXISTS tt_leave (
      id SERIAL PRIMARY KEY, school_id INTEGER, teacher_id INTEGER,
      date_from TEXT, date_to TEXT, reason TEXT, status TEXT DEFAULT 'pending', created_at TEXT)`);
+  // Subject placement rules honoured by auto-generate: type = not_same_day | not_consecutive.
+  // class_id NULL = applies to every class; otherwise only that class.
+  await run(`CREATE TABLE IF NOT EXISTS tt_rule (
+     id SERIAL PRIMARY KEY, school_id INTEGER, type TEXT, subject_a_id INTEGER, subject_b_id INTEGER,
+     class_id INTEGER, active INTEGER DEFAULT 1, created_at TEXT)`);
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived
