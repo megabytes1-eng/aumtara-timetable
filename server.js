@@ -63,14 +63,15 @@ app.get('/share/:token', async (req,res)=>{
     const cells=await q('SELECT day_of_week,period_index,subject_id,teacher_id,room_id,week_index FROM tt_timetable WHERE class_id=? AND school_id=?',[link.target_id,sid]);
     const DN=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
     const wd=workingDaysArr(sid); let maxP=1; wd.forEach(d=>{maxP=Math.max(maxP, teachingSlots(d,sid).length);});
-    const cfg=getConfig(sid)||{}; const cyc=Math.max(1,Math.min(4,parseInt(cfg.cycle_weeks,10)||1));
+    const cfg=getConfig(sid)||{}; const cyc = rotMode(sid) ? 1 : Math.max(1,Math.min(4,parseInt(cfg.cycle_weeks,10)||1));
     const wkLabels=(cfg.week_labels||'').split(',').map(x=>x.trim()).filter(Boolean);
     const wkName=i=> wkLabels[i] || (cyc===2?['Week A','Week B'][i] : 'Week '+(i+1));
+    const dayLbl = d => rotMode(sid) ? rotLabel(sid,d) : (DN[d]||('Day '+d));
     function gridFor(wk){
       const cmap={}; cells.filter(c=>(c.week_index||0)===wk).forEach(c=>cmap[c.day_of_week+'_'+c.period_index]=c);
       let head='<th>Day</th>'; for(let p=0;p<maxP;p++) head+='<th>P'+(p+1)+'</th>';
       let rows='';
-      for(const d of wd){ const ts=teachingSlots(d,sid); let r='<td class="ph">'+esc(DN[d]||('Day '+d))+'</td>';
+      for(const d of wd){ const ts=teachingSlots(d,sid); let r='<td class="ph">'+esc(dayLbl(d))+'</td>';
         for(let p=0;p<maxP;p++){ if(p>=ts.length){ r+='<td></td>'; continue; } const c=cmap[d+'_'+p];
           if(c&&c.subject_id){ r+='<td><div class="subj">'+esc(subs[c.subject_id]||'')+'</div><div class="tch">'+esc(tch[c.teacher_id]||'—')+(c.room_id?' · '+esc(rms[c.room_id]||''):'')+'</div></td>'; }
           else r+='<td class="free">—</td>'; }
@@ -345,7 +346,17 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat'];
 const addMin = (hhmm,min)=>{const[h,m]=hhmm.split(':').map(Number);const d=new Date(2020,0,1,h,m+min);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
 const getConfig = (sid) => getConfigCached(sid);
 const csvNums = s => String(s||'').split(',').map(x=>parseInt(x,10)).filter(n=>!isNaN(n));
-function workingDaysArr(sid){ const c=getConfig(sid)||{}; const w=csvNums(c.working_days); return w.length?w:[0,1,2,3,4,5]; }
+// Day-Rotation: N rotation days (A..), each its own daily plan; day_of_week 0..N-1 = rotation day index.
+function rotDays(sid){ const c=getConfig(sid)||{}; const n=parseInt(c.rot_days,10)||0; return (n>=2&&n<=8)?n:0; }
+function rotMode(sid){ return rotDays(sid)>0; }
+function rotLabel(sid,i){ const c=getConfig(sid)||{}; const L=(c.rot_labels||'').split(',').map(x=>x.trim()).filter(Boolean); return L[i] || ('Day '+String.fromCharCode(65+i)); }
+// which rotation day is active today, from the anchor date (counts working/calendar days since cycle_start mod N)
+function todayRotDay(sid){ const c=getConfig(sid)||{}; const n=rotDays(sid); if(!n||!c.cycle_start) return 0;
+  const start=new Date(c.cycle_start+'T00:00:00'); if(isNaN(start.getTime())) return 0;
+  const nowD=new Date(); const today=new Date(nowD.getFullYear(),nowD.getMonth(),nowD.getDate());
+  let count=0; const d=new Date(start); for(let i=0;i<800 && d<=today;i++){ const wd=(d.getDay()+6)%7; if(wd<6) count++; d.setDate(d.getDate()+1); }  // skip Sundays only
+  return ((count-1)%n+n)%n; }
+function workingDaysArr(sid){ const rd=rotDays(sid); if(rd) return Array.from({length:rd},(_,i)=>i); const c=getConfig(sid)||{}; const w=csvNums(c.working_days); return w.length?w:[0,1,2,3,4,5]; }
 // which cycle-week is active today, from the rotation anchor date (0 when rotation is off)
 function curCycleIdx(sid){
   const c=getConfig(sid)||{};
@@ -375,7 +386,7 @@ function slotsForDay(dayIdx, sid){
   const c=getConfig(sid);
   if(!c) return [];
   if(!workingDaysArr(sid).includes(dayIdx)) return [];   // non-working day → no periods
-  const sat=dayIdx===5;
+  const sat = rotMode(sid) ? false : (dayIdx===5);   // rotation days all use the uniform weekday layout
   const end=sat?c.saturday_end:c.weekday_end;
   const start=(sat&&c.saturday_start)?c.saturday_start:c.weekday_start;
   const periodMin=+(sat&&c.sat_period_minutes!=null?c.sat_period_minutes:c.period_minutes);
@@ -516,6 +527,8 @@ app.put('/api/timetable/config', h(async (req,res)=>{
   if(b.week_labels!==undefined) await run(`UPDATE tt_config SET week_labels=? WHERE school_id=?`,[(b.week_labels||'').trim()||null, req.sid]);
   if(b.cycle_start!==undefined) await run(`UPDATE tt_config SET cycle_start=? WHERE school_id=?`,[(b.cycle_start||'').trim()||null, req.sid]);
   if(b.cycle_mode!==undefined) await run(`UPDATE tt_config SET cycle_mode=? WHERE school_id=?`,[b.cycle_mode==='day'?'day':'week', req.sid]);
+  if(b.rot_days!==undefined){ const n=parseInt(b.rot_days,10)||0; await run(`UPDATE tt_config SET rot_days=? WHERE school_id=?`,[(n>=2&&n<=8)?n:0, req.sid]); }
+  if(b.rot_labels!==undefined) await run(`UPDATE tt_config SET rot_labels=? WHERE school_id=?`,[(b.rot_labels||'').trim()||null, req.sid]);
   await loadConfig(req.sid);
   res.json(getConfig(req.sid));
 }));
@@ -651,8 +664,9 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const optMorning=(+optCfg.opt_morning||0)!==0;
   const optGap=(+optCfg.opt_gap||0)!==0;
   const optSolver=(+optCfg.opt_solver||0)!==0;
-  const cycleWeeks=Math.max(1,Math.min(4, parseInt(optCfg.cycle_weeks,10)||1));   // number of distinct weeks in the rotation
-  const slotCount={}; DAYS.forEach((_,di)=>{ slotCount[di]=teachingSlots(di,sid).length; });
+  const cycleWeeks= rotMode(sid) ? 1 : Math.max(1,Math.min(4, parseInt(optCfg.cycle_weeks,10)||1));   // day-rotation uses a single week (days = rotation days)
+  const dayList = workingDaysArr(sid);   // rotation mode → [0..rotDays-1]; else the school's working weekdays
+  const slotCount={}; dayList.forEach(di=>{ slotCount[di]=teachingSlots(di,sid).length; });
   const maxLoad={}, capDay={}, capCons={};
   (await q('SELECT id,max_load,max_per_day,max_consecutive FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>{
     maxLoad[t.id]=t.max_load||999;
@@ -690,7 +704,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   }
 
   // compute the assignment in memory, then persist in one transaction
-  let totalSlots=0; DAYS.forEach((_,di)=>totalSlots+=teachingSlots(di, sid).length);
+  let totalSlots=0; dayList.forEach(di=>totalSlots+=teachingSlots(di, sid).length);
   const remaining={}, daySubs={}, prevSub={};   // per class: pool left; per class+day: subjects placed + previous subject
   function pickSubject(cid,di,pi){
     const rem=remaining[cid]; if(!rem.length) return null;
@@ -718,7 +732,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     clearState();
     classes.forEach(c=>{ remaining[c.id]=shuffleStable(poolFor(c.id,totalSlots), c.id + wk*1009).slice(); });   // vary shuffle per week so weeks differ
     const weekRows=[];
-    DAYS.forEach((_,di)=>{
+    dayList.forEach(di=>{
       const slots=teachingSlots(di, sid);
       slots.forEach((_,pi)=>{
         const usedT=new Set(), usedR=new Set();
@@ -1036,6 +1050,7 @@ app.get('/api/timetable/monitor', h(async (req,res)=>{
   let day,hhmm,dateStr=null; const p2=n=>String(n).padStart(2,'0');
   if(req.query.day!=null&&req.query.time){day=Number(req.query.day);hhmm=req.query.time;dateStr=req.query.date||null;}
   else{const d=new Date();day=(d.getDay()+6)%7;if(day>5)day=5;hhmm=p2(d.getHours())+':'+p2(d.getMinutes());dateStr=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+  if(req.query.day==null && rotMode(req.sid)) day=todayRotDay(req.sid);   // rotation mode: "today" is a rotation-day index
   const sid=req.sid;
   const absent={}; (await q('SELECT * FROM tt_absence WHERE school_id=?',[sid])).forEach(a=>{(absent[a.teacher_id]=absent[a.teacher_id]||new Set()).add(a.day_of_week);});
   // date-based subs for the actual date take precedence over recurring weekday subs
@@ -1134,8 +1149,10 @@ app.get('/api/export/timetable.xlsx', h(async (req,res)=>{
   const roomById={}; (await q('SELECT id,name FROM tt_room WHERE school_id=?',[sid])).forEach(r=>roomById[r.id]=r.name);
   const cellMap={}; (await q('SELECT * FROM tt_timetable WHERE school_id=?',[sid])).forEach(c=>cellMap[`${c.class_id}|${c.day_of_week}|${c.period_index}|${c.week_index||0}`]=c);
   const cellText=(c)=>{ if(!c||!c.subject_id)return ''; const s=subjById[c.subject_id]||''; const t=c.teacher_id?(tchById[c.teacher_id]||''):''; const r=c.room_id?(roomById[c.room_id]||''):''; return s+(t?'\n'+t:'')+(r?'\n'+r:''); };
-  const maxSlots=Math.max(1,...DAYS.map((_,i)=>teachingSlots(i, sid).length));
-  const cfg=getConfig(sid)||{}; const cyc=Math.max(1,Math.min(4,parseInt(cfg.cycle_weeks,10)||1));
+  const dayList=workingDaysArr(sid);   // rotation mode → rotation days; else working weekdays
+  const dayLbl = d => rotMode(sid) ? rotLabel(sid,d) : DAYS[d];
+  const maxSlots=Math.max(1,...dayList.map(d=>teachingSlots(d, sid).length));
+  const cfg=getConfig(sid)||{}; const cyc = rotMode(sid) ? 1 : Math.max(1,Math.min(4,parseInt(cfg.cycle_weeks,10)||1));
   const wkLabels=(cfg.week_labels||'').split(',').map(x=>x.trim()).filter(Boolean);
   const wkName=i=> wkLabels[i] || (cyc===2?['Week A','Week B'][i] : 'Week '+(i+1));
   const hdr=['Day',...Array.from({length:maxSlots},(_,i)=>'P'+(i+1))];
@@ -1144,7 +1161,7 @@ app.get('/api/export/timetable.xlsx', h(async (req,res)=>{
     for(let wk=0; wk<cyc; wk++){
       if(cyc>1){ const tr=ws.addRow([wkName(wk)]); tr.getCell(1).font={bold:true,color:{argb:'FF1F3864'},size:12}; }
       ws.addRow(hdr); styleHeader(ws.getRow(ws.rowCount));
-      DAYS.forEach((d,di)=>{ const row=[d]; for(let p=0;p<maxSlots;p++){ row.push(cellText(cellMap[`${c.id}|${di}|${p}|${wk}`])); }
+      dayList.forEach(di=>{ const row=[dayLbl(di)]; for(let p=0;p<maxSlots;p++){ row.push(cellText(cellMap[`${c.id}|${di}|${p}|${wk}`])); }
         const r=ws.addRow(row); r.eachCell(cc=>{cc.alignment={wrapText:true,vertical:'top'};}); r.getCell(1).font={bold:true}; });
       if(cyc>1 && wk<cyc-1) ws.addRow([]);   // spacer between weeks
     }

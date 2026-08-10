@@ -157,6 +157,9 @@ async function init() {
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS week_labels TEXT`);               // CSV of week names, blank = auto ("Week A", "Week B", ...)
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS cycle_start TEXT`);               // rotation anchor date (YYYY-MM-DD); blank = no calendar rotation
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS cycle_mode TEXT`);                // 'week' (advance per calendar week) | 'day' (advance per working day)
+  // Day-Rotation: N named rotation days (A..), each its OWN daily plan. 0 = off. day_of_week 0..N-1 = rotation day index.
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS rot_days INTEGER DEFAULT 0`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS rot_labels TEXT`);                // CSV of rotation-day names, blank = auto ("Day A", "Day B", ...)
   // give tt_timetable a week dimension (0-based); keep old rows on week 0
   await run(`ALTER TABLE tt_timetable ADD COLUMN IF NOT EXISTS week_index INTEGER DEFAULT 0`);
   // drop ANY old 3-column UNIQUE constraint on (class_id,day_of_week,period_index) — name may vary — so weeks can repeat a slot
