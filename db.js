@@ -171,6 +171,8 @@ async function init() {
   // Configurable leave types (Sick, Casual, Duty …) + a type on each leave application
   await run(`CREATE TABLE IF NOT EXISTS tt_leave_type (id SERIAL PRIMARY KEY, school_id INTEGER, name TEXT, active INTEGER DEFAULT 1, created_at TEXT)`);
   await run(`ALTER TABLE tt_leave ADD COLUMN IF NOT EXISTS leave_type TEXT`);
+  // Public shareable read-only timetable links (capability token). kind=class, target_id=class id.
+  await run(`CREATE TABLE IF NOT EXISTS tt_sharelink (id SERIAL PRIMARY KEY, school_id INTEGER, token TEXT UNIQUE, kind TEXT, target_id INTEGER, created_at TEXT)`);
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived

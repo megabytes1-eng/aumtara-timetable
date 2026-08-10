@@ -40,6 +40,44 @@ for (const ic of ['icon-192.png', 'icon-512.png', 'icon-maskable.png'])
 app.get('/apple-touch-icon.png', (_, res) => res.sendFile(path.join(__dirname, 'icon-192.png')));
 app.get('/apple-touch-icon-precomposed.png', (_, res) => res.sendFile(path.join(__dirname, 'icon-192.png')));
 
+// PUBLIC read-only shared timetable (no login). Capability token → one class's weekly grid.
+const esc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+app.get('/share/:token', async (req,res)=>{
+  try{
+    const link = await q1('SELECT * FROM tt_sharelink WHERE token=?',[req.params.token]);
+    const page=(inner)=>`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Timetable</title>
+      <style>body{font-family:'Segoe UI',Arial,sans-serif;background:#f4f7fc;margin:0;color:#222}.wrap{max-width:1000px;margin:0 auto;padding:18px}
+      .hd{background:#1F3864;color:#fff;padding:16px 22px;display:flex;align-items:center;gap:12px}.hd img{height:34px;border-radius:6px}.hd h1{font-size:18px;margin:0}.hd .s{font-size:12px;opacity:.85}
+      table{border-collapse:collapse;width:100%;font-size:13.5px;background:#fff}th,td{border:1px solid #e2e6ee;padding:8px 9px;text-align:center;vertical-align:middle}
+      th{background:#1F3864;color:#fff}td.ph{background:#eef2fb;font-weight:700;color:#1F3864}.subj{font-weight:800;color:#1F3864}.tch{font-size:12px;color:#33415a;font-weight:600}.rm{font-size:11px;color:#7030A0}.free{color:#9aa0ab;font-style:italic}
+      .note{color:#6b7280;font-size:12px;margin:10px 2px}.card{background:#fff;border:1px solid #e2e6ee;border-radius:12px;padding:14px;overflow:auto}</style></head>
+      <body>${inner}<div class="wrap"><div class="note">Read-only shared timetable · Aumtara</div></div></body></html>`;
+    if(!link){ res.status(404).send(page('<div class="wrap"><h2>Link not found or expired</h2></div>')); return; }
+    const sid=link.school_id;
+    const school=await q1('SELECT name,logo FROM tt_school WHERE id=?',[sid]);
+    const cls=await q1('SELECT name FROM tt_class WHERE id=? AND school_id=?',[link.target_id,sid]);
+    if(!cls){ res.status(404).send(page('<div class="wrap"><h2>Not found</h2></div>')); return; }
+    const subs={}; (await q('SELECT id,name FROM tt_subject WHERE school_id=?',[sid])).forEach(s=>subs[s.id]=s.name);
+    const tch={}; (await q('SELECT id,name FROM tt_teacher WHERE school_id=?',[sid])).forEach(x=>tch[x.id]=x.name);
+    const rms={}; (await q('SELECT id,name FROM tt_room WHERE school_id=?',[sid])).forEach(r=>rms[r.id]=r.name);
+    const cells=await q('SELECT day_of_week,period_index,subject_id,teacher_id,room_id FROM tt_timetable WHERE class_id=? AND school_id=?',[link.target_id,sid]);
+    const cmap={}; cells.forEach(c=>cmap[c.day_of_week+'_'+c.period_index]=c);
+    const DN=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const wd=workingDaysArr(sid); let maxP=1; wd.forEach(d=>{maxP=Math.max(maxP, teachingSlots(d,sid).length);});
+    let head='<th>Day</th>'; for(let p=0;p<maxP;p++) head+='<th>P'+(p+1)+'</th>';
+    let rows='';
+    for(const d of wd){ const ts=teachingSlots(d,sid); let r='<td class="ph">'+esc(DN[d]||('Day '+d))+'</td>';
+      for(let p=0;p<maxP;p++){ if(p>=ts.length){ r+='<td></td>'; continue; } const c=cmap[d+'_'+p];
+        if(c&&c.subject_id){ r+='<td><div class="subj">'+esc(subs[c.subject_id]||'')+'</div><div class="tch">'+esc(tch[c.teacher_id]||'—')+(c.room_id?' · '+esc(rms[c.room_id]||''):'')+'</div></td>'; }
+        else r+='<td class="free">—</td>'; }
+      rows+='<tr>'+r+'</tr>'; }
+    const logo=school&&school.logo?`<img src="${esc(school.logo)}" alt="">`:'';
+    const inner=`<div class="hd">${logo}<div><h1>${esc((school&&school.name)||'School')}</h1><div class="s">${esc(cls.name)} · Timetable</div></div></div>
+      <div class="wrap"><div class="card"><table><tr>${head}</tr>${rows}</table></div></div>`;
+    res.send(page(inner));
+  }catch(e){ res.status(500).send('Error'); }
+});
+
 // async route wrapper — turns rejected promises into a clean 500 instead of a crash
 const h = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => {
   console.error(e);
@@ -112,6 +150,18 @@ app.use('/api', (req,res,next)=>{
   })().catch(e=>{ console.error(e); res.status(500).json({error:String((e&&e.message)||e)}); });
 });
 app.get('/api/me', h(async (req,res)=>res.json(req.user)));
+
+// -------------------- SHAREABLE LINKS (public read-only class timetable) --------------------
+app.get('/api/sharelinks', h(async (req,res)=>{ res.json(await q('SELECT * FROM tt_sharelink WHERE school_id=? ORDER BY id DESC',[req.sid])); }));
+app.post('/api/sharelinks', h(async (req,res)=>{
+  const target_id=req.body&&req.body.target_id?+req.body.target_id:null; if(!target_id){ res.status(400).json({error:'pick a class'}); return; }
+  const ex=await q1('SELECT * FROM tt_sharelink WHERE school_id=? AND kind=? AND target_id=?',[req.sid,'class',target_id]);
+  if(ex){ res.json({ok:true,token:ex.token,id:ex.id}); return; }
+  const token=crypto.randomBytes(18).toString('hex');
+  const r=await q1('INSERT INTO tt_sharelink(school_id,token,kind,target_id,created_at) VALUES(?,?,?,?,now()::text) RETURNING id',[req.sid,token,'class',target_id]);
+  res.json({ok:true,token,id:r.id});
+}));
+app.delete('/api/sharelinks/:id', h(async (req,res)=>{ await run('DELETE FROM tt_sharelink WHERE id=? AND school_id=?',[req.params.id,req.sid]); res.json({ok:true}); }));
 
 // -------------------- SCHOOLS (registry) --------------------
 app.get('/api/schools', h(async (req,res)=>{
