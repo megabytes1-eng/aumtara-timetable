@@ -154,6 +154,8 @@ async function init() {
   // Multi-week / rotating cycle: 1 = weekly (default), 2 = fortnightly (A/B), 3-4 = custom cycle
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS cycle_weeks INTEGER DEFAULT 1`);
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS week_labels TEXT`);               // CSV of week names, blank = auto ("Week A", "Week B", ...)
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS cycle_start TEXT`);               // rotation anchor date (YYYY-MM-DD); blank = no calendar rotation
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS cycle_mode TEXT`);                // 'week' (advance per calendar week) | 'day' (advance per working day)
   // give tt_timetable a week dimension (0-based); keep old rows on week 0
   await run(`ALTER TABLE tt_timetable ADD COLUMN IF NOT EXISTS week_index INTEGER DEFAULT 0`);
   // drop ANY old 3-column UNIQUE constraint on (class_id,day_of_week,period_index) — name may vary — so weeks can repeat a slot

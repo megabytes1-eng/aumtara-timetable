@@ -346,6 +346,31 @@ const addMin = (hhmm,min)=>{const[h,m]=hhmm.split(':').map(Number);const d=new D
 const getConfig = (sid) => getConfigCached(sid);
 const csvNums = s => String(s||'').split(',').map(x=>parseInt(x,10)).filter(n=>!isNaN(n));
 function workingDaysArr(sid){ const c=getConfig(sid)||{}; const w=csvNums(c.working_days); return w.length?w:[0,1,2,3,4,5]; }
+// which cycle-week is active today, from the rotation anchor date (0 when rotation is off)
+function curCycleIdx(sid){
+  const c=getConfig(sid)||{};
+  const n=Math.max(1,Math.min(4,parseInt(c.cycle_weeks,10)||1));
+  if(n<=1 || !c.cycle_start) return 0;
+  const start=new Date(c.cycle_start+'T00:00:00'); if(isNaN(start.getTime())) return 0;
+  const now=new Date(); const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if((c.cycle_mode||'week')==='day'){
+    const wd=new Set(workingDaysArr(sid)); let count=0; const d=new Date(start);
+    // guard the loop (max ~2 years of days)
+    for(let i=0;i<800 && d<=today;i++){ if(wd.has((d.getDay()+6)%7)) count++; d.setDate(d.getDate()+1); }
+    return ((count-1)%n+n)%n;   // count includes today; 0-based index
+  }
+  // week mode: whole weeks between the Monday of start and the Monday of today
+  const mondayOf=(x)=>{ const m=new Date(x); m.setDate(m.getDate()-((m.getDay()+6)%7)); m.setHours(0,0,0,0); return m; };
+  const weeks=Math.floor((mondayOf(today)-mondayOf(start))/(7*86400000));
+  return ((weeks%n)+n)%n;
+}
+app.get('/api/rotation/today', h(async (req,res)=>{
+  const idx=curCycleIdx(req.sid); const c=getConfig(req.sid)||{};
+  const n=Math.max(1,Math.min(4,parseInt(c.cycle_weeks,10)||1));
+  const labels=(c.week_labels||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const label=labels[idx] || (n===2?['Week A','Week B'][idx] : 'Week '+(idx+1));
+  res.json({ index:idx, cycle_weeks:n, active: n>1 && !!c.cycle_start, mode:c.cycle_mode||'week', label });
+}));
 function slotsForDay(dayIdx, sid){
   const c=getConfig(sid);
   if(!c) return [];
@@ -489,6 +514,8 @@ app.put('/api/timetable/config', h(async (req,res)=>{
   // Multi-week cycle
   if(b.cycle_weeks!==undefined){ const n=Math.max(1,Math.min(4,parseInt(b.cycle_weeks,10)||1)); await run(`UPDATE tt_config SET cycle_weeks=? WHERE school_id=?`,[n, req.sid]); }
   if(b.week_labels!==undefined) await run(`UPDATE tt_config SET week_labels=? WHERE school_id=?`,[(b.week_labels||'').trim()||null, req.sid]);
+  if(b.cycle_start!==undefined) await run(`UPDATE tt_config SET cycle_start=? WHERE school_id=?`,[(b.cycle_start||'').trim()||null, req.sid]);
+  if(b.cycle_mode!==undefined) await run(`UPDATE tt_config SET cycle_mode=? WHERE school_id=?`,[b.cycle_mode==='day'?'day':'week', req.sid]);
   await loadConfig(req.sid);
   res.json(getConfig(req.sid));
 }));
@@ -789,7 +816,7 @@ app.delete('/api/versions/:id', h(async (req,res)=>{
 app.get('/api/timetable/teacher/:id', h(async (req,res)=>{
   const id=Number(req.params.id);
   const rows=await q(`SELECT tt.*, c.name cls, s.name subj FROM tt_timetable tt
-     JOIN tt_class c ON c.id=tt.class_id JOIN tt_subject s ON s.id=tt.subject_id WHERE tt.teacher_id=? AND tt.week_index=0 AND tt.school_id=?`,[id, req.sid]);
+     JOIN tt_class c ON c.id=tt.class_id JOIN tt_subject s ON s.id=tt.subject_id WHERE tt.teacher_id=? AND tt.week_index=${curCycleIdx(req.sid)} AND tt.school_id=?`,[id, req.sid]);
   res.json({periods:rows, weekly_load:rows.length});
 }));
 
@@ -808,13 +835,13 @@ app.get('/api/timetable/cover', h(async (req,res)=>{
   const absentSet=new Set((await q('SELECT teacher_id FROM tt_absence WHERE day_of_week=? AND school_id=?',[day,sid])).map(r=>r.teacher_id));
   const rows=await q(`SELECT tt.class_id,tt.period_index,tt.subject_id,tt.teacher_id,c.name cls,s.name subj
      FROM tt_timetable tt JOIN tt_class c ON c.id=tt.class_id JOIN tt_subject s ON s.id=tt.subject_id
-     WHERE tt.day_of_week=? AND tt.teacher_id IS NOT NULL AND tt.week_index=0 AND tt.school_id=?`,[day,sid]);
+     WHERE tt.day_of_week=? AND tt.teacher_id IS NOT NULL AND tt.week_index=${curCycleIdx(sid)} AND tt.school_id=?`,[day,sid]);
   const allTeachers=await q('SELECT id,name,can_substitute FROM tt_teacher WHERE school_id=?',[sid]);
   const need=[];
   for(const r of rows){
     if(!absentSet.has(r.teacher_id)) continue;
     const sub=await q1('SELECT proxy_teacher_id FROM tt_substitution WHERE day_of_week=? AND class_id=? AND period_index=?',[day,r.class_id,r.period_index]);
-    const busy=new Set((await q('SELECT teacher_id FROM tt_timetable WHERE day_of_week=? AND period_index=? AND teacher_id IS NOT NULL AND week_index=0 AND school_id=?',[day,r.period_index,sid])).map(x=>x.teacher_id));
+    const busy=new Set((await q(`SELECT teacher_id FROM tt_timetable WHERE day_of_week=? AND period_index=? AND teacher_id IS NOT NULL AND week_index=${curCycleIdx(sid)} AND school_id=?`,[day,r.period_index,sid])).map(x=>x.teacher_id));
     const free=allTeachers.filter(t=>!busy.has(t.id)&&!absentSet.has(t.id)&&+t.can_substitute!==0);
     need.push({...r, proxy_teacher_id: sub?sub.proxy_teacher_id:null, free});
   }
@@ -839,7 +866,7 @@ app.get('/api/datesub/fetch', h(async (req,res)=>{
   const dates=datesBetween(from,to); if(dates.length>31){ res.status(400).json({error:'Date range too large (max 31 days).'}); return; }
   const wdays=new Set(workingDaysArr(sid));
   const allTeachers=await q('SELECT id,name,can_substitute FROM tt_teacher WHERE school_id=? ORDER BY name',[sid]);
-  const cells=await q('SELECT day_of_week,period_index,teacher_id FROM tt_timetable WHERE teacher_id IS NOT NULL AND week_index=0 AND school_id=?',[sid]);
+  const cells=await q(`SELECT day_of_week,period_index,teacher_id FROM tt_timetable WHERE teacher_id IS NOT NULL AND week_index=${curCycleIdx(sid)} AND school_id=?`,[sid]);
   const busy={}; cells.forEach(c=>{ const k=c.day_of_week+'_'+c.period_index; (busy[k]=busy[k]||new Set()).add(c.teacher_id); });
   const myCells=await q(`SELECT tt.day_of_week,tt.period_index,tt.class_id,tt.subject_id,c.name cls,s.name subj
      FROM tt_timetable tt JOIN tt_class c ON c.id=tt.class_id LEFT JOIN tt_subject s ON s.id=tt.subject_id
@@ -904,7 +931,7 @@ app.post('/api/leaves/:id/approve', h(async (req,res)=>{
   const lv=await q1('SELECT * FROM tt_leave WHERE id=? AND school_id=?',[id,sid]); if(!lv){ res.status(404).json({error:'not found'}); return; }
   await run('UPDATE tt_leave SET status=? WHERE id=? AND school_id=?',['approved',id,sid]);
   const wdays=new Set(workingDaysArr(sid));
-  const myCells=await q('SELECT day_of_week,period_index,class_id FROM tt_timetable WHERE teacher_id=? AND week_index=0 AND school_id=?',[lv.teacher_id,sid]);
+  const myCells=await q(`SELECT day_of_week,period_index,class_id FROM tt_timetable WHERE teacher_id=? AND week_index=${curCycleIdx(sid)} AND school_id=?`,[lv.teacher_id,sid]);
   const byDow={}; myCells.forEach(c=>{ (byDow[c.day_of_week]=byDow[c.day_of_week]||[]).push(c); });
   let created=0;
   for(const date of datesBetween(lv.date_from,lv.date_to)){ const dow=dowFromISO(date); if(!wdays.has(dow)) continue;
@@ -933,7 +960,7 @@ app.get('/api/timetable/monitor', h(async (req,res)=>{
     for(const sl of slots){
       if(hhmm>=sl.start&&hhmm<sl.end){
         if(sl.is_break){status='break';text='Break';break;}
-        const cell=await q1('SELECT * FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=? AND week_index=0 AND school_id=?',[c.id,day,pi,sid]);
+        const cell=await q1(`SELECT * FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=? AND week_index=${curCycleIdx(sid)} AND school_id=?`,[c.id,day,pi,sid]);
         if(cell&&cell.subject_id){
           const subj=(await q1('SELECT name FROM tt_subject WHERE id=?',[cell.subject_id])).name;
           const ds=dsMap[c.id+'_'+pi];
