@@ -149,6 +149,24 @@ async function init() {
   // Auto Set optimizer preferences (soft weights honoured by auto-generate)
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_spread INTEGER DEFAULT 1`);   // 1 = spread subjects across days (avoid repeating a subject the same day)
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_balance INTEGER DEFAULT 1`);  // 1 = balance teacher workload (give the next period to the least-loaded eligible teacher)
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_morning INTEGER DEFAULT 0`);  // 1 = bias heavier (higher-quota) subjects to earlier periods
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_gap INTEGER DEFAULT 0`);      // 1 = minimise teacher idle gaps (prefer a teacher already teaching the previous period)
+  // Multi-week / rotating cycle: 1 = weekly (default), 2 = fortnightly (A/B), 3-4 = custom cycle
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS cycle_weeks INTEGER DEFAULT 1`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS week_labels TEXT`);               // CSV of week names, blank = auto ("Week A", "Week B", ...)
+  // give tt_timetable a week dimension (0-based); keep old rows on week 0
+  await run(`ALTER TABLE tt_timetable ADD COLUMN IF NOT EXISTS week_index INTEGER DEFAULT 0`);
+  // drop ANY old 3-column UNIQUE constraint on (class_id,day_of_week,period_index) — name may vary — so weeks can repeat a slot
+  await run(`DO $$
+    DECLARE cname text;
+    BEGIN
+      FOR cname IN
+        SELECT conname FROM pg_constraint
+         WHERE conrelid='tt_timetable'::regclass AND contype='u' AND array_length(conkey,1)=3
+      LOOP EXECUTE 'ALTER TABLE tt_timetable DROP CONSTRAINT '||quote_ident(cname); END LOOP;
+    END $$;`);
+  await run(`CREATE UNIQUE INDEX IF NOT EXISTS ux_tt_cell ON tt_timetable (class_id, day_of_week, period_index, week_index)`);
+  await run(`ALTER TABLE tt_snapshot_cell ADD COLUMN IF NOT EXISTS week_index INTEGER DEFAULT 0`);
   // Timetable windows: bind a saved version to a term + capture its School Hours config
   await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS term_id INTEGER`);
   await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS config_json TEXT`);

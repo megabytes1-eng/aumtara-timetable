@@ -60,20 +60,28 @@ app.get('/share/:token', async (req,res)=>{
     const subs={}; (await q('SELECT id,name FROM tt_subject WHERE school_id=?',[sid])).forEach(s=>subs[s.id]=s.name);
     const tch={}; (await q('SELECT id,name FROM tt_teacher WHERE school_id=?',[sid])).forEach(x=>tch[x.id]=x.name);
     const rms={}; (await q('SELECT id,name FROM tt_room WHERE school_id=?',[sid])).forEach(r=>rms[r.id]=r.name);
-    const cells=await q('SELECT day_of_week,period_index,subject_id,teacher_id,room_id FROM tt_timetable WHERE class_id=? AND school_id=?',[link.target_id,sid]);
-    const cmap={}; cells.forEach(c=>cmap[c.day_of_week+'_'+c.period_index]=c);
+    const cells=await q('SELECT day_of_week,period_index,subject_id,teacher_id,room_id,week_index FROM tt_timetable WHERE class_id=? AND school_id=?',[link.target_id,sid]);
     const DN=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
     const wd=workingDaysArr(sid); let maxP=1; wd.forEach(d=>{maxP=Math.max(maxP, teachingSlots(d,sid).length);});
-    let head='<th>Day</th>'; for(let p=0;p<maxP;p++) head+='<th>P'+(p+1)+'</th>';
-    let rows='';
-    for(const d of wd){ const ts=teachingSlots(d,sid); let r='<td class="ph">'+esc(DN[d]||('Day '+d))+'</td>';
-      for(let p=0;p<maxP;p++){ if(p>=ts.length){ r+='<td></td>'; continue; } const c=cmap[d+'_'+p];
-        if(c&&c.subject_id){ r+='<td><div class="subj">'+esc(subs[c.subject_id]||'')+'</div><div class="tch">'+esc(tch[c.teacher_id]||'—')+(c.room_id?' · '+esc(rms[c.room_id]||''):'')+'</div></td>'; }
-        else r+='<td class="free">—</td>'; }
-      rows+='<tr>'+r+'</tr>'; }
+    const cfg=getConfig(sid)||{}; const cyc=Math.max(1,Math.min(4,parseInt(cfg.cycle_weeks,10)||1));
+    const wkLabels=(cfg.week_labels||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const wkName=i=> wkLabels[i] || (cyc===2?['Week A','Week B'][i] : 'Week '+(i+1));
+    function gridFor(wk){
+      const cmap={}; cells.filter(c=>(c.week_index||0)===wk).forEach(c=>cmap[c.day_of_week+'_'+c.period_index]=c);
+      let head='<th>Day</th>'; for(let p=0;p<maxP;p++) head+='<th>P'+(p+1)+'</th>';
+      let rows='';
+      for(const d of wd){ const ts=teachingSlots(d,sid); let r='<td class="ph">'+esc(DN[d]||('Day '+d))+'</td>';
+        for(let p=0;p<maxP;p++){ if(p>=ts.length){ r+='<td></td>'; continue; } const c=cmap[d+'_'+p];
+          if(c&&c.subject_id){ r+='<td><div class="subj">'+esc(subs[c.subject_id]||'')+'</div><div class="tch">'+esc(tch[c.teacher_id]||'—')+(c.room_id?' · '+esc(rms[c.room_id]||''):'')+'</div></td>'; }
+          else r+='<td class="free">—</td>'; }
+        rows+='<tr>'+r+'</tr>'; }
+      const title = cyc>1 ? '<h3 style="margin:0 0 8px;color:#1F3864">'+esc(wkName(wk))+'</h3>' : '';
+      return '<div class="card">'+title+'<table><tr>'+head+'</tr>'+rows+'</table></div>';
+    }
+    let grids=''; for(let wk=0; wk<cyc; wk++) grids+=gridFor(wk);
     const logo=school&&school.logo?`<img src="${esc(school.logo)}" alt="">`:'';
     const inner=`<div class="hd">${logo}<div><h1>${esc((school&&school.name)||'School')}</h1><div class="s">${esc(cls.name)} · Timetable</div></div></div>
-      <div class="wrap"><div class="card"><table><tr>${head}</tr>${rows}</table></div></div>`;
+      <div class="wrap">${grids}</div>`;
     res.send(page(inner));
   }catch(e){ res.status(500).send('Error'); }
 });
@@ -399,8 +407,11 @@ app.put('/api/timetable/config', h(async (req,res)=>{
   for(const k of ['label_class','label_teacher','label_room','label_subject'])
     if(b[k]!==undefined) await run(`UPDATE tt_config SET ${k}=? WHERE school_id=?`,[(b[k]||'').trim()||null, req.sid]);
   // Auto Set optimizer toggles
-  for(const k of ['opt_spread','opt_balance'])
+  for(const k of ['opt_spread','opt_balance','opt_morning','opt_gap'])
     if(b[k]!==undefined) await run(`UPDATE tt_config SET ${k}=? WHERE school_id=?`,[b[k]?1:0, req.sid]);
+  // Multi-week cycle
+  if(b.cycle_weeks!==undefined){ const n=Math.max(1,Math.min(4,parseInt(b.cycle_weeks,10)||1)); await run(`UPDATE tt_config SET cycle_weeks=? WHERE school_id=?`,[n, req.sid]); }
+  if(b.week_labels!==undefined) await run(`UPDATE tt_config SET week_labels=? WHERE school_id=?`,[(b.week_labels||'').trim()||null, req.sid]);
   await loadConfig(req.sid);
   res.json(getConfig(req.sid));
 }));
@@ -449,34 +460,34 @@ app.get('/api/timetable', h(async (req,res)=>{
 }));
 
 // ---------- CONFLICTS (teacher + room) ----------
-async function conflictFor(class_id, day, period, teacher_id, room_id, sid){
-  const out={};
+async function conflictFor(class_id, day, period, teacher_id, room_id, sid, wk){
+  const out={}; wk=+wk||0;
   if(teacher_id){ const r=await q1(`SELECT c.name FROM tt_timetable tt JOIN tt_class c ON c.id=tt.class_id
-     WHERE tt.day_of_week=? AND tt.period_index=? AND tt.teacher_id=? AND tt.class_id<>? AND tt.school_id=?`,[day,period,teacher_id,class_id,sid]);
+     WHERE tt.day_of_week=? AND tt.period_index=? AND tt.week_index=? AND tt.teacher_id=? AND tt.class_id<>? AND tt.school_id=?`,[day,period,wk,teacher_id,class_id,sid]);
     if(r) out.teacher=r.name; }
   if(room_id){ const r=await q1(`SELECT c.name FROM tt_timetable tt JOIN tt_class c ON c.id=tt.class_id
-     WHERE tt.day_of_week=? AND tt.period_index=? AND tt.room_id=? AND tt.class_id<>? AND tt.school_id=?`,[day,period,room_id,class_id,sid]);
+     WHERE tt.day_of_week=? AND tt.period_index=? AND tt.week_index=? AND tt.room_id=? AND tt.class_id<>? AND tt.school_id=?`,[day,period,wk,room_id,class_id,sid]);
     if(r) out.room=r.name; }
   return out;
 }
 app.get('/api/timetable/conflicts', h(async (req,res)=>{
-  const teacher=await q(`SELECT day_of_week,period_index,teacher_id,string_agg(class_id::text,',') classes,COUNT(*)::int n FROM tt_timetable
-     WHERE teacher_id IS NOT NULL AND school_id=? GROUP BY day_of_week,period_index,teacher_id HAVING COUNT(*)>1`,[req.sid]);
-  const room=await q(`SELECT day_of_week,period_index,room_id,string_agg(class_id::text,',') classes,COUNT(*)::int n FROM tt_timetable
-     WHERE room_id IS NOT NULL AND school_id=? GROUP BY day_of_week,period_index,room_id HAVING COUNT(*)>1`,[req.sid]);
+  const teacher=await q(`SELECT day_of_week,period_index,week_index,teacher_id,string_agg(class_id::text,',') classes,COUNT(*)::int n FROM tt_timetable
+     WHERE teacher_id IS NOT NULL AND school_id=? GROUP BY day_of_week,period_index,week_index,teacher_id HAVING COUNT(*)>1`,[req.sid]);
+  const room=await q(`SELECT day_of_week,period_index,week_index,room_id,string_agg(class_id::text,',') classes,COUNT(*)::int n FROM tt_timetable
+     WHERE room_id IS NOT NULL AND school_id=? GROUP BY day_of_week,period_index,week_index,room_id HAVING COUNT(*)>1`,[req.sid]);
   res.json({teacher, room});
 }));
 
 // ---------- CELL upsert / delete ----------
 app.put('/api/timetable/cell', h(async (req,res)=>{
-  const {class_id,day,period,subject_id,teacher_id,room_id}=req.body;
-  await run(`INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id) VALUES(?,?,?,?,?,?,?)
-     ON CONFLICT(class_id,day_of_week,period_index) DO UPDATE SET subject_id=excluded.subject_id,teacher_id=excluded.teacher_id,room_id=excluded.room_id`,
-    [class_id,day,period,subject_id||null,teacher_id||null,room_id||null, req.sid]);
-  res.json({ok:true, conflict: await conflictFor(class_id,day,period,teacher_id,room_id, req.sid)});
+  const {class_id,day,period,subject_id,teacher_id,room_id}=req.body; const wk=+req.body.week||0;
+  await run(`INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index) VALUES(?,?,?,?,?,?,?,?)
+     ON CONFLICT(class_id,day_of_week,period_index,week_index) DO UPDATE SET subject_id=excluded.subject_id,teacher_id=excluded.teacher_id,room_id=excluded.room_id`,
+    [class_id,day,period,subject_id||null,teacher_id||null,room_id||null, req.sid, wk]);
+  res.json({ok:true, conflict: await conflictFor(class_id,day,period,teacher_id,room_id, req.sid, wk)});
 }));
 app.delete('/api/timetable/cell', h(async (req,res)=>{
-  await run('DELETE FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=? AND school_id=?',[req.body.class_id,req.body.day,req.body.period, req.sid]);
+  await run('DELETE FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=? AND week_index=? AND school_id=?',[req.body.class_id,req.body.day,req.body.period,+req.body.week||0, req.sid]);
   res.json({ok:true});
 }));
 
@@ -529,10 +540,14 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     (m[a.entity_id]=m[a.entity_id]||new Set()).add(k);
   });
   const blocked=(m,id,di,pi)=> !!(m[id]&&m[id].has(di+'_'+pi));
-  // optimizer preferences (soft): spread subjects across days + balance teacher load
+  // optimizer preferences (soft): spread subjects across days + balance teacher load + morning-core + minimise gaps
   const optCfg=getConfig(sid)||{};
   const optSpread=(optCfg.opt_spread==null?1:+optCfg.opt_spread)!==0;
   const optBalance=(optCfg.opt_balance==null?1:+optCfg.opt_balance)!==0;
+  const optMorning=(+optCfg.opt_morning||0)!==0;
+  const optGap=(+optCfg.opt_gap||0)!==0;
+  const cycleWeeks=Math.max(1,Math.min(4, parseInt(optCfg.cycle_weeks,10)||1));   // number of distinct weeks in the rotation
+  const slotCount={}; DAYS.forEach((_,di)=>{ slotCount[di]=teachingSlots(di,sid).length; });
   const maxLoad={}, capDay={}, capCons={};
   (await q('SELECT id,max_load,max_per_day,max_consecutive FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>{
     maxLoad[t.id]=t.max_load||999;
@@ -555,6 +570,10 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     clsRules[c.id]={sameDay,notAdj};
   });
 
+  // per-class subject "weight" = weekly quota (higher = more core) for the morning-bias optimizer
+  const subjWeight={};
+  classes.forEach(c=>{ const w={}; quotas.filter(x=>x.class_id===c.id).forEach(x=>{ w[x.subject_id]=(w[x.subject_id]||0)+(+x.per_week||0); }); subjWeight[c.id]=w; });
+
   // build per-class subject pool honouring quota (fallback: even rotation)
   function poolFor(cid, totalSlots){
     const qs=quotas.filter(x=>x.class_id===cid && activeSet.has(x.subject_id));
@@ -567,50 +586,62 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
 
   // compute the assignment in memory, then persist in one transaction
   let totalSlots=0; DAYS.forEach((_,di)=>totalSlots+=teachingSlots(di, sid).length);
-  const remaining={}; classes.forEach(c=>{ remaining[c.id]=shuffleStable(poolFor(c.id,totalSlots),c.id).slice(); });
-  const daySubs={}, prevSub={};   // per class+day: subjects already placed, and the previous period's subject
+  const remaining={}, daySubs={}, prevSub={};   // per class: pool left; per class+day: subjects placed + previous subject
   function pickSubject(cid,di,pi){
     const rem=remaining[cid]; if(!rem.length) return null;
     const R=clsRules[cid]; const ds=daySubs[cid+'_'+di]; const prev=prevSub[cid+'_'+di];
     const ruleOk=(s)=>{ if(ds){ for(const x of ds){ if(R.sameDay.has(rkey(s,x))){ return false; } } }
       if(prev!=null && R.notAdj.has(rkey(s,prev))) return false; return true; };
-    let idx=-1;
-    // pass 1 (spread on): first rule-valid subject NOT already placed today → subjects spread across the week
-    if(optSpread){ for(let i=0;i<rem.length;i++){ if(ruleOk(rem[i]) && !(ds&&ds.has(rem[i]))){ idx=i; break; } } }
-    // pass 2: any rule-valid subject
-    if(idx<0){ for(let i=0;i<rem.length;i++){ if(ruleOk(rem[i])){ idx=i; break; } } }
+    // rule-valid candidate indices; then prefer ones not yet placed today (spread)
+    const cand=[]; for(let i=0;i<rem.length;i++){ if(ruleOk(rem[i])) cand.push(i); }
+    let pool=cand;
+    if(optSpread && cand.length){ const fresh=cand.filter(i=>!(ds&&ds.has(rem[i]))); if(fresh.length) pool=fresh; }
+    let idx;
+    if(optMorning && pool.length){   // heavier (higher-quota) subjects earlier, lighter later
+      const w=subjWeight[cid]||{}; const n=slotCount[di]||8; const early=pi < n/2;
+      idx=pool.reduce((best,i)=>{ const wi=w[rem[i]]||0, wb=w[rem[best]]||0; return (early? wi>wb : wi<wb) ? i : best; }, pool[0]);
+    } else { idx = pool.length ? pool[0] : -1; }
     if(idx<0) idx=0;   // nothing satisfies the rules → take next to avoid leaving a gap
     const s=rem.splice(idx,1)[0];
     (daySubs[cid+'_'+di]=daySubs[cid+'_'+di]||new Set()).add(s);
     prevSub[cid+'_'+di]=s;
     return s;
   }
+  const clearState=()=>{ [remaining,daySubs,prevSub,load,dayCount,lastPi,consRun].forEach(o=>{ for(const k in o) delete o[k]; }); };
   const toInsert=[];
-  DAYS.forEach((_,di)=>{
-    const slots=teachingSlots(di, sid);
-    slots.forEach((_,pi)=>{
-      const usedT=new Set(), usedR=new Set();
-      classes.forEach(c=>{
-        if(blocked(classBlock,c.id,di,pi)) return;   // class marked unavailable this slot → leave empty
-        const subjId=pickSubject(c.id,di,pi);
-        if(subjId==null) return;   // class has no schedulable subjects
-        let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&!blocked(teacherBlock,t,di,pi)&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
-        if(optBalance) opts.sort((a,b)=>(load[a]||0)-(load[b]||0));   // least-loaded first when balancing
-        let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
-        const room=rooms.find(r=>!usedR.has(r.id)&&!blocked(roomBlock,r.id,di,pi));
-        toInsert.push([c.id,di,pi,subjId,t,room?room.id:null,sid]);
-        if(t){usedT.add(t);load[t]=(load[t]||0)+1;
-          dayCount[t+'_'+di]=(dayCount[t+'_'+di]||0)+1;
-          consRun[t+'_'+di]=(lastPi[t+'_'+di]===pi-1?(consRun[t+'_'+di]||0)+1:1);
-          lastPi[t+'_'+di]=pi;} if(room)usedR.add(room.id);
+  for(let wk=0; wk<cycleWeeks; wk++){                       // generate each week of the cycle independently
+    clearState();
+    classes.forEach(c=>{ remaining[c.id]=shuffleStable(poolFor(c.id,totalSlots), c.id + wk*1009).slice(); });   // vary shuffle per week so weeks differ
+    DAYS.forEach((_,di)=>{
+      const slots=teachingSlots(di, sid);
+      slots.forEach((_,pi)=>{
+        const usedT=new Set(), usedR=new Set();
+        classes.forEach(c=>{
+          if(blocked(classBlock,c.id,di,pi)) return;   // class marked unavailable this slot → leave empty
+          const subjId=pickSubject(c.id,di,pi);
+          if(subjId==null) return;   // class has no schedulable subjects
+          let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&!blocked(teacherBlock,t,di,pi)&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
+          if(optBalance||optGap) opts.sort((a,b)=>{
+            if(optBalance){ const d=(load[a]||0)-(load[b]||0); if(d) return d; }        // least-loaded first
+            if(optGap){ const ga=(lastPi[a+'_'+di]===pi-1?0:1), gb=(lastPi[b+'_'+di]===pi-1?0:1); if(ga!==gb) return ga-gb; }  // prefer contiguous → fewer gaps
+            return 0;
+          });
+          let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
+          const room=rooms.find(r=>!usedR.has(r.id)&&!blocked(roomBlock,r.id,di,pi));
+          toInsert.push([c.id,di,pi,subjId,t,room?room.id:null,sid,wk]);
+          if(t){usedT.add(t);load[t]=(load[t]||0)+1;
+            dayCount[t+'_'+di]=(dayCount[t+'_'+di]||0)+1;
+            consRun[t+'_'+di]=(lastPi[t+'_'+di]===pi-1?(consRun[t+'_'+di]||0)+1:1);
+            lastPi[t+'_'+di]=pi;} if(room)usedR.add(room.id);
+        });
       });
     });
-  });
+  }
 
   await tx(async (cq)=>{
     await cq('DELETE FROM tt_timetable WHERE school_id=?',[sid]);
     for(const r of toInsert)
-      await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id) VALUES(?,?,?,?,?,?,?)', r);
+      await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index) VALUES(?,?,?,?,?,?,?,?)', r);
   });
   const n=(await q1('SELECT COUNT(*)::int AS n FROM tt_timetable WHERE school_id=?',[sid])).n;
   res.json({ok:true, cells:n});
@@ -636,12 +667,12 @@ app.post('/api/versions', h(async (req,res)=>{
   const session=(term&&term.name)||cfg.academic_session||null;
   const configSnap={}; HOURS_FIELDS.forEach(k=>configSnap[k]=cfg[k]);
   const config_json=JSON.stringify(configSnap);
-  const cells=await q('SELECT class_id,day_of_week,period_index,subject_id,teacher_id,room_id FROM tt_timetable WHERE school_id=?',[sid]);
+  const cells=await q('SELECT class_id,day_of_week,period_index,subject_id,teacher_id,room_id,week_index FROM tt_timetable WHERE school_id=?',[sid]);
   const snap=await tx(async (cq,cq1)=>{
     const s=await cq1('INSERT INTO tt_snapshot(name,session,created_at,cell_count,school_id,term_id,config_json) VALUES(?,?,now()::text,?,?,?,?) RETURNING id',[name,session,cells.length,sid,(term&&term.id)||null,config_json]);
     for(const c of cells)
-      await cq('INSERT INTO tt_snapshot_cell(snapshot_id,class_id,day_of_week,period_index,subject_id,teacher_id,room_id) VALUES(?,?,?,?,?,?,?)',
-        [s.id,c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id]);
+      await cq('INSERT INTO tt_snapshot_cell(snapshot_id,class_id,day_of_week,period_index,subject_id,teacher_id,room_id,week_index) VALUES(?,?,?,?,?,?,?,?)',
+        [s.id,c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id,c.week_index||0]);
     return s;
   });
   res.json({ok:true, id:snap.id, name, cells:cells.length});
@@ -651,12 +682,12 @@ app.post('/api/versions/:id/restore', h(async (req,res)=>{
   const id=Number(req.params.id), sid=req.sid;
   const snap=await q1('SELECT * FROM tt_snapshot WHERE id=? AND school_id=?',[id,sid]);
   if(!snap){ res.status(404).json({error:'not found'}); return; }
-  const cells=await q('SELECT class_id,day_of_week,period_index,subject_id,teacher_id,room_id FROM tt_snapshot_cell WHERE snapshot_id=?',[id]);
+  const cells=await q('SELECT class_id,day_of_week,period_index,subject_id,teacher_id,room_id,week_index FROM tt_snapshot_cell WHERE snapshot_id=?',[id]);
   await tx(async (cq)=>{
     await cq('DELETE FROM tt_timetable WHERE school_id=?',[sid]);
     for(const c of cells)
-      await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id) VALUES(?,?,?,?,?,?,?)',
-        [c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id,sid]);
+      await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index) VALUES(?,?,?,?,?,?,?,?)',
+        [c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id,sid,c.week_index||0]);
   });
   // restore the School Hours captured with this window
   let hoursRestored=false;
