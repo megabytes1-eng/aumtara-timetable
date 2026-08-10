@@ -1277,6 +1277,81 @@ app.get('/api/export/diary-summary.xlsx', h(async (req,res)=>{
   await wb.xlsx.write(res); res.end();
 }));
 
+// ROOM UTILISATION: how much each room is used vs the total slots in the week
+app.get('/api/export/room-utilization.xlsx', h(async (req,res)=>{
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const sid=req.sid;
+  const rooms=await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY name,id',[sid]);
+  const clsById={}; (await q('SELECT id,name FROM tt_class WHERE school_id=?',[sid])).forEach(c=>clsById[c.id]=c.name);
+  const cells=await q('SELECT * FROM tt_timetable WHERE school_id=? AND week_index=0 AND room_id IS NOT NULL',[sid]);
+  const dayList=workingDaysArr(sid);
+  let totalSlots=0; dayList.forEach(di=>totalSlots+=teachingSlots(di,sid).length);
+  const ws=wb.addWorksheet('Room Utilisation');
+  ws.addRow(['Room','Capacity','Used periods','Total slots','Utilisation %','Classes using']); styleHeader(ws.getRow(1));
+  rooms.forEach(rm=>{ const rc=cells.filter(x=>x.room_id===rm.id);
+    const util=totalSlots>0?Math.round(rc.length/totalSlots*100):0;
+    const cls=[...new Set(rc.map(x=>clsById[x.class_id]||''))].filter(Boolean).join(', ');
+    const r=ws.addRow([rm.name, rm.capacity||'', rc.length, totalSlots, util+'%', cls]);
+    if(util<40) r.getCell(5).font={color:{argb:'FF166534'}};           // very free room → green
+    else if(util>90) r.getCell(5).font={color:{argb:'FFB91C1C'},bold:true};  // nearly full → red
+  });
+  ws.columns.forEach((col,i)=>col.width=[20,10,13,11,14,40][i]);
+  res.setHeader('Content-Disposition','attachment; filename=room-utilization.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
+// TEACHER FREE-PERIOD finder: a teacher × (day-period) matrix — blank = FREE, else the class taught + a Free count
+app.get('/api/export/teacher-free.xlsx', h(async (req,res)=>{
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const sid=req.sid;
+  const teachers=await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY name,id',[sid]);
+  const clsById={}; (await q('SELECT id,name FROM tt_class WHERE school_id=?',[sid])).forEach(c=>clsById[c.id]=c.name);
+  const cells=await q('SELECT * FROM tt_timetable WHERE school_id=? AND week_index=0 AND teacher_id IS NOT NULL',[sid]);
+  const dayList=workingDaysArr(sid);
+  const dayLbl = d => rotMode(sid) ? rotLabel(sid,d) : DAYS[d];
+  const slots=[]; dayList.forEach(di=>{ const n=teachingSlots(di,sid).length; for(let p=0;p<n;p++) slots.push([di,p]); });
+  const busy={}; cells.forEach(x=>{ busy[x.teacher_id+'|'+x.day_of_week+'|'+x.period_index]=clsById[x.class_id]||'•'; });
+  const ws=wb.addWorksheet('Teacher Free Periods');
+  ws.addRow(['Teacher',...slots.map(([d,p])=>dayLbl(d)+'-P'+(p+1)),'Free']); styleHeader(ws.getRow(1));
+  teachers.forEach(tc=>{ let free=0; const row=[tc.name];
+    slots.forEach(([d,p])=>{ const b=busy[tc.id+'|'+d+'|'+p]; if(b) row.push(b); else { row.push(''); free++; } });
+    row.push(free); const r=ws.addRow(row);
+    r.eachCell((cc,i)=>{ if(i>1 && i<=slots.length+1 && !cc.value){ cc.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFD1FAE5'}}; } }); // free slots green
+  });
+  ws.columns.forEach((col,i)=>col.width=i===0?18:8); ws.getColumn(1).width=20;
+  ws.views=[{state:'frozen',xSplit:1,ySplit:1}];
+  res.setHeader('Content-Disposition','attachment; filename=teacher-free-periods.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
+// PERIOD-WISE LOAD (heatmap): day × period → how many classes are running; colour by load
+app.get('/api/export/period-load.xlsx', h(async (req,res)=>{
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const sid=req.sid;
+  const cells=await q('SELECT day_of_week,period_index,teacher_id,subject_id FROM tt_timetable WHERE school_id=? AND week_index=0 AND subject_id IS NOT NULL',[sid]);
+  const dayList=workingDaysArr(sid);
+  const dayLbl = d => rotMode(sid) ? rotLabel(sid,d) : DAYS[d];
+  const maxP=Math.max(1,...dayList.map(d=>teachingSlots(d,sid).length));
+  const count={}; cells.forEach(c=>{ count[c.day_of_week+'|'+c.period_index]=(count[c.day_of_week+'|'+c.period_index]||0)+1; });
+  let maxC=1; Object.values(count).forEach(v=>{ if(v>maxC)maxC=v; });
+  const hx=n=>{const s=Math.max(0,Math.min(255,Math.round(n))).toString(16);return s.length<2?'0'+s:s;};
+  const heat=r=>{ const R=Math.round(200+40*r), G=Math.round(235-150*r), B=Math.round(170-120*r); return 'FF'+hx(R)+hx(G)+hx(B); }; // light green → red
+  const ws=wb.addWorksheet('Period Load');
+  ws.addRow(['Day \\ Period',...Array.from({length:maxP},(_,i)=>'P'+(i+1)),'Day total']); styleHeader(ws.getRow(1));
+  dayList.forEach(di=>{ const n=teachingSlots(di,sid).length; let tot=0; const row=[dayLbl(di)];
+    for(let p=0;p<maxP;p++){ if(p>=n){ row.push(''); continue; } const c=count[di+'|'+p]||0; tot+=c; row.push(c); }
+    row.push(tot); const r=ws.addRow(row);
+    for(let p=0;p<maxP;p++){ if(p>=n)continue; const c=count[di+'|'+p]||0; const cell=r.getCell(p+2); cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:heat(c/maxC)}}; cell.alignment={horizontal:'center'}; }
+    r.getCell(1).font={bold:true}; });
+  // period totals row
+  const totRow=['All days']; for(let p=0;p<maxP;p++){ let s=0; dayList.forEach(di=>{ s+=count[di+'|'+p]||0; }); totRow.push(s); } totRow.push('');
+  const tr=ws.addRow(totRow); tr.font={bold:true}; tr.getCell(1).font={bold:true,color:{argb:'FF1F3864'}};
+  ws.columns.forEach((col,i)=>col.width=i===0?14:8);
+  ws.getCell('A'+(ws.rowCount+2)).value='More classes running in a slot = darker/redder. Use it to balance load across the day.';
+  res.setHeader('Content-Disposition','attachment; filename=period-load.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
 app.get('/api/export/setup.xlsx', h(async (req,res)=>{
   const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const sid=req.sid;
   const c=wb.addWorksheet('Classes'); c.addRow(['Class Name']); styleHeader(c.getRow(1)); (await q('SELECT name FROM tt_class WHERE school_id=? ORDER BY id',[sid])).forEach(x=>c.addRow([x.name])); c.getColumn(1).width=24;
