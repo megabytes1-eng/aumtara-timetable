@@ -158,6 +158,11 @@ async function init() {
   await run(`CREATE TABLE IF NOT EXISTS tt_rule (
      id SERIAL PRIMARY KEY, school_id INTEGER, type TEXT, subject_a_id INTEGER, subject_b_id INTEGER,
      class_id INTEGER, active INTEGER DEFAULT 1, created_at TEXT)`);
+  // Per-period availability blocks. A row = that entity is BLOCKED at (day,period). entity_type = teacher|class|room.
+  await run(`CREATE TABLE IF NOT EXISTS tt_avail (
+     id SERIAL PRIMARY KEY, school_id INTEGER, entity_type TEXT, entity_id INTEGER,
+     day_of_week INTEGER, period_index INTEGER, created_at TEXT,
+     UNIQUE(school_id, entity_type, entity_id, day_of_week, period_index))`);
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived

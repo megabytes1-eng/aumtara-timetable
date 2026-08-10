@@ -440,6 +440,20 @@ app.delete('/api/rules/:id', h(async (req,res)=>{
   res.json({ok:true});
 }));
 
+// ---------- PER-PERIOD AVAILABILITY (blocked slots for teacher/class/room) ----------
+app.get('/api/avail', h(async (req,res)=>{
+  const et=req.query.entity_type, eid=+req.query.entity_id;
+  if(!et||!eid){ res.json([]); return; }
+  res.json(await q('SELECT day_of_week,period_index FROM tt_avail WHERE school_id=? AND entity_type=? AND entity_id=?',[req.sid,et,eid]));
+}));
+app.post('/api/avail', h(async (req,res)=>{
+  const b=req.body||{}; const et=b.entity_type, eid=+b.entity_id, di=+b.day_of_week, pi=+b.period_index;
+  if(!['teacher','class','room'].includes(et)||!eid){ res.status(400).json({error:'bad entity'}); return; }
+  if(b.blocked){ await run('INSERT INTO tt_avail(school_id,entity_type,entity_id,day_of_week,period_index,created_at) VALUES(?,?,?,?,?,now()::text) ON CONFLICT DO NOTHING',[req.sid,et,eid,di,pi]); }
+  else { await run('DELETE FROM tt_avail WHERE school_id=? AND entity_type=? AND entity_id=? AND day_of_week=? AND period_index=?',[req.sid,et,eid,di,pi]); }
+  res.json({ok:true});
+}));
+
 // ---------- AUTO-GENERATE (quota-aware, room-aware) ----------
 app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const sid=req.sid;
@@ -450,6 +464,14 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const tmap=await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
   const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
   const absent={}; (await q('SELECT * FROM tt_absence WHERE school_id=?',[sid])).forEach(a=>{(absent[a.teacher_id]=absent[a.teacher_id]||new Set()).add(a.day_of_week);});
+  // per-period availability blocks
+  const teacherBlock={}, classBlock={}, roomBlock={};
+  (await q('SELECT entity_type,entity_id,day_of_week,period_index FROM tt_avail WHERE school_id=?',[sid])).forEach(a=>{
+    const k=a.day_of_week+'_'+a.period_index;
+    const m=a.entity_type==='teacher'?teacherBlock:a.entity_type==='class'?classBlock:roomBlock;
+    (m[a.entity_id]=m[a.entity_id]||new Set()).add(k);
+  });
+  const blocked=(m,id,di,pi)=> !!(m[id]&&m[id].has(di+'_'+pi));
   const maxLoad={}, capDay={}, capCons={};
   (await q('SELECT id,max_load,max_per_day,max_consecutive FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>{
     maxLoad[t.id]=t.max_load||999;
@@ -507,12 +529,13 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     slots.forEach((_,pi)=>{
       const usedT=new Set(), usedR=new Set();
       classes.forEach(c=>{
+        if(blocked(classBlock,c.id,di,pi)) return;   // class marked unavailable this slot → leave empty
         const subjId=pickSubject(c.id,di,pi);
         if(subjId==null) return;   // class has no schedulable subjects
-        let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
+        let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&!blocked(teacherBlock,t,di,pi)&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
         opts.sort((a,b)=>(load[a]||0)-(load[b]||0));
-        let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
-        const room=rooms.find(r=>!usedR.has(r.id));
+        let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
+        const room=rooms.find(r=>!usedR.has(r.id)&&!blocked(roomBlock,r.id,di,pi));
         toInsert.push([c.id,di,pi,subjId,t,room?room.id:null,sid]);
         if(t){usedT.add(t);load[t]=(load[t]||0)+1;
           dayCount[t+'_'+di]=(dayCount[t+'_'+di]||0)+1;
