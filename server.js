@@ -424,7 +424,7 @@ function simpleCrud(route, tbl, cols){
   app.delete('/api/'+route+'/:id', h(async (req,res)=>{ await run(`DELETE FROM ${tbl} WHERE id=? AND school_id=?`, [req.params.id, req.sid]); res.json({ok:true}); }));
 }
 simpleCrud('classes','tt_class',['name','class_teacher_id','board','medium','standard','section']);
-simpleCrud('subjects','tt_subject',['name','active']);
+simpleCrud('subjects','tt_subject',['name','active','double_period']);
 simpleCrud('rooms','tt_room',['name','capacity']);
 
 // ---------- SETUP READINESS (checklist %) ----------
@@ -647,6 +647,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const classes=await q('SELECT * FROM tt_class WHERE school_id=? ORDER BY id',[sid]);
   const subjects=await q('SELECT * FROM tt_subject WHERE active=1 AND school_id=? ORDER BY id',[sid]);
   const activeSet=new Set(subjects.map(s=>s.id));
+  const dblSet=new Set(subjects.filter(s=>+s.double_period===1).map(s=>s.id));   // subjects to place as consecutive double periods (labs / lock-together)
   const rooms=await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY id',[sid]);
   const tmap=await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
   const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
@@ -743,13 +744,23 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     clearState();
     classes.forEach(c=>{ remaining[c.id]=shuffleStable(poolFor(c.id,totalSlots), c.id + wk*1009).slice(); });   // vary shuffle per week so weeks differ
     (lockLoadWk[wk]||[]).forEach(x=>{ load[x.t]=(load[x.t]||0)+1; dayCount[x.t+'_'+x.di]=(dayCount[x.t+'_'+x.di]||0)+1; });   // count locked teacher load up front
-    const weekRows=[];
+    const weekRows=[]; const carry={};
     dayList.forEach(di=>{
       const slots=teachingSlots(di, sid);
+      for(const k in carry) delete carry[k];   // consecutive doubles never span across days
       slots.forEach((_,pi)=>{
         const usedT=new Set(), usedR=new Set();
         const lu=lockUseAt[wk+'_'+di+'_'+pi]; if(lu){ lu.T.forEach(x=>usedT.add(x)); lu.R.forEach(x=>usedR.add(x)); }   // locked teacher/room busy this slot
         classes.forEach(c=>{
+          const cr=carry[c.id];
+          if(cr && cr.di===di && cr.pi===pi){   // second half of a consecutive double period — same subject, teacher & room
+            carry[c.id]=null;
+            const t2=(cr.teacher_id && !usedT.has(cr.teacher_id) && !blocked(teacherBlock,cr.teacher_id,di,pi) && !(absent[cr.teacher_id]&&absent[cr.teacher_id].has(di))) ? cr.teacher_id : null;
+            const r2=(cr.room_id && !usedR.has(cr.room_id)) ? cr.room_id : ((rooms.find(r=>!usedR.has(r.id)&&!blocked(roomBlock,r.id,di,pi))||{}).id ?? null);
+            weekRows.push({cid:c.id,di,pi,subject_id:cr.subject_id,teacher_id:t2,room_id:r2,dbl:true});
+            if(t2){usedT.add(t2);load[t2]=(load[t2]||0)+1;dayCount[t2+'_'+di]=(dayCount[t2+'_'+di]||0)+1;consRun[t2+'_'+di]=(lastPi[t2+'_'+di]===pi-1?(consRun[t2+'_'+di]||0)+1:1);lastPi[t2+'_'+di]=pi;} if(r2)usedR.add(r2);
+            return;
+          }
           if(lockSlot.has(wk+'_'+c.id+'_'+di+'_'+pi)) return;   // fixed/locked cell → keep as-is, don't reschedule
           if(blocked(classBlock,c.id,di,pi)) return;   // class marked unavailable this slot → leave empty
           const subjId=pickSubject(c.id,di,pi);
@@ -762,11 +773,20 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
           });
           let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
           const room=rooms.find(r=>!usedR.has(r.id)&&!blocked(roomBlock,r.id,di,pi));
-          weekRows.push({cid:c.id,di,pi,subject_id:subjId,teacher_id:t,room_id:room?room.id:null});
+          // start a consecutive double period when this subject wants one and the next teaching period is free for this class
+          const canDbl = dblSet.has(subjId) && (pi+1)<slots.length
+              && !lockSlot.has(wk+'_'+c.id+'_'+di+'_'+(pi+1)) && !blocked(classBlock,c.id,di,pi+1)
+              && remaining[c.id].includes(subjId) && (!t || (capCons[t]||Infinity)>=2);
+          weekRows.push({cid:c.id,di,pi,subject_id:subjId,teacher_id:t,room_id:room?room.id:null,dbl:canDbl});
           if(t){usedT.add(t);load[t]=(load[t]||0)+1;
             dayCount[t+'_'+di]=(dayCount[t+'_'+di]||0)+1;
             consRun[t+'_'+di]=(lastPi[t+'_'+di]===pi-1?(consRun[t+'_'+di]||0)+1:1);
             lastPi[t+'_'+di]=pi;} if(room)usedR.add(room.id);
+          if(canDbl){   // consume the second half from the pool and carry it into the very next period
+            const ix=remaining[c.id].indexOf(subjId); if(ix>=0) remaining[c.id].splice(ix,1);
+            (daySubs[c.id+'_'+di]=daySubs[c.id+'_'+di]||new Set()).add(subjId);
+            carry[c.id]={di,pi:pi+1,subject_id:subjId,teacher_id:t,room_id:room?room.id:null};
+          }
         });
       });
     });
@@ -824,6 +844,7 @@ function optimizeWeek(rows, P){
       const cells=byCD[cid][di]; if(cells.length<2) continue;
       for(let i=0;i<cells.length;i++) for(let j=i+1;j<cells.length;j++){
         const A=cells[i], B=cells[j]; if(A.pi===B.pi) continue;
+        if(A.dbl||B.dbl) continue;   // never break a consecutive double period apart
         const pa=A.pi, pb=B.pi, TA=A.teacher_id, TB=B.teacher_id, RA=A.room_id, RB=B.room_id, SA=A.subject_id, SB=B.subject_id;
         if(TA===TB && RA===RB && SA===SB) continue;
         // hard constraints after moving A->pb, B->pa (same class, same day)
