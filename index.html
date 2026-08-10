@@ -763,9 +763,9 @@ function showUserChip(){if(!ME)return;let c=document.getElementById('userchip');
   c.innerHTML=`<span>👤 ${nm} · <b>${t('role_'+ME.role)}</b></span><button class="ghost mini" style="background:#2c4a7c;color:#fff;border-color:#3f5f95" onclick="doLogout()">${t('logout')}</button>`;}
 // role → which tabs are visible
 const ROLE_TABS={
-  principal:['dash','setup','hours','quota','avail','build','class','students','teacher','diary','school','insights','sub','monitor','reports','versions','data','help'],
-  supervisor:['dash','class','students','teacher','school','insights','sub','monitor','reports','diary','help'],
-  teacher:['dash','class','teacher','diary','reports','help'],
+  principal:['dash','setup','hours','quota','avail','build','optimizer','class','students','teacher','diary','school','insights','sub','monitor','notify','reports','versions','data','help'],
+  supervisor:['dash','class','students','teacher','school','insights','sub','monitor','notify','reports','diary','help'],
+  teacher:['dash','class','teacher','diary','notify','reports','help'],
 };
 function allowedTabs(){const r=(ME&&ME.role)||'master';
   return TABKEYS.filter(([k])=> (k==='users'||k==='schools') ? (r==='master'||r==='admin') : ((r==='master'||r==='admin')? true : (ROLE_TABS[r]||['dash','help']).includes(k)) );}
@@ -877,7 +877,7 @@ const absentDay=tid=>absence.filter(a=>a.teacher_id===tid).map(a=>a.day_of_week)
 const conflictCount=()=>conflicts.teacher.length+conflicts.room.length;
 
 function L(ent){ const c=config&&config['label_'+ent]; return (c&&(''+c).trim())?(''+c):''; }  // custom entity label or ''
-const TABKEYS=[["dash","nav_dash"],["setup","nav_setup"],["hours","nav_hours"],["quota","nav_quota"],["avail","nav_avail"],["build","nav_build"],["class","nav_class"],["students","nav_students"],["teacher","nav_teacher"],["diary","nav_diary"],["school","nav_school"],["insights","nav_insights"],["sub","nav_sub"],["monitor","nav_monitor"],["reports","nav_reports"],["versions","nav_versions"],["data","nav_data"],["schools","nav_schools"],["users","nav_users"],["help","nav_help"]];
+const TABKEYS=[["dash","nav_dash"],["setup","nav_setup"],["hours","nav_hours"],["quota","nav_quota"],["avail","nav_avail"],["build","nav_build"],["optimizer","opt_title"],["class","nav_class"],["students","nav_students"],["teacher","nav_teacher"],["diary","nav_diary"],["school","nav_school"],["insights","nav_insights"],["sub","nav_sub"],["monitor","nav_monitor"],["notify","push_title"],["reports","nav_reports"],["versions","nav_versions"],["data","nav_data"],["schools","nav_schools"],["users","nav_users"],["help","nav_help"]];
 function render(){
   if(loggedOut||!ME)return;
   const allow=allowedTabs();
@@ -892,8 +892,8 @@ function render(){
   const extra=allow.filter(([k])=>!seen.has(k));// any allowed tab not placed in a group
   if(extra.length)navHtml+=extra.map(([k,lk])=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${t(lk)}</div>`).join("");
   document.getElementById("tabs").innerHTML=navHtml;
-  document.getElementById("view").innerHTML=({dash,setup,hours,quota:quotaView,avail:availView,build:builder,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,reports:reportsView,versions:versionsView,data:dataView,schools:schoolsView,users:usersView,help}[tab])();
-  if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary")loadDiary(); if(tab==="dash"){loadReadiness(); if(!PUSH._init){PUSH._init=true;initPush().then(()=>render());}} if(tab==="versions")loadVersions(); if(tab==="build")loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="students")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
+  document.getElementById("view").innerHTML=({dash,setup,hours,quota:quotaView,avail:availView,build:builder,optimizer:optimizerCard,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,notify:pushCard,reports:reportsView,versions:versionsView,data:dataView,schools:schoolsView,users:usersView,help}[tab])();
+  if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary")loadDiary(); if(tab==="dash")loadReadiness(); if(tab==="notify"&&!PUSH._init){PUSH._init=true;initPush().then(()=>render());} if(tab==="versions")loadVersions(); if(tab==="build")loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="students")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
 }
 function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3>${title}</h3><div class="sub">${sub||''}</div>`;window.print();}
 function printPlain(){document.getElementById('printhead').innerHTML='';window.print();}
@@ -940,8 +940,8 @@ try{const _sp=localStorage.getItem('tt_sidenav');if(_sp==='off'||(_sp===null&&wi
 const NAVGROUPS=[
   {key:null, tabs:['dash']},
   {key:'grp_master', tabs:['setup','hours','students','quota','avail']},   // define the school + constraints
-  {key:'grp_build', tabs:['build','class','teacher','school','insights','reports','versions']},   // build → view → insights → report → save
-  {key:'grp_daily', tabs:['sub','monitor','diary']},   // day-to-day operations
+  {key:'grp_build', tabs:['build','optimizer','class','teacher','school','insights','reports','versions']},   // build → view → insights → report → save
+  {key:'grp_daily', tabs:['sub','monitor','diary','notify']},   // day-to-day operations
   {key:'grp_admin', tabs:['data','schools','users']},   // back-office
   {key:null, tabs:['help']},
 ];
@@ -962,7 +962,7 @@ function dash(){return `<div class="kpis">
      <div onclick="setTab('build')"><b>${t('feat_period_t')}</b><br><span class="small">${t('feat_period_d')}</span></div>
      <div onclick="setTab('build')"><b>${t('feat_conflict_t')}</b><br><span class="small">${t('feat_conflict_d',{n:conflictCount()})}</span></div>
      <div onclick="setTab('sub')"><b>${t('feat_sub_t')}</b><br><span class="small">${t('feat_sub_d')}</span></div></div></div>
-   <div class="card" id="readycard"><h2>${t('readiness_title')}</h2><div id="readybox" class="small">…</div></div>${pushCard()}`;}
+   <div class="card" id="readycard"><h2>${t('readiness_title')}</h2><div id="readybox" class="small">…</div></div>`;}
 let PUSH={key:null,subscribed:false,reg:null,_init:false};
 function pushCard(){
   const sup=('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
@@ -1425,7 +1425,7 @@ function builder(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slo
         <select onchange="setRoom(${c.id},${di},${pi},this.value)">${ropt}</select>
         ${conf?`<div class="badge-bad">${conf.t?t('warn_teacher')+' '+conf.t:''} ${conf.r?t('warn_room')+' '+conf.r:''}</div>`:''}</td>`;pi++;});
     return `<tr>${cells}</tr>`;}).join("");
-  return `${optimizerCard()}<div class="card"><h2>${t('builder_title')}</h2><div class="desc">${t('builder_desc')}</div>${filterBar()}
+  return `<div class="card"><h2>${t('builder_title')}</h2><div class="desc">${t('builder_desc')}</div>${filterBar()}
    <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <button class="green" onclick="autoGen()">${t('btn_autogen_all')}</button></div>
    <div class="small" style="color:#5c6580;margin:-4px 0 10px">🔒 ${t('lock_hint')} &nbsp;·&nbsp; ⠿ ${t('drag_hint')}</div>
