@@ -894,10 +894,11 @@ try{const _sp=localStorage.getItem('tt_sidenav');if(_sp==='off'||(_sp===null&&wi
 // sidebar groups — Master/Timetable/Daily/Admin; dash & help stand alone
 const NAVGROUPS=[
   {key:null, tabs:['dash']},
-  {key:'grp_master', tabs:['setup','hours','class','students','teacher','schools','users']},
-  {key:'grp_build', tabs:['quota','avail','build','school','reports','versions']},
-  {key:'grp_daily', tabs:['sub','monitor','diary']},
-  {key:null, tabs:['data','help']},
+  {key:'grp_master', tabs:['setup','hours','students','quota','avail']},   // define the school + constraints
+  {key:'grp_build', tabs:['build','class','teacher','school','reports','versions']},   // build → view → report → save
+  {key:'grp_daily', tabs:['sub','monitor','diary']},   // day-to-day operations
+  {key:'grp_admin', tabs:['data','schools','users']},   // back-office
+  {key:null, tabs:['help']},
 ];
 
 // ---------- DASHBOARD ----------
