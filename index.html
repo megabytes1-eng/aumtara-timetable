@@ -1034,6 +1034,7 @@ function removeLogo(id){updSchool(id,{logo:''});}
 // ---------- INSIGHTS (live visual dashboard) ----------
 let INSQUOTA=null;
 async function loadInsights(){ try{ INSQUOTA=await api('GET','/api/quota'); }catch(e){ INSQUOTA=[]; } if(!Array.isArray(INSQUOTA))INSQUOTA=[]; render(); }
+function insScroll(id){var e=document.getElementById(id); if(e){e.scrollIntoView({behavior:'smooth',block:'start'}); e.style.transition='box-shadow .3s'; e.style.boxShadow='0 0 0 3px rgba(37,99,235,.35)'; setTimeout(function(){e.style.boxShadow='';},1400);}}
 function insBar(label,val,max,color,extra){
   const pct=max>0?Math.min(100,Math.round(val/max*100)):0;
   return `<div style="display:flex;align-items:center;gap:8px;margin:5px 0">
@@ -1065,17 +1066,17 @@ function insightsView(){
     for(let p=0;p<maxP;p++){ if(p>=n){tds+='<td style="background:#fff"></td>';continue;} const c=cnt[di+'|'+p]||0; tds+=`<td style="background:${heat(c)};text-align:center;font-weight:700;color:#1f2b3a" title="${DD()[di]} P${p+1}: ${c}">${c||''}</td>`; }
     return `<tr><td style="font-weight:700;color:var(--navy);background:#eef2fb">${DD()[di]}</td>${tds}</tr>`; }).join('');
   const heatHead='<th></th>'+Array.from({length:maxP},(_,i)=>`<th>P${i+1}</th>`).join('');
-  const kpi=(v,l,color)=>`<div class="kpi" style="border-top-color:${color}"><div class="n" style="color:${color}">${v}</div><div class="l">${l}</div></div>`;
+  const kpi=(v,l,color,act,tip)=>`<div class="kpi"${act?` onclick="${act}"`:''}${tip?` title="${tip}"`:''} style="border-top-color:${color}"><div class="n" style="color:${color}">${v}</div><div class="l">${l}</div></div>`;
   return `<div class="card" style="background:linear-gradient(135deg,#eef2ff,#faf5ff);border:1px solid #e5e7fb"><h2 style="font-size:23px;margin:0">📊 ${t('insights_title')}</h2><div class="desc" style="font-size:14.5px">${t('insights_desc')}</div></div>
    <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px">
-     ${kpi(filled.length,t('ins_scheduled'),'#2563eb')}${kpi(empty,t('ins_empty'),'#f59e0b')}${kpi(noT,t('ins_noteacher'),'#dc2626')}${kpi(avgLoad,t('ins_avgload'),'#7c3aed')}${kpi(under,t('ins_undercov'),'#e11d48')}${kpi(Object.keys(rused).length+'/'+rooms.length,t('ins_roomsused'),'#0891b2')}</div>
+     ${kpi(filled.length,t('ins_scheduled'),'#2563eb',"setTab('class')",t('nav_class'))}${kpi(empty,t('ins_empty'),'#f59e0b',"setTab('build')",t('nav_build'))}${kpi(noT,t('ins_noteacher'),'#dc2626',"setTab('build')",t('nav_build'))}${kpi(avgLoad,t('ins_avgload'),'#7c3aed',"insScroll('ins-teachcard')",t('ins_teacherload'))}${kpi(under,t('ins_undercov'),'#e11d48',"insScroll('ins-subjcard')",t('ins_subjcov'))}${kpi(Object.keys(rused).length+'/'+rooms.length,t('ins_roomsused'),'#0891b2',"insScroll('ins-roomcard')",t('ins_roomutil'))}</div>
    <div class="card"><h2>🔥 ${t('ins_heat')}</h2><div class="desc">${t('ins_heat_d')}</div>
      <div style="overflow:auto"><table class="heat"><tr>${heatHead}</tr>${heatRows}</table></div></div>
    <div class="ins-grid">
-     <div class="card"><h2>👩‍🏫 ${t('ins_teacherload')}</h2><div class="small" style="color:#5c6580;margin-bottom:4px">${t('ins_top14')}</div>${loads.slice(0,14).map(x=>insBar(x.name,x.load,maxLoad,(x.max&&x.load>x.max)?'#dc2626':'#2563eb',x.load+(x.max?' / '+x.max:''))).join('')||'<div class="small">—</div>'}</div>
-     <div class="card"><h2>📚 ${t('ins_subjcov')}</h2><div class="small" style="color:#5c6580;margin-bottom:4px">${t('ins_scheduled')} / ${t('quota_word')}</div>${subs.slice(0,14).map(s=>insBar(s.name,s.sched,maxSub,(s.quota>0&&s.sched<s.quota)?'#e11d48':'#16a34a',s.sched+(s.quota?' / '+s.quota:''))).join('')||'<div class="small">—</div>'}</div>
+     <div class="card" id="ins-teachcard"><h2>👩‍🏫 ${t('ins_teacherload')}</h2><div class="small" style="color:#5c6580;margin-bottom:4px">${t('ins_top14')}</div>${loads.slice(0,14).map(x=>insBar(x.name,x.load,maxLoad,(x.max&&x.load>x.max)?'#dc2626':'#2563eb',x.load+(x.max?' / '+x.max:''))).join('')||'<div class="small">—</div>'}</div>
+     <div class="card" id="ins-subjcard"><h2>📚 ${t('ins_subjcov')}</h2><div class="small" style="color:#5c6580;margin-bottom:4px">${t('ins_scheduled')} / ${t('quota_word')}</div>${subs.slice(0,14).map(s=>insBar(s.name,s.sched,maxSub,(s.quota>0&&s.sched<s.quota)?'#e11d48':'#16a34a',s.sched+(s.quota?' / '+s.quota:''))).join('')||'<div class="small">—</div>'}</div>
    </div>
-   <div class="card"><h2>🚪 ${t('ins_roomutil')}</h2>${rooms2.slice(0,18).map(rm=>insBar(rm.name,rm.used,perClassSlots||1,'#0891b2',(perClassSlots?Math.round(rm.used/perClassSlots*100):0)+'%')).join('')||'<div class="small">—</div>'}</div>`;
+   <div class="card" id="ins-roomcard"><h2>🚪 ${t('ins_roomutil')}</h2>${rooms2.slice(0,18).map(rm=>insBar(rm.name,rm.used,perClassSlots||1,'#0891b2',(perClassSlots?Math.round(rm.used/perClassSlots*100):0)+'%')).join('')||'<div class="small">—</div>'}</div>`;
 }
 function reportsView(){const cur=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};
   return `<div class="card" style="background:linear-gradient(135deg,#eef2ff,#faf5ff);border:1px solid #e5e7fb">
