@@ -1204,6 +1204,79 @@ app.get('/api/export/teachers-report.xlsx', h(async (req,res)=>{
   await wb.xlsx.write(res); res.end();
 }));
 
+// CLASS-WISE workload summary: per-class filled/empty + a Class×Subject scheduled-vs-quota table
+app.get('/api/export/class-summary.xlsx', h(async (req,res)=>{
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const sid=req.sid;
+  const classes=await q('SELECT * FROM tt_class WHERE school_id=? ORDER BY id',[sid]);
+  const subjById={}; (await q('SELECT id,name FROM tt_subject WHERE school_id=?',[sid])).forEach(s=>subjById[s.id]=s.name);
+  const cells=await q('SELECT * FROM tt_timetable WHERE school_id=? AND week_index=0',[sid]);
+  const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
+  const dayList=workingDaysArr(sid);
+  let perClassSlots=0; dayList.forEach(di=>perClassSlots+=teachingSlots(di,sid).length);
+  const s1=wb.addWorksheet('Class Summary');
+  s1.addRow(['Class','Total slots','Filled','Empty','No teacher','Subjects','Teachers']); styleHeader(s1.getRow(1));
+  classes.forEach(c=>{ const cc=cells.filter(x=>x.class_id===c.id && x.subject_id);
+    const subs=new Set(cc.map(x=>x.subject_id)), tch=new Set(cc.filter(x=>x.teacher_id).map(x=>x.teacher_id));
+    const noT=cc.filter(x=>!x.teacher_id).length;
+    s1.addRow([c.name, perClassSlots, cc.length, perClassSlots-cc.length, noT, subs.size, tch.size]); });
+  s1.columns.forEach((col,i)=>col.width=[22,12,10,10,12,12,12][i]);
+  const s2=wb.addWorksheet('Class x Subject');
+  s2.addRow(['Class','Subject','Scheduled/wk','Quota/wk','Difference']); styleHeader(s2.getRow(1));
+  classes.forEach(c=>{ const cc=cells.filter(x=>x.class_id===c.id&&x.subject_id);
+    const cnt={}; cc.forEach(x=>cnt[x.subject_id]=(cnt[x.subject_id]||0)+1);
+    const qs=quotas.filter(x=>x.class_id===c.id); const seen=new Set();
+    qs.forEach(qq=>{ seen.add(qq.subject_id); const sch=cnt[qq.subject_id]||0; s2.addRow([c.name, subjById[qq.subject_id]||'', sch, qq.per_week, sch-qq.per_week]); });
+    Object.keys(cnt).forEach(k=>{ if(!seen.has(+k)) s2.addRow([c.name, subjById[k]||'', cnt[k], 0, cnt[k]]); }); });
+  s2.columns.forEach((col,i)=>col.width=[22,20,14,12,12][i]);
+  res.setHeader('Content-Disposition','attachment; filename=class-summary.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
+// SUBJECT-WISE coverage: scheduled vs quota across all classes, with coverage %
+app.get('/api/export/subject-coverage.xlsx', h(async (req,res)=>{
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const sid=req.sid;
+  const subjects=await q('SELECT * FROM tt_subject WHERE school_id=? ORDER BY name,id',[sid]);
+  const cells=await q('SELECT * FROM tt_timetable WHERE school_id=? AND week_index=0 AND subject_id IS NOT NULL',[sid]);
+  const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
+  const tchById={}; (await q('SELECT id,name FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>tchById[t.id]=t.name);
+  const ws=wb.addWorksheet('Subject Coverage');
+  ws.addRow(['Subject','Quota/wk (all classes)','Scheduled/wk','Coverage %','Classes','Teachers']); styleHeader(ws.getRow(1));
+  subjects.forEach(su=>{ const sc=cells.filter(x=>x.subject_id===su.id);
+    const quota=quotas.filter(x=>x.subject_id===su.id).reduce((a,b)=>a+(+b.per_week||0),0);
+    const sched=sc.length; const cov=quota>0?Math.round(sched/quota*100):(sched>0?100:0);
+    const cls=new Set(sc.map(x=>x.class_id)).size;
+    const tnames=[...new Set(sc.filter(x=>x.teacher_id).map(x=>tchById[x.teacher_id]||''))].filter(Boolean).join(', ');
+    const r=ws.addRow([su.name, quota, sched, cov+'%', cls, tnames]);
+    if(quota>0 && sched<quota) r.getCell(4).font={color:{argb:'FFB91C1C'},bold:true};   // under-covered → red
+  });
+  ws.columns.forEach((col,i)=>col.width=[20,22,14,12,10,36][i]);
+  res.setHeader('Content-Disposition','attachment; filename=subject-coverage.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
+// ATTENDANCE-STYLE diary register: teachers × dates, cell = entries written that day (compliance view)
+app.get('/api/export/diary-summary.xlsx', h(async (req,res)=>{
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const sid=req.sid;
+  const from=req.query.from, to=req.query.to;
+  const teachers=await q('SELECT id,name FROM tt_teacher WHERE school_id=? ORDER BY name,id',[sid]);
+  const w=['school_id=?'],p=[sid]; if(from){w.push('entry_date>=?');p.push(from);} if(to){w.push('entry_date<=?');p.push(to);}
+  const rows=await q('SELECT teacher_id,entry_date,COUNT(*)::int n FROM tt_diary WHERE '+w.join(' AND ')+' GROUP BY teacher_id,entry_date',p);
+  let cols=[...new Set(rows.map(r=>r.entry_date))].sort();
+  if(from&&to){ cols=[]; let d=new Date(from+'T00:00:00'); const end=new Date(to+'T00:00:00'); for(let i=0;i<45 && d<=end;i++){ cols.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); } }
+  const map={}; rows.forEach(r=>{ map[r.teacher_id+'|'+r.entry_date]=r.n; });
+  const ws=wb.addWorksheet('Diary Register');
+  ws.addRow(['Teacher',...cols.map(d=>d.slice(8)+'/'+d.slice(5,7)),'Total','Days']); styleHeader(ws.getRow(1));
+  teachers.forEach(t=>{ let tot=0,days=0; const row=[t.name];
+    cols.forEach(d=>{ const n=map[t.id+'|'+d]||0; tot+=n; if(n)days++; row.push(n||''); });
+    row.push(tot); row.push(days); ws.addRow(row); });
+  ws.columns.forEach((col,i)=>col.width=i===0?20:6);
+  res.setHeader('Content-Disposition','attachment; filename=diary-register.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
 app.get('/api/export/setup.xlsx', h(async (req,res)=>{
   const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const sid=req.sid;
   const c=wb.addWorksheet('Classes'); c.addRow(['Class Name']); styleHeader(c.getRow(1)); (await q('SELECT name FROM tt_class WHERE school_id=? ORDER BY id',[sid])).forEach(x=>c.addRow([x.name])); c.getColumn(1).width=24;
