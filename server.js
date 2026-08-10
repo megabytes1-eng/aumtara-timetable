@@ -598,9 +598,11 @@ app.get('/api/timetable/conflicts', h(async (req,res)=>{
 // ---------- CELL upsert / delete ----------
 app.put('/api/timetable/cell', h(async (req,res)=>{
   const {class_id,day,period,subject_id,teacher_id,room_id}=req.body; const wk=+req.body.week||0;
-  await run(`INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index) VALUES(?,?,?,?,?,?,?,?)
-     ON CONFLICT(class_id,day_of_week,period_index,week_index) DO UPDATE SET subject_id=excluded.subject_id,teacher_id=excluded.teacher_id,room_id=excluded.room_id`,
-    [class_id,day,period,subject_id||null,teacher_id||null,room_id||null, req.sid, wk]);
+  const hasLocked=('locked' in req.body); const locVal=hasLocked?(req.body.locked?1:0):0;   // only touch locked when explicitly sent
+  await run(`INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index,locked) VALUES(?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(class_id,day_of_week,period_index,week_index) DO UPDATE SET subject_id=excluded.subject_id,teacher_id=excluded.teacher_id,room_id=excluded.room_id,
+       locked = CASE WHEN ?=1 THEN excluded.locked ELSE tt_timetable.locked END`,
+    [class_id,day,period,subject_id||null,teacher_id||null,room_id||null, req.sid, wk, locVal, hasLocked?1:0]);
   res.json({ok:true, conflict: await conflictFor(class_id,day,period,teacher_id,room_id, req.sid, wk)});
 }));
 app.delete('/api/timetable/cell', h(async (req,res)=>{
@@ -649,6 +651,15 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const tmap=await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
   const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
   const absent={}; (await q('SELECT * FROM tt_absence WHERE school_id=?',[sid])).forEach(a=>{(absent[a.teacher_id]=absent[a.teacher_id]||new Set()).add(a.day_of_week);});
+  // locked/pinned cells — preserved as-is; generator never schedules over them, avoids their teacher/room, and pre-counts their teacher load
+  const lockedRows = await q('SELECT class_id,day_of_week,period_index,week_index,teacher_id,room_id FROM tt_timetable WHERE school_id=? AND COALESCE(locked,0)=1',[sid]);
+  const lockSlot=new Set(); const lockUseAt={}; const lockLoadWk={};
+  lockedRows.forEach(r=>{ const w=r.week_index||0;
+    lockSlot.add(w+'_'+r.class_id+'_'+r.day_of_week+'_'+r.period_index);
+    const sk=w+'_'+r.day_of_week+'_'+r.period_index; const u=lockUseAt[sk]||(lockUseAt[sk]={T:new Set(),R:new Set()});
+    if(r.teacher_id) u.T.add(r.teacher_id); if(r.room_id) u.R.add(r.room_id);
+    if(r.teacher_id) (lockLoadWk[w]=lockLoadWk[w]||[]).push({t:r.teacher_id,di:r.day_of_week});
+  });
   // per-period availability blocks
   const teacherBlock={}, classBlock={}, roomBlock={};
   (await q('SELECT entity_type,entity_id,day_of_week,period_index FROM tt_avail WHERE school_id=?',[sid])).forEach(a=>{
@@ -731,12 +742,15 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   for(let wk=0; wk<cycleWeeks; wk++){                       // generate each week of the cycle independently
     clearState();
     classes.forEach(c=>{ remaining[c.id]=shuffleStable(poolFor(c.id,totalSlots), c.id + wk*1009).slice(); });   // vary shuffle per week so weeks differ
+    (lockLoadWk[wk]||[]).forEach(x=>{ load[x.t]=(load[x.t]||0)+1; dayCount[x.t+'_'+x.di]=(dayCount[x.t+'_'+x.di]||0)+1; });   // count locked teacher load up front
     const weekRows=[];
     dayList.forEach(di=>{
       const slots=teachingSlots(di, sid);
       slots.forEach((_,pi)=>{
         const usedT=new Set(), usedR=new Set();
+        const lu=lockUseAt[wk+'_'+di+'_'+pi]; if(lu){ lu.T.forEach(x=>usedT.add(x)); lu.R.forEach(x=>usedR.add(x)); }   // locked teacher/room busy this slot
         classes.forEach(c=>{
+          if(lockSlot.has(wk+'_'+c.id+'_'+di+'_'+pi)) return;   // fixed/locked cell → keep as-is, don't reschedule
           if(blocked(classBlock,c.id,di,pi)) return;   // class marked unavailable this slot → leave empty
           const subjId=pickSubject(c.id,di,pi);
           if(subjId==null) return;   // class has no schedulable subjects
@@ -756,12 +770,13 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
         });
       });
     });
-    if(optSolver) optimizeWeek(weekRows, {teacherBlock,roomBlock,absent,capCons,subjWeight,clsRules,rkey});   // deep local-search improvement pass
+    if(optSolver){ const fixedT={},fixedR={}; for(const k in lockUseAt){ const p=k.split('_'); if(+p[0]===wk){ const sk=p[1]+'_'+p[2]; (fixedT[sk]=fixedT[sk]||new Set()); lockUseAt[k].T.forEach(x=>fixedT[sk].add(x)); (fixedR[sk]=fixedR[sk]||new Set()); lockUseAt[k].R.forEach(x=>fixedR[sk].add(x)); } }
+      optimizeWeek(weekRows, {teacherBlock,roomBlock,absent,capCons,subjWeight,clsRules,rkey,fixedT,fixedR}); }   // deep local-search improvement pass (locked cells kept busy)
     for(const r of weekRows) toInsert.push([r.cid,r.di,r.pi,r.subject_id,r.teacher_id,r.room_id,sid,wk]);
   }
 
   await tx(async (cq)=>{
-    await cq('DELETE FROM tt_timetable WHERE school_id=?',[sid]);
+    await cq('DELETE FROM tt_timetable WHERE school_id=? AND COALESCE(locked,0)=0',[sid]);   // keep locked/pinned cells
     for(const r of toInsert)
       await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index) VALUES(?,?,?,?,?,?,?,?)', r);
   });
@@ -790,6 +805,9 @@ function optimizeWeek(rows, P){
     if(r.room_id){ (rSlot[K(r.di,r.pi)]=rSlot[K(r.di,r.pi)]||new Map()).set(r.room_id,r.cid); }
     ((byCD[r.cid]=byCD[r.cid]||{})[r.di]=byCD[r.cid][r.di]||[]).push(r);
   }
+  // seed locked/pinned teacher+room usage with sentinel cid -1 so no swap ever collides with a locked cell
+  if(P.fixedT) for(const k in P.fixedT){ const m=tSlot[k]=tSlot[k]||new Map(); P.fixedT[k].forEach(id=>{ if(!m.has(id)) m.set(id,-1); }); }
+  if(P.fixedR) for(const k in P.fixedR){ const m=rSlot[k]=rSlot[k]||new Map(); P.fixedR[k].forEach(id=>{ if(!m.has(id)) m.set(id,-1); }); }
   const blk=(m,id,di,pi)=> !!(id&&m[id]&&m[id].has(di+'_'+pi));
   const gapOf=(t,di)=>{ const s=tDay[t+'_'+di]; if(!s||s.size<=1)return 0; let mn=Infinity,mx=-Infinity; s.forEach(p=>{if(p<mn)mn=p;if(p>mx)mx=p;}); return (mx-mn+1)-s.size; };
   const maxRunOf=(t,di)=>{ const s=tDay[t+'_'+di]; if(!s||!s.size)return 0; const a=[...s].sort((x,y)=>x-y); let r=1,m=1; for(let i=1;i<a.length;i++){ r=(a[i]===a[i-1]+1)?r+1:1; if(r>m)m=r; } return m; };
