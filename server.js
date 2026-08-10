@@ -712,7 +712,7 @@ app.delete('/api/versions/:id', h(async (req,res)=>{
 app.get('/api/timetable/teacher/:id', h(async (req,res)=>{
   const id=Number(req.params.id);
   const rows=await q(`SELECT tt.*, c.name cls, s.name subj FROM tt_timetable tt
-     JOIN tt_class c ON c.id=tt.class_id JOIN tt_subject s ON s.id=tt.subject_id WHERE tt.teacher_id=? AND tt.school_id=?`,[id, req.sid]);
+     JOIN tt_class c ON c.id=tt.class_id JOIN tt_subject s ON s.id=tt.subject_id WHERE tt.teacher_id=? AND tt.week_index=0 AND tt.school_id=?`,[id, req.sid]);
   res.json({periods:rows, weekly_load:rows.length});
 }));
 
@@ -731,13 +731,13 @@ app.get('/api/timetable/cover', h(async (req,res)=>{
   const absentSet=new Set((await q('SELECT teacher_id FROM tt_absence WHERE day_of_week=? AND school_id=?',[day,sid])).map(r=>r.teacher_id));
   const rows=await q(`SELECT tt.class_id,tt.period_index,tt.subject_id,tt.teacher_id,c.name cls,s.name subj
      FROM tt_timetable tt JOIN tt_class c ON c.id=tt.class_id JOIN tt_subject s ON s.id=tt.subject_id
-     WHERE tt.day_of_week=? AND tt.teacher_id IS NOT NULL AND tt.school_id=?`,[day,sid]);
+     WHERE tt.day_of_week=? AND tt.teacher_id IS NOT NULL AND tt.week_index=0 AND tt.school_id=?`,[day,sid]);
   const allTeachers=await q('SELECT id,name,can_substitute FROM tt_teacher WHERE school_id=?',[sid]);
   const need=[];
   for(const r of rows){
     if(!absentSet.has(r.teacher_id)) continue;
     const sub=await q1('SELECT proxy_teacher_id FROM tt_substitution WHERE day_of_week=? AND class_id=? AND period_index=?',[day,r.class_id,r.period_index]);
-    const busy=new Set((await q('SELECT teacher_id FROM tt_timetable WHERE day_of_week=? AND period_index=? AND teacher_id IS NOT NULL AND school_id=?',[day,r.period_index,sid])).map(x=>x.teacher_id));
+    const busy=new Set((await q('SELECT teacher_id FROM tt_timetable WHERE day_of_week=? AND period_index=? AND teacher_id IS NOT NULL AND week_index=0 AND school_id=?',[day,r.period_index,sid])).map(x=>x.teacher_id));
     const free=allTeachers.filter(t=>!busy.has(t.id)&&!absentSet.has(t.id)&&+t.can_substitute!==0);
     need.push({...r, proxy_teacher_id: sub?sub.proxy_teacher_id:null, free});
   }
@@ -762,7 +762,7 @@ app.get('/api/datesub/fetch', h(async (req,res)=>{
   const dates=datesBetween(from,to); if(dates.length>31){ res.status(400).json({error:'Date range too large (max 31 days).'}); return; }
   const wdays=new Set(workingDaysArr(sid));
   const allTeachers=await q('SELECT id,name,can_substitute FROM tt_teacher WHERE school_id=? ORDER BY name',[sid]);
-  const cells=await q('SELECT day_of_week,period_index,teacher_id FROM tt_timetable WHERE teacher_id IS NOT NULL AND school_id=?',[sid]);
+  const cells=await q('SELECT day_of_week,period_index,teacher_id FROM tt_timetable WHERE teacher_id IS NOT NULL AND week_index=0 AND school_id=?',[sid]);
   const busy={}; cells.forEach(c=>{ const k=c.day_of_week+'_'+c.period_index; (busy[k]=busy[k]||new Set()).add(c.teacher_id); });
   const myCells=await q(`SELECT tt.day_of_week,tt.period_index,tt.class_id,tt.subject_id,c.name cls,s.name subj
      FROM tt_timetable tt JOIN tt_class c ON c.id=tt.class_id LEFT JOIN tt_subject s ON s.id=tt.subject_id
@@ -827,7 +827,7 @@ app.post('/api/leaves/:id/approve', h(async (req,res)=>{
   const lv=await q1('SELECT * FROM tt_leave WHERE id=? AND school_id=?',[id,sid]); if(!lv){ res.status(404).json({error:'not found'}); return; }
   await run('UPDATE tt_leave SET status=? WHERE id=? AND school_id=?',['approved',id,sid]);
   const wdays=new Set(workingDaysArr(sid));
-  const myCells=await q('SELECT day_of_week,period_index,class_id FROM tt_timetable WHERE teacher_id=? AND school_id=?',[lv.teacher_id,sid]);
+  const myCells=await q('SELECT day_of_week,period_index,class_id FROM tt_timetable WHERE teacher_id=? AND week_index=0 AND school_id=?',[lv.teacher_id,sid]);
   const byDow={}; myCells.forEach(c=>{ (byDow[c.day_of_week]=byDow[c.day_of_week]||[]).push(c); });
   let created=0;
   for(const date of datesBetween(lv.date_from,lv.date_to)){ const dow=dowFromISO(date); if(!wdays.has(dow)) continue;
@@ -856,7 +856,7 @@ app.get('/api/timetable/monitor', h(async (req,res)=>{
     for(const sl of slots){
       if(hhmm>=sl.start&&hhmm<sl.end){
         if(sl.is_break){status='break';text='Break';break;}
-        const cell=await q1('SELECT * FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=? AND school_id=?',[c.id,day,pi,sid]);
+        const cell=await q1('SELECT * FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=? AND week_index=0 AND school_id=?',[c.id,day,pi,sid]);
         if(cell&&cell.subject_id){
           const subj=(await q1('SELECT name FROM tt_subject WHERE id=?',[cell.subject_id])).name;
           const ds=dsMap[c.id+'_'+pi];
@@ -939,15 +939,23 @@ app.get('/api/export/timetable.xlsx', h(async (req,res)=>{
   const subjById={}; (await q('SELECT id,name FROM tt_subject WHERE school_id=?',[sid])).forEach(s=>subjById[s.id]=s.name);
   const tchById={}; (await q('SELECT id,name FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>tchById[t.id]=t.name);
   const roomById={}; (await q('SELECT id,name FROM tt_room WHERE school_id=?',[sid])).forEach(r=>roomById[r.id]=r.name);
-  const cellMap={}; (await q('SELECT * FROM tt_timetable WHERE school_id=?',[sid])).forEach(c=>cellMap[`${c.class_id}|${c.day_of_week}|${c.period_index}`]=c);
+  const cellMap={}; (await q('SELECT * FROM tt_timetable WHERE school_id=?',[sid])).forEach(c=>cellMap[`${c.class_id}|${c.day_of_week}|${c.period_index}|${c.week_index||0}`]=c);
   const cellText=(c)=>{ if(!c||!c.subject_id)return ''; const s=subjById[c.subject_id]||''; const t=c.teacher_id?(tchById[c.teacher_id]||''):''; const r=c.room_id?(roomById[c.room_id]||''):''; return s+(t?'\n'+t:'')+(r?'\n'+r:''); };
   const maxSlots=Math.max(1,...DAYS.map((_,i)=>teachingSlots(i, sid).length));
+  const cfg=getConfig(sid)||{}; const cyc=Math.max(1,Math.min(4,parseInt(cfg.cycle_weeks,10)||1));
+  const wkLabels=(cfg.week_labels||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const wkName=i=> wkLabels[i] || (cyc===2?['Week A','Week B'][i] : 'Week '+(i+1));
+  const hdr=['Day',...Array.from({length:maxSlots},(_,i)=>'P'+(i+1))];
   classes.forEach(c=>{
     const ws=wb.addWorksheet(c.name.slice(0,28).replace(/[\\\/\?\*\[\]:]/g,' '));
-    const hdr=['Day',...Array.from({length:maxSlots},(_,i)=>'P'+(i+1))]; ws.addRow(hdr); styleHeader(ws.getRow(1));
-    DAYS.forEach((d,di)=>{ const row=[d]; for(let p=0;p<maxSlots;p++){ row.push(cellText(cellMap[`${c.id}|${di}|${p}`])); }
-      const r=ws.addRow(row); r.eachCell(cc=>{cc.alignment={wrapText:true,vertical:'top'};}); r.getCell(1).font={bold:true}; });
-    ws.columns.forEach((col,i)=>{col.width=i===0?10:16;}); ws.getColumn(1).font={bold:true};
+    for(let wk=0; wk<cyc; wk++){
+      if(cyc>1){ const tr=ws.addRow([wkName(wk)]); tr.getCell(1).font={bold:true,color:{argb:'FF1F3864'},size:12}; }
+      ws.addRow(hdr); styleHeader(ws.getRow(ws.rowCount));
+      DAYS.forEach((d,di)=>{ const row=[d]; for(let p=0;p<maxSlots;p++){ row.push(cellText(cellMap[`${c.id}|${di}|${p}|${wk}`])); }
+        const r=ws.addRow(row); r.eachCell(cc=>{cc.alignment={wrapText:true,vertical:'top'};}); r.getCell(1).font={bold:true}; });
+      if(cyc>1 && wk<cyc-1) ws.addRow([]);   // spacer between weeks
+    }
+    ws.columns.forEach((col,i)=>{col.width=i===0?12:16;});
   });
   res.setHeader('Content-Disposition','attachment; filename=timetable.xlsx');
   res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -997,7 +1005,7 @@ app.get('/api/export/reports.xlsx', h(async (req,res)=>{
   const teachers=await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY id',[sid]);
   const rooms   =await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY id',[sid]);
   const tmap    =await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
-  const tt      =await q('SELECT * FROM tt_timetable WHERE school_id=?',[sid]);
+  const tt      =await q('SELECT * FROM tt_timetable WHERE week_index=0 AND school_id=?',[sid]);
   const absents =await q('SELECT * FROM tt_absence WHERE school_id=?',[sid]);
   const cById={},sById={},tById={},rById={};
   classes.forEach(c=>cById[c.id]=c); subjects.forEach(s=>sById[s.id]=s); teachers.forEach(t=>tById[t.id]=t); rooms.forEach(r=>rById[r.id]=r);
@@ -1079,7 +1087,7 @@ async function gatherReportData(sid){
   const teachers=await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY id',[sid]);
   const rooms   =await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY id',[sid]);
   const tmap    =await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
-  const tt      =await q('SELECT * FROM tt_timetable WHERE school_id=?',[sid]);
+  const tt      =await q('SELECT * FROM tt_timetable WHERE week_index=0 AND school_id=?',[sid]);
   const cN={},sN={},tN={}; classes.forEach(c=>cN[c.id]=c.name); subjects.forEach(s=>sN[s.id]=s.name); teachers.forEach(t=>tN[t.id]=t.name);
   const dt=new Date(); const dateStr=String(dt.getFullYear())+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
   const scalars={ school_name:cfg.school_name||'', board:cfg.board||'', medium:cfg.medium||'', session:cfg.academic_session||'', date:dateStr,
