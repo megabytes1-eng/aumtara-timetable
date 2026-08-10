@@ -315,6 +315,8 @@ app.put('/api/teachers/:id', h(async (req,res)=>{
   if(b.qualification!==undefined) await run('UPDATE tt_teacher SET qualification=? WHERE id=? AND school_id=?',[b.qualification, req.params.id, sid]);
   if(b.main_subject_id!==undefined) await run('UPDATE tt_teacher SET main_subject_id=? WHERE id=? AND school_id=?',[b.main_subject_id||null, req.params.id, sid]);
   if(b.max_load!==undefined) await run('UPDATE tt_teacher SET max_load=? WHERE id=? AND school_id=?',[b.max_load||null, req.params.id, sid]);
+  if(b.max_per_day!==undefined) await run('UPDATE tt_teacher SET max_per_day=? WHERE id=? AND school_id=?',[b.max_per_day||null, req.params.id, sid]);
+  if(b.max_consecutive!==undefined) await run('UPDATE tt_teacher SET max_consecutive=? WHERE id=? AND school_id=?',[b.max_consecutive||null, req.params.id, sid]);
   if(b.subjects!==undefined){ const subs=new Set(b.subjects); if(b.main_subject_id)subs.add(+b.main_subject_id); await setSubjects(+req.params.id, [...subs]); }
   res.json({ok:true});
 }));
@@ -431,8 +433,15 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const tmap=await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
   const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
   const absent={}; (await q('SELECT * FROM tt_absence WHERE school_id=?',[sid])).forEach(a=>{(absent[a.teacher_id]=absent[a.teacher_id]||new Set()).add(a.day_of_week);});
-  const maxLoad={}; (await q('SELECT id,max_load FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>maxLoad[t.id]=t.max_load||999);
-  const load={};
+  const maxLoad={}, capDay={}, capCons={};
+  (await q('SELECT id,max_load,max_per_day,max_consecutive FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>{
+    maxLoad[t.id]=t.max_load||999;
+    capDay[t.id]=(t.max_per_day&&t.max_per_day>0)?t.max_per_day:Infinity;
+    capCons[t.id]=(t.max_consecutive&&t.max_consecutive>0)?t.max_consecutive:Infinity;
+  });
+  const load={}, dayCount={}, lastPi={}, consRun={};   // per-teacher weekly/day counts + consecutive tracking
+  const predRun=(t,di,pi)=> (lastPi[t+'_'+di]===pi-1 ? (consRun[t+'_'+di]||0)+1 : 1);   // consecutive run if placed at (di,pi)
+  const capOk=(t,di,pi)=> (dayCount[t+'_'+di]||0)<capDay[t] && predRun(t,di,pi)<=capCons[t];
   const teachersForSubject=sid=>tmap.filter(m=>m.subject_id===sid).map(m=>m.teacher_id);
 
   // build per-class subject pool honouring quota (fallback: even rotation)
@@ -457,12 +466,15 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
       classes.forEach(c=>{
         const subjId=pool[c.id][ptr[c.id]++];
         if(subjId==null) return;   // class has no schedulable subjects
-        let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&(load[t]||0)<maxLoad[t]);
+        let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
         opts.sort((a,b)=>(load[a]||0)-(load[b]||0));
-        let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&(load[x]||0)<maxLoad[x]) ?? null;
+        let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
         const room=rooms.find(r=>!usedR.has(r.id));
         toInsert.push([c.id,di,pi,subjId,t,room?room.id:null,sid]);
-        if(t){usedT.add(t);load[t]=(load[t]||0)+1;} if(room)usedR.add(room.id);
+        if(t){usedT.add(t);load[t]=(load[t]||0)+1;
+          dayCount[t+'_'+di]=(dayCount[t+'_'+di]||0)+1;
+          consRun[t+'_'+di]=(lastPi[t+'_'+di]===pi-1?(consRun[t+'_'+di]||0)+1:1);
+          lastPi[t+'_'+di]=pi;} if(room)usedR.add(room.id);
       });
     });
   });
