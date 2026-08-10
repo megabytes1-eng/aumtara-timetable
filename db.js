@@ -169,6 +169,7 @@ async function init() {
   // Teacher daily / consecutive period caps (0 or NULL = no cap)
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS max_per_day INTEGER`);      // max periods a teacher can take in one day
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS max_consecutive INTEGER`);  // max back-to-back periods in a day
+  await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS can_substitute INTEGER DEFAULT 1`); // 1 = eligible as a substitute/proxy, 0 = never suggested
   await run(`UPDATE tt_subject SET active=1 WHERE active IS NULL`);
   // Phase 3 — optional class structure (Board / Medium / Standard / Section). All additive & optional.
   for (const c of ['board','medium','standard','section'])

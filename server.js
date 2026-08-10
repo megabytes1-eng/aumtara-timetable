@@ -317,6 +317,7 @@ app.put('/api/teachers/:id', h(async (req,res)=>{
   if(b.max_load!==undefined) await run('UPDATE tt_teacher SET max_load=? WHERE id=? AND school_id=?',[b.max_load||null, req.params.id, sid]);
   if(b.max_per_day!==undefined) await run('UPDATE tt_teacher SET max_per_day=? WHERE id=? AND school_id=?',[b.max_per_day||null, req.params.id, sid]);
   if(b.max_consecutive!==undefined) await run('UPDATE tt_teacher SET max_consecutive=? WHERE id=? AND school_id=?',[b.max_consecutive||null, req.params.id, sid]);
+  if(b.can_substitute!==undefined) await run('UPDATE tt_teacher SET can_substitute=? WHERE id=? AND school_id=?',[b.can_substitute?1:0, req.params.id, sid]);
   if(b.subjects!==undefined){ const subs=new Set(b.subjects); if(b.main_subject_id)subs.add(+b.main_subject_id); await setSubjects(+req.params.id, [...subs]); }
   res.json({ok:true});
 }));
@@ -639,13 +640,13 @@ app.get('/api/timetable/cover', h(async (req,res)=>{
   const rows=await q(`SELECT tt.class_id,tt.period_index,tt.subject_id,tt.teacher_id,c.name cls,s.name subj
      FROM tt_timetable tt JOIN tt_class c ON c.id=tt.class_id JOIN tt_subject s ON s.id=tt.subject_id
      WHERE tt.day_of_week=? AND tt.teacher_id IS NOT NULL AND tt.school_id=?`,[day,sid]);
-  const allTeachers=await q('SELECT id,name FROM tt_teacher WHERE school_id=?',[sid]);
+  const allTeachers=await q('SELECT id,name,can_substitute FROM tt_teacher WHERE school_id=?',[sid]);
   const need=[];
   for(const r of rows){
     if(!absentSet.has(r.teacher_id)) continue;
     const sub=await q1('SELECT proxy_teacher_id FROM tt_substitution WHERE day_of_week=? AND class_id=? AND period_index=?',[day,r.class_id,r.period_index]);
     const busy=new Set((await q('SELECT teacher_id FROM tt_timetable WHERE day_of_week=? AND period_index=? AND teacher_id IS NOT NULL AND school_id=?',[day,r.period_index,sid])).map(x=>x.teacher_id));
-    const free=allTeachers.filter(t=>!busy.has(t.id)&&!absentSet.has(t.id));
+    const free=allTeachers.filter(t=>!busy.has(t.id)&&!absentSet.has(t.id)&&+t.can_substitute!==0);
     need.push({...r, proxy_teacher_id: sub?sub.proxy_teacher_id:null, free});
   }
   res.json({day, need});
@@ -668,7 +669,7 @@ app.get('/api/datesub/fetch', h(async (req,res)=>{
   if(to<from){ res.status(400).json({error:'End date is before start date.'}); return; }
   const dates=datesBetween(from,to); if(dates.length>31){ res.status(400).json({error:'Date range too large (max 31 days).'}); return; }
   const wdays=new Set(workingDaysArr(sid));
-  const allTeachers=await q('SELECT id,name FROM tt_teacher WHERE school_id=? ORDER BY name',[sid]);
+  const allTeachers=await q('SELECT id,name,can_substitute FROM tt_teacher WHERE school_id=? ORDER BY name',[sid]);
   const cells=await q('SELECT day_of_week,period_index,teacher_id FROM tt_timetable WHERE teacher_id IS NOT NULL AND school_id=?',[sid]);
   const busy={}; cells.forEach(c=>{ const k=c.day_of_week+'_'+c.period_index; (busy[k]=busy[k]||new Set()).add(c.teacher_id); });
   const myCells=await q(`SELECT tt.day_of_week,tt.period_index,tt.class_id,tt.subject_id,c.name cls,s.name subj
@@ -681,7 +682,7 @@ app.get('/api/datesub/fetch', h(async (req,res)=>{
   for(const date of dates){ const dow=dowFromISO(date); if(!wdays.has(dow)) continue; const list=byDow[dow]||[]; if(!list.length) continue;
     const slots=teachingSlots(dow,sid);
     for(const c of list){ const busySet=busy[dow+'_'+c.period_index]||new Set();
-      const free=allTeachers.filter(t=>t.id!==teacher_id && !busySet.has(t.id));
+      const free=allTeachers.filter(t=>t.id!==teacher_id && !busySet.has(t.id) && +t.can_substitute!==0);
       const e=exMap[date+'_'+c.class_id+'_'+c.period_index]; const sl=slots[c.period_index];
       out.push({ sub_date:date, dow, period_index:c.period_index, class_id:c.class_id, cls:c.cls, subject_id:c.subject_id, subj:c.subj||'',
         start:sl?sl.start:'', end:sl?sl.end:'', free:free.map(f=>({id:f.id,name:f.name})),
