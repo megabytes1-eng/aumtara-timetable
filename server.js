@@ -509,7 +509,7 @@ app.put('/api/timetable/config', h(async (req,res)=>{
   for(const k of ['label_class','label_teacher','label_room','label_subject'])
     if(b[k]!==undefined) await run(`UPDATE tt_config SET ${k}=? WHERE school_id=?`,[(b[k]||'').trim()||null, req.sid]);
   // Auto Set optimizer toggles
-  for(const k of ['opt_spread','opt_balance','opt_morning','opt_gap'])
+  for(const k of ['opt_spread','opt_balance','opt_morning','opt_gap','opt_solver'])
     if(b[k]!==undefined) await run(`UPDATE tt_config SET ${k}=? WHERE school_id=?`,[b[k]?1:0, req.sid]);
   // Multi-week cycle
   if(b.cycle_weeks!==undefined){ const n=Math.max(1,Math.min(4,parseInt(b.cycle_weeks,10)||1)); await run(`UPDATE tt_config SET cycle_weeks=? WHERE school_id=?`,[n, req.sid]); }
@@ -650,6 +650,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const optBalance=(optCfg.opt_balance==null?1:+optCfg.opt_balance)!==0;
   const optMorning=(+optCfg.opt_morning||0)!==0;
   const optGap=(+optCfg.opt_gap||0)!==0;
+  const optSolver=(+optCfg.opt_solver||0)!==0;
   const cycleWeeks=Math.max(1,Math.min(4, parseInt(optCfg.cycle_weeks,10)||1));   // number of distinct weeks in the rotation
   const slotCount={}; DAYS.forEach((_,di)=>{ slotCount[di]=teachingSlots(di,sid).length; });
   const maxLoad={}, capDay={}, capCons={};
@@ -716,6 +717,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   for(let wk=0; wk<cycleWeeks; wk++){                       // generate each week of the cycle independently
     clearState();
     classes.forEach(c=>{ remaining[c.id]=shuffleStable(poolFor(c.id,totalSlots), c.id + wk*1009).slice(); });   // vary shuffle per week so weeks differ
+    const weekRows=[];
     DAYS.forEach((_,di)=>{
       const slots=teachingSlots(di, sid);
       slots.forEach((_,pi)=>{
@@ -732,7 +734,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
           });
           let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
           const room=rooms.find(r=>!usedR.has(r.id)&&!blocked(roomBlock,r.id,di,pi));
-          toInsert.push([c.id,di,pi,subjId,t,room?room.id:null,sid,wk]);
+          weekRows.push({cid:c.id,di,pi,subject_id:subjId,teacher_id:t,room_id:room?room.id:null});
           if(t){usedT.add(t);load[t]=(load[t]||0)+1;
             dayCount[t+'_'+di]=(dayCount[t+'_'+di]||0)+1;
             consRun[t+'_'+di]=(lastPi[t+'_'+di]===pi-1?(consRun[t+'_'+di]||0)+1:1);
@@ -740,6 +742,8 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
         });
       });
     });
+    if(optSolver) optimizeWeek(weekRows, {teacherBlock,roomBlock,absent,capCons,subjWeight,clsRules,rkey});   // deep local-search improvement pass
+    for(const r of weekRows) toInsert.push([r.cid,r.di,r.pi,r.subject_id,r.teacher_id,r.room_id,sid,wk]);
   }
 
   await tx(async (cq)=>{
@@ -754,6 +758,91 @@ function shuffleStable(arr, seed){ // deterministic light shuffle so subjects sp
   const a=arr.slice(); let s=seed*9301+49297;
   for(let i=a.length-1;i>0;i--){ s=(s*9301+49297)%233280; const j=Math.floor(s/233280*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
   return a;
+}
+// Deterministic within-day local-search optimiser. Mutates `rows` (one week) in place, returns swaps applied.
+// Swaps the CONTENTS (subject/teacher/room) of two teaching periods of the SAME class on the SAME day when it
+// lowers a penalty (teacher idle gaps + heavy-subject-late) AND breaks no hard constraint. Same-day swaps keep
+// each teacher's weekly + per-day totals and every same-day rule intact, so only adjacency/consecutive need re-checking.
+function optimizeWeek(rows, P){
+  const teacherBlock=P.teacherBlock||{}, roomBlock=P.roomBlock||{}, absent=P.absent||{};
+  const capCons=P.capCons||{}, subjWeight=P.subjWeight||{}, clsRules=P.clsRules||{}, rkey=P.rkey;
+  const Wgap=P.Wgap==null?3:P.Wgap, Wmorn=P.Wmorn==null?1:P.Wmorn, maxPasses=P.maxPasses||8;
+  const K=(di,pi)=>di+'_'+pi;
+  const tSlot={}, rSlot={};          // slotKey -> Map(entityId -> cid)
+  const tDay={};                     // teacher_di -> Set(pi) across all classes
+  const byCD={};                     // cid -> di -> [rows]
+  for(const r of rows){
+    if(r.teacher_id){ (tSlot[K(r.di,r.pi)]=tSlot[K(r.di,r.pi)]||new Map()).set(r.teacher_id,r.cid); (tDay[r.teacher_id+'_'+r.di]=tDay[r.teacher_id+'_'+r.di]||new Set()).add(r.pi); }
+    if(r.room_id){ (rSlot[K(r.di,r.pi)]=rSlot[K(r.di,r.pi)]||new Map()).set(r.room_id,r.cid); }
+    ((byCD[r.cid]=byCD[r.cid]||{})[r.di]=byCD[r.cid][r.di]||[]).push(r);
+  }
+  const blk=(m,id,di,pi)=> !!(id&&m[id]&&m[id].has(di+'_'+pi));
+  const gapOf=(t,di)=>{ const s=tDay[t+'_'+di]; if(!s||s.size<=1)return 0; let mn=Infinity,mx=-Infinity; s.forEach(p=>{if(p<mn)mn=p;if(p>mx)mx=p;}); return (mx-mn+1)-s.size; };
+  const maxRunOf=(t,di)=>{ const s=tDay[t+'_'+di]; if(!s||!s.size)return 0; const a=[...s].sort((x,y)=>x-y); let r=1,m=1; for(let i=1;i<a.length;i++){ r=(a[i]===a[i-1]+1)?r+1:1; if(r>m)m=r; } return m; };
+  const w=(cid,sub)=> (subjWeight[cid]&&sub!=null)?(subjWeight[cid][sub]||0):0;
+  // adjacency (not_consecutive) ok for class C, day di if subject `sub` sits at period pi
+  const adjOk=(cid,di,pi,sub)=>{ if(sub==null)return true; const R=clsRules[cid]; if(!R||!R.notAdj||!R.notAdj.size)return true;
+    const day=byCD[cid]&&byCD[cid][di]; if(!day)return true;
+    for(const nb of day){ if(nb.subject_id==null)continue; if(nb.pi===pi-1||nb.pi===pi+1){ if(R.notAdj.has(rkey(sub,nb.subject_id))) return false; } }
+    return true; };
+  let swaps=0;
+  for(let pass=0; pass<maxPasses; pass++){
+    let improved=false;
+    for(const cidKey in byCD){ const cid=+cidKey; for(const diKey in byCD[cid]){ const di=+diKey;
+      const cells=byCD[cid][di]; if(cells.length<2) continue;
+      for(let i=0;i<cells.length;i++) for(let j=i+1;j<cells.length;j++){
+        const A=cells[i], B=cells[j]; if(A.pi===B.pi) continue;
+        const pa=A.pi, pb=B.pi, TA=A.teacher_id, TB=B.teacher_id, RA=A.room_id, RB=B.room_id, SA=A.subject_id, SB=B.subject_id;
+        if(TA===TB && RA===RB && SA===SB) continue;
+        // hard constraints after moving A->pb, B->pa (same class, same day)
+        // teacher TB into pa: no OTHER class uses TB at (di,pa); not blocked/absent
+        if(TB){ const m=tSlot[K(di,pa)]; if(m){const u=m.get(TB); if(u!=null&&u!==cid) continue;} if(blk(teacherBlock,TB,+di,pa)) continue; if(absent[TB]&&absent[TB].has(+di)) continue; }
+        if(TA){ const m=tSlot[K(di,pb)]; if(m){const u=m.get(TA); if(u!=null&&u!==cid) continue;} if(blk(teacherBlock,TA,+di,pb)) continue; if(absent[TA]&&absent[TA].has(+di)) continue; }
+        if(RB){ const m=rSlot[K(di,pa)]; if(m){const u=m.get(RB); if(u!=null&&u!==cid) continue;} if(blk(roomBlock,RB,+di,pa)) continue; }
+        if(RA){ const m=rSlot[K(di,pb)]; if(m){const u=m.get(RA); if(u!=null&&u!==cid) continue;} if(blk(roomBlock,RA,+di,pb)) continue; }
+        // tentatively update tDay for TA,TB then check consecutive caps + adjacency, measure gap delta
+        const before = (TA?gapOf(TA,di):0)+(TB&&TB!==TA?gapOf(TB,di):0);
+        const moveT=(t,fromPi,toPi)=>{ if(!t)return; const s=tDay[t+'_'+di]; if(s){ s.delete(fromPi); s.add(toPi); } };
+        // apply tentative teacher-day move (A:TA pa->pb, B:TB pb->pa)
+        moveT(TA,pa,pb); moveT(TB,pb,pa);
+        let ok = ( (!TA||maxRunOf(TA,di)<=(capCons[TA]||Infinity)) && (!TB||maxRunOf(TB,di)<=(capCons[TB]||Infinity)) );
+        const after = ok ? ((TA?gapOf(TA,di):0)+(TB&&TB!==TA?gapOf(TB,di):0)) : 0;
+        // revert teacher-day move (validity/penalty measured; real apply happens only if accepted)
+        moveT(TA,pb,pa); moveT(TB,pa,pb);
+        if(!ok) continue;
+        // adjacency rule: subject SB now at pa, SA now at pb (temporarily reflect by testing against the OTHER cells)
+        // build a quick view excluding A,B then test
+        if(!adjOkSwap(byCD[cid][di],A,B,pa,pb,clsRules[cid],rkey)) continue;
+        // penalty delta
+        const gapDelta = after - before;
+        const mornDelta = (pa-pb)*(w(cid,SB)-w(cid,SA));
+        const delta = Wgap*gapDelta + Wmorn*mornDelta;
+        if(delta < -1e-9){
+          // APPLY: swap contents in the row objects, update occupancy maps + tDay
+          if(TA){ tSlot[K(di,pa)].delete(TA); } if(RA){ rSlot[K(di,pa)].delete(RA); }
+          if(TB){ tSlot[K(di,pb)].delete(TB); } if(RB){ rSlot[K(di,pb)].delete(RB); }
+          const a2={s:A.subject_id,t:A.teacher_id,r:A.room_id};
+          A.subject_id=B.subject_id; A.teacher_id=B.teacher_id; A.room_id=B.room_id;
+          B.subject_id=a2.s; B.teacher_id=a2.t; B.room_id=a2.r;
+          if(A.teacher_id){(tSlot[K(di,pa)]=tSlot[K(di,pa)]||new Map()).set(A.teacher_id,cid);} if(A.room_id){(rSlot[K(di,pa)]=rSlot[K(di,pa)]||new Map()).set(A.room_id,cid);}
+          if(B.teacher_id){(tSlot[K(di,pb)]=tSlot[K(di,pb)]||new Map()).set(B.teacher_id,cid);} if(B.room_id){(rSlot[K(di,pb)]=rSlot[K(di,pb)]||new Map()).set(B.room_id,cid);}
+          moveT(TA,pa,pb); moveT(TB,pb,pa);
+          swaps++; improved=true;
+        }
+      }
+    }}
+    if(!improved) break;
+  }
+  return swaps;
+}
+// adjacency rule check for a tentative same-day swap of cells A(pa) and B(pb): SB goes to pa, SA goes to pb
+function adjOkSwap(dayCells, A, B, pa, pb, R, rkey){
+  if(!R||!R.notAdj||!R.notAdj.size) return true;
+  const SA=A.subject_id, SB=B.subject_id;
+  const at=(pi)=>{ if(pi===pa) return SB; if(pi===pb) return SA; const c=dayCells.find(x=>x.pi===pi); return c?c.subject_id:null; };
+  const chk=(pi,sub)=>{ if(sub==null)return true; const a=at(pi-1), b=at(pi+1);
+    if(a!=null&&R.notAdj.has(rkey(sub,a)))return false; if(b!=null&&R.notAdj.has(rkey(sub,b)))return false; return true; };
+  return chk(pa,SB)&&chk(pb,SA);
 }
 
 // ---------- TIMETABLE VERSIONS (saved snapshots) = per-term "windows" ----------

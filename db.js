@@ -151,6 +151,7 @@ async function init() {
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_balance INTEGER DEFAULT 1`);  // 1 = balance teacher workload (give the next period to the least-loaded eligible teacher)
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_morning INTEGER DEFAULT 0`);  // 1 = bias heavier (higher-quota) subjects to earlier periods
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_gap INTEGER DEFAULT 0`);      // 1 = minimise teacher idle gaps (prefer a teacher already teaching the previous period)
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_solver INTEGER DEFAULT 0`);   // 1 = run a deep local-search optimisation pass after auto-generate
   // Multi-week / rotating cycle: 1 = weekly (default), 2 = fortnightly (A/B), 3-4 = custom cycle
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS cycle_weeks INTEGER DEFAULT 1`);
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS week_labels TEXT`);               // CSV of week names, blank = auto ("Week A", "Week B", ...)
