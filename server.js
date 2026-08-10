@@ -171,6 +171,83 @@ app.post('/api/sharelinks', h(async (req,res)=>{
 }));
 app.delete('/api/sharelinks/:id', h(async (req,res)=>{ await run('DELETE FROM tt_sharelink WHERE id=? AND school_id=?',[req.params.id,req.sid]); res.json({ok:true}); }));
 
+// -------------------- STUDENTS + STUDENT-LEVEL ELECTIVES --------------------
+// Students of a class
+app.get('/api/students', h(async (req,res)=>{
+  const cid=req.query.class_id?+req.query.class_id:null;
+  const rows=cid ? await q('SELECT * FROM tt_student WHERE school_id=? AND class_id=? ORDER BY roll,name,id',[req.sid,cid])
+                 : await q('SELECT * FROM tt_student WHERE school_id=? ORDER BY class_id,roll,name,id',[req.sid]);
+  res.json(rows);
+}));
+app.post('/api/students', h(async (req,res)=>{
+  const b=req.body||{}; const cid=+b.class_id; const name=(b.name||'').trim();
+  if(!cid||!name){ res.status(400).json({error:'class and name required'}); return; }
+  const r=await q1('INSERT INTO tt_student(school_id,class_id,name,roll,created_at) VALUES(?,?,?,?,now()::text) RETURNING id',[req.sid,cid,name,(b.roll||'').trim()||null]);
+  res.json({ok:true,id:r.id});
+}));
+app.delete('/api/students/:id', h(async (req,res)=>{
+  const id=+req.params.id;
+  await run('DELETE FROM tt_student_choice WHERE student_id=? AND school_id=?',[id,req.sid]);
+  await run('DELETE FROM tt_student WHERE id=? AND school_id=?',[id,req.sid]);
+  res.json({ok:true});
+}));
+
+// Electives for a class, each with its options nested
+app.get('/api/electives', h(async (req,res)=>{
+  const cid=req.query.class_id?+req.query.class_id:null;
+  const els=cid ? await q('SELECT * FROM tt_elective WHERE school_id=? AND class_id=? ORDER BY day_of_week,period_index,id',[req.sid,cid])
+                : await q('SELECT * FROM tt_elective WHERE school_id=? ORDER BY class_id,day_of_week,period_index,id',[req.sid]);
+  const opts=await q('SELECT * FROM tt_elective_option WHERE school_id=? ORDER BY id',[req.sid]);
+  els.forEach(e=>{ e.options=opts.filter(o=>o.elective_id===e.id); });
+  res.json(els);
+}));
+app.post('/api/electives', h(async (req,res)=>{
+  const b=req.body||{}; const cid=+b.class_id; const name=(b.name||'').trim();
+  if(!cid||!name){ res.status(400).json({error:'class and name required'}); return; }
+  const r=await q1('INSERT INTO tt_elective(school_id,class_id,name,day_of_week,period_index,week_index,created_at) VALUES(?,?,?,?,?,?,now()::text) RETURNING id',
+    [req.sid,cid,name,+b.day_of_week||0,+b.period_index||0,+b.week_index||0]);
+  res.json({ok:true,id:r.id});
+}));
+app.delete('/api/electives/:id', h(async (req,res)=>{
+  const id=+req.params.id;
+  await run('DELETE FROM tt_student_choice WHERE elective_id=? AND school_id=?',[id,req.sid]);
+  await run('DELETE FROM tt_elective_option WHERE elective_id=? AND school_id=?',[id,req.sid]);
+  await run('DELETE FROM tt_elective WHERE id=? AND school_id=?',[id,req.sid]);
+  res.json({ok:true});
+}));
+app.post('/api/elective-options', h(async (req,res)=>{
+  const b=req.body||{}; const eid=+b.elective_id; const label=(b.label||'').trim();
+  if(!eid||!label){ res.status(400).json({error:'elective and label required'}); return; }
+  const r=await q1('INSERT INTO tt_elective_option(school_id,elective_id,label,subject_id,teacher_id,room_id,created_at) VALUES(?,?,?,?,?,?,now()::text) RETURNING id',
+    [req.sid,eid,label,b.subject_id?+b.subject_id:null,b.teacher_id?+b.teacher_id:null,b.room_id?+b.room_id:null]);
+  res.json({ok:true,id:r.id});
+}));
+app.delete('/api/elective-options/:id', h(async (req,res)=>{
+  const id=+req.params.id;
+  await run('DELETE FROM tt_student_choice WHERE option_id=? AND school_id=?',[id,req.sid]);
+  await run('DELETE FROM tt_elective_option WHERE id=? AND school_id=?',[id,req.sid]);
+  res.json({ok:true});
+}));
+
+// Student choices: which option each student takes per elective
+app.get('/api/student-choices', h(async (req,res)=>{
+  const sidq=req.query.student_id?+req.query.student_id:null;
+  const rows=sidq ? await q('SELECT elective_id,option_id FROM tt_student_choice WHERE school_id=? AND student_id=?',[req.sid,sidq])
+                  : await q('SELECT student_id,elective_id,option_id FROM tt_student_choice WHERE school_id=?',[req.sid]);
+  res.json(rows);
+}));
+app.post('/api/student-choices', h(async (req,res)=>{
+  const b=req.body||{}; const stu=+b.student_id, eid=+b.elective_id;
+  if(!stu||!eid){ res.status(400).json({error:'student and elective required'}); return; }
+  if(b.option_id){
+    await run(`INSERT INTO tt_student_choice(school_id,student_id,elective_id,option_id) VALUES(?,?,?,?)
+       ON CONFLICT(student_id,elective_id) DO UPDATE SET option_id=excluded.option_id`,[req.sid,stu,eid,+b.option_id]);
+  } else {
+    await run('DELETE FROM tt_student_choice WHERE school_id=? AND student_id=? AND elective_id=?',[req.sid,stu,eid]);
+  }
+  res.json({ok:true});
+}));
+
 // -------------------- SCHOOLS (registry) --------------------
 app.get('/api/schools', h(async (req,res)=>{
   if (req.user.role === 'master') res.json(await q('SELECT * FROM tt_school ORDER BY id'));
@@ -207,7 +284,7 @@ app.delete('/api/schools/:id', h(async (req,res)=>{
   // wipe this school's data
   await run('DELETE FROM tt_snapshot_cell WHERE snapshot_id IN (SELECT id FROM tt_snapshot WHERE school_id=?)',[id]);
   await run('DELETE FROM tt_teacher_subject WHERE teacher_id IN (SELECT id FROM tt_teacher WHERE school_id=?)',[id]);
-  for(const tbl of ['tt_timetable','tt_quota','tt_chapter','tt_absence','tt_substitution','tt_diary','tt_snapshot','tt_class','tt_subject','tt_room','tt_teacher','tt_config'])
+  for(const tbl of ['tt_timetable','tt_quota','tt_chapter','tt_absence','tt_substitution','tt_diary','tt_snapshot','tt_student','tt_elective','tt_elective_option','tt_student_choice','tt_class','tt_subject','tt_room','tt_teacher','tt_config'])
     await run(`DELETE FROM ${tbl} WHERE school_id=?`,[id]);
   // detach users of that school (don't delete accounts)
   await run('UPDATE tt_user SET school_id=NULL WHERE school_id=?',[id]);

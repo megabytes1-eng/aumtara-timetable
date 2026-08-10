@@ -166,10 +166,7 @@ async function init() {
       LOOP EXECUTE 'ALTER TABLE tt_timetable DROP CONSTRAINT '||quote_ident(cname); END LOOP;
     END $$;`);
   await run(`CREATE UNIQUE INDEX IF NOT EXISTS ux_tt_cell ON tt_timetable (class_id, day_of_week, period_index, week_index)`);
-  await run(`ALTER TABLE tt_snapshot_cell ADD COLUMN IF NOT EXISTS week_index INTEGER DEFAULT 0`);
-  // Timetable windows: bind a saved version to a term + capture its School Hours config
-  await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS term_id INTEGER`);
-  await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS config_json TEXT`);
+  // (tt_snapshot term_id/config_json ALTERs moved to just after CREATE TABLE tt_snapshot below — fresh-DB safe)
   // Date-based substitution / proxy (specific calendar dates, not just weekday)
   await run(`CREATE TABLE IF NOT EXISTS tt_datesub (
      id SERIAL PRIMARY KEY, school_id INTEGER, sub_date TEXT, class_id INTEGER, period_index INTEGER,
@@ -194,6 +191,11 @@ async function init() {
   await run(`ALTER TABLE tt_leave ADD COLUMN IF NOT EXISTS leave_type TEXT`);
   // Public shareable read-only timetable links (capability token). kind=class, target_id=class id.
   await run(`CREATE TABLE IF NOT EXISTS tt_sharelink (id SERIAL PRIMARY KEY, school_id INTEGER, token TEXT UNIQUE, kind TEXT, target_id INTEGER, created_at TEXT)`);
+  // Students + student-level electives (per-student timetables). Electives are a view-layer overlay on the class grid.
+  await run(`CREATE TABLE IF NOT EXISTS tt_student (id SERIAL PRIMARY KEY, school_id INTEGER, class_id INTEGER, name TEXT, roll TEXT, created_at TEXT)`);
+  await run(`CREATE TABLE IF NOT EXISTS tt_elective (id SERIAL PRIMARY KEY, school_id INTEGER, class_id INTEGER, name TEXT, day_of_week INTEGER, period_index INTEGER, week_index INTEGER DEFAULT 0, created_at TEXT)`);
+  await run(`CREATE TABLE IF NOT EXISTS tt_elective_option (id SERIAL PRIMARY KEY, school_id INTEGER, elective_id INTEGER, label TEXT, subject_id INTEGER, teacher_id INTEGER, room_id INTEGER, created_at TEXT)`);
+  await run(`CREATE TABLE IF NOT EXISTS tt_student_choice (id SERIAL PRIMARY KEY, school_id INTEGER, student_id INTEGER, elective_id INTEGER, option_id INTEGER, UNIQUE(student_id, elective_id))`);
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived
@@ -210,10 +212,13 @@ async function init() {
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS board TEXT`);   // school board (CBSE/State/IB/…)
   await run(`CREATE TABLE IF NOT EXISTS tt_snapshot (
      id SERIAL PRIMARY KEY, name TEXT NOT NULL, session TEXT, created_at TEXT, cell_count INTEGER)`);
+  await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS term_id INTEGER`);      // bind saved version to a term
+  await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS config_json TEXT`);    // capture School Hours config
   await run(`CREATE TABLE IF NOT EXISTS tt_snapshot_cell (
      snapshot_id INTEGER NOT NULL, class_id INTEGER NOT NULL,
      day_of_week INTEGER NOT NULL, period_index INTEGER NOT NULL,
      subject_id INTEGER, teacher_id INTEGER, room_id INTEGER)`);
+  await run(`ALTER TABLE tt_snapshot_cell ADD COLUMN IF NOT EXISTS week_index INTEGER DEFAULT 0`);   // multi-week snapshots
   await run(`CREATE INDEX IF NOT EXISTS ix_snap_cell ON tt_snapshot_cell (snapshot_id)`);
   // Phase 5 — role-based users + login sessions
   await run(`CREATE TABLE IF NOT EXISTS tt_user (
