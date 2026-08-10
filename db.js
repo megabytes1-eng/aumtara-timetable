@@ -167,6 +167,9 @@ async function init() {
   // merged/combined sessions: cells sharing a combine_id at the same slot are one shared class (not a clash)
   await run(`ALTER TABLE tt_timetable ADD COLUMN IF NOT EXISTS combine_id INTEGER`);
   await run(`CREATE TABLE IF NOT EXISTS tt_combine (id SERIAL PRIMARY KEY, school_id INTEGER, name TEXT, subject_id INTEGER, teacher_id INTEGER, room_id INTEGER, day_of_week INTEGER, period_index INTEGER, week_index INTEGER DEFAULT 0, class_ids TEXT, created_at TEXT)`);
+  // push notifications: app-global key/value (VAPID keys) + per-user web-push subscriptions
+  await run(`CREATE TABLE IF NOT EXISTS tt_appmeta (k TEXT PRIMARY KEY, v TEXT)`);
+  await run(`CREATE TABLE IF NOT EXISTS tt_push_sub (id SERIAL PRIMARY KEY, school_id INTEGER, user_id INTEGER, endpoint TEXT UNIQUE, p256dh TEXT, auth TEXT, created_at TEXT)`);
   // drop ANY old 3-column UNIQUE constraint on (class_id,day_of_week,period_index) — name may vary — so weeks can repeat a slot
   await run(`DO $$
     DECLARE cname text;

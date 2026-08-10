@@ -6,6 +6,29 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 const crypto = require('crypto');
 const { q, q1, run, tx, init, loadConfig, getConfigCached, hashPw, verifyPw, seedConfigForSchool } = require('./db');
+let webpush=null; try{ webpush=require('web-push'); }catch(e){ console.warn('web-push unavailable — push notifications disabled:', e.message); }
+let VAPID_PUB=null;
+async function getMeta(k){ const r=await q1('SELECT v FROM tt_appmeta WHERE k=?',[k]); return r?r.v:null; }
+async function setMeta(k,v){ await run('INSERT INTO tt_appmeta(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v',[k,v]); }
+async function ensureVapid(){
+  if(!webpush) return;
+  try{
+    let pub=await getMeta('vapid_pub'), priv=await getMeta('vapid_priv');
+    if(!pub||!priv){ const kk=webpush.generateVAPIDKeys(); pub=kk.publicKey; priv=kk.privateKey; await setMeta('vapid_pub',pub); await setMeta('vapid_priv',priv); }
+    webpush.setVapidDetails('mailto:notify@aumtara-timetable.onrender.com', pub, priv);
+    VAPID_PUB=pub;
+  }catch(e){ console.warn('VAPID setup failed:', e.message); }
+}
+// send a payload to every subscription in a list; prune subscriptions the push service rejects as gone
+async function sendToSubs(subs, payload){
+  if(!webpush||!subs||!subs.length) return {sent:0,failed:0};
+  let sent=0,failed=0; const body=JSON.stringify(payload);
+  for(const s of subs){
+    try{ await webpush.sendNotification({endpoint:s.endpoint,keys:{p256dh:s.p256dh,auth:s.auth}}, body); sent++; }
+    catch(e){ failed++; if(e&&(e.statusCode===404||e.statusCode===410)){ try{ await run('DELETE FROM tt_push_sub WHERE endpoint=?',[s.endpoint]); }catch(_){}} }
+  }
+  return {sent,failed};
+}
 
 const app = express();
 app.use(express.json({ limit: '8mb' }));   // logos (base64 data-URLs) can exceed the 100kb default
@@ -26,13 +49,18 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v2';
+const SW_JS = `const CACHE='aumtara-v3';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{const req=e.request; if(req.method!=='GET') return; let url; try{url=new URL(req.url);}catch(_){return;} if(url.origin!==self.location.origin) return; if(url.pathname.startsWith('/api/')) return;
   if(req.mode==='navigate'){ e.respondWith(fetch(req).then(r=>{const cp=r.clone(); caches.open(CACHE).then(c=>c.put('/',cp)); return r;}).catch(()=>caches.match('/'))); return; }
-  e.respondWith(caches.match(req).then(r=>r||fetch(req)));});`;
+  e.respondWith(caches.match(req).then(r=>r||fetch(req)));});
+self.addEventListener('push',e=>{ let d={}; try{ d=e.data?e.data.json():{}; }catch(_){ d={body:e.data&&e.data.text?e.data.text():''}; }
+  const title=d.title||'Aumtara'; const opts={body:d.body||'',icon:'/icon-192.png',badge:'/icon-192.png',data:{url:d.url||'/'}};
+  e.waitUntil(self.registration.showNotification(title,opts)); });
+self.addEventListener('notificationclick',e=>{ e.notification.close(); const u=(e.notification.data&&e.notification.data.url)||'/';
+  e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(cs=>{ for(const c of cs){ if('focus' in c) return c.focus(); } if(self.clients.openWindow) return self.clients.openWindow(u); })); });`;
 app.get('/manifest.webmanifest', (_, res) => { res.type('application/manifest+json'); res.send(JSON.stringify(MANIFEST)); });
 app.get('/sw.js', (_, res) => { res.type('application/javascript'); res.set('Cache-Control', 'no-cache'); res.send(SW_JS); });
 for (const ic of ['icon-192.png', 'icon-512.png', 'icon-maskable.png'])
@@ -285,7 +313,7 @@ app.delete('/api/schools/:id', h(async (req,res)=>{
   // wipe this school's data
   await run('DELETE FROM tt_snapshot_cell WHERE snapshot_id IN (SELECT id FROM tt_snapshot WHERE school_id=?)',[id]);
   await run('DELETE FROM tt_teacher_subject WHERE teacher_id IN (SELECT id FROM tt_teacher WHERE school_id=?)',[id]);
-  for(const tbl of ['tt_timetable','tt_quota','tt_chapter','tt_absence','tt_substitution','tt_diary','tt_snapshot','tt_student','tt_elective','tt_elective_option','tt_student_choice','tt_combine','tt_class','tt_subject','tt_room','tt_teacher','tt_config'])
+  for(const tbl of ['tt_timetable','tt_quota','tt_chapter','tt_absence','tt_substitution','tt_diary','tt_snapshot','tt_student','tt_elective','tt_elective_option','tt_student_choice','tt_combine','tt_push_sub','tt_class','tt_subject','tt_room','tt_teacher','tt_config'])
     await run(`DELETE FROM ${tbl} WHERE school_id=?`,[id]);
   // detach users of that school (don't delete accounts)
   await run('UPDATE tt_user SET school_id=NULL WHERE school_id=?',[id]);
@@ -1020,6 +1048,34 @@ app.post('/api/timetable/substitute', h(async (req,res)=>{
   else await run(`INSERT INTO tt_substitution(day_of_week,class_id,period_index,proxy_teacher_id,school_id) VALUES(?,?,?,?,?)
      ON CONFLICT(day_of_week,class_id,period_index) DO UPDATE SET proxy_teacher_id=excluded.proxy_teacher_id`,[day,class_id,period,proxy_teacher_id, req.sid]);
   res.json({ok:true});
+}));
+
+// ---------- PUSH NOTIFICATIONS (web-push) ----------
+app.get('/api/push/key', h(async (req,res)=>{ res.json({key: VAPID_PUB, enabled: !!(webpush&&VAPID_PUB)}); }));
+app.post('/api/push/subscribe', h(async (req,res)=>{
+  const s=req.body||{}; if(!s.endpoint||!s.keys){ res.status(400).json({error:'bad subscription'}); return; }
+  await run(`INSERT INTO tt_push_sub(school_id,user_id,endpoint,p256dh,auth,created_at) VALUES(?,?,?,?,?,now()::text)
+     ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id,school_id=excluded.school_id,p256dh=excluded.p256dh,auth=excluded.auth`,
+    [req.sid, req.user.id, s.endpoint, s.keys.p256dh||null, s.keys.auth||null]);
+  res.json({ok:true});
+}));
+app.post('/api/push/unsubscribe', h(async (req,res)=>{ const ep=(req.body||{}).endpoint; if(ep) await run('DELETE FROM tt_push_sub WHERE endpoint=? AND user_id=?',[ep, req.user.id]); res.json({ok:true}); }));
+app.post('/api/push/test', h(async (req,res)=>{
+  if(!webpush) return res.status(400).json({error:'push not available'});
+  const subs=await q('SELECT endpoint,p256dh,auth FROM tt_push_sub WHERE user_id=?',[req.user.id]);
+  if(!subs.length) return res.status(400).json({error:'no subscription — enable notifications first'});
+  const r=await sendToSubs(subs, {title:'Aumtara ✓', body:'Test notification — push is working!', url:'/'});
+  res.json({ok:true, ...r});
+}));
+app.post('/api/push/broadcast', h(async (req,res)=>{
+  if(!webpush) return res.status(400).json({error:'push not available'});
+  if(!['admin','master','principal'].includes(req.user.role)) return res.status(403).json({error:'not allowed'});
+  const title=((req.body||{}).title||'Aumtara').toString().slice(0,80);
+  const body=((req.body||{}).body||'').toString().slice(0,240);
+  if(!body) return res.status(400).json({error:'message required'});
+  const subs=await q('SELECT endpoint,p256dh,auth FROM tt_push_sub WHERE school_id=?',[req.sid]);
+  const r=await sendToSubs(subs, {title, body, url:'/'});
+  res.json({ok:true, ...r});
 }));
 
 // ---------- DATE-BASED SUBSTITUTION (proxy by calendar date + range) ----------
@@ -1758,6 +1814,7 @@ app.post('/api/import/hours', upload.single('file'), async (req,res)=>{
 // ---------- STARTUP ----------
 (async () => {
   await init();
+  await ensureVapid();
   const PORT=process.env.PORT||4100;
   app.listen(PORT,()=>console.log(`Timetable module running → http://localhost:${PORT}`));
 })().catch(e=>{ console.error('Startup failed:', e); process.exit(1); });
