@@ -146,6 +146,9 @@ async function init() {
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS label_teacher TEXT`);
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS label_room TEXT`);
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS label_subject TEXT`);
+  // Auto Set optimizer preferences (soft weights honoured by auto-generate)
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_spread INTEGER DEFAULT 1`);   // 1 = spread subjects across days (avoid repeating a subject the same day)
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS opt_balance INTEGER DEFAULT 1`);  // 1 = balance teacher workload (give the next period to the least-loaded eligible teacher)
   // Timetable windows: bind a saved version to a term + capture its School Hours config
   await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS term_id INTEGER`);
   await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS config_json TEXT`);

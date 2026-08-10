@@ -398,6 +398,9 @@ app.put('/api/timetable/config', h(async (req,res)=>{
   // custom entity labels (Labels & Terminology)
   for(const k of ['label_class','label_teacher','label_room','label_subject'])
     if(b[k]!==undefined) await run(`UPDATE tt_config SET ${k}=? WHERE school_id=?`,[(b[k]||'').trim()||null, req.sid]);
+  // Auto Set optimizer toggles
+  for(const k of ['opt_spread','opt_balance'])
+    if(b[k]!==undefined) await run(`UPDATE tt_config SET ${k}=? WHERE school_id=?`,[b[k]?1:0, req.sid]);
   await loadConfig(req.sid);
   res.json(getConfig(req.sid));
 }));
@@ -526,6 +529,10 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     (m[a.entity_id]=m[a.entity_id]||new Set()).add(k);
   });
   const blocked=(m,id,di,pi)=> !!(m[id]&&m[id].has(di+'_'+pi));
+  // optimizer preferences (soft): spread subjects across days + balance teacher load
+  const optCfg=getConfig(sid)||{};
+  const optSpread=(optCfg.opt_spread==null?1:+optCfg.opt_spread)!==0;
+  const optBalance=(optCfg.opt_balance==null?1:+optCfg.opt_balance)!==0;
   const maxLoad={}, capDay={}, capCons={};
   (await q('SELECT id,max_load,max_per_day,max_consecutive FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>{
     maxLoad[t.id]=t.max_load||999;
@@ -565,12 +572,13 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   function pickSubject(cid,di,pi){
     const rem=remaining[cid]; if(!rem.length) return null;
     const R=clsRules[cid]; const ds=daySubs[cid+'_'+di]; const prev=prevSub[cid+'_'+di];
+    const ruleOk=(s)=>{ if(ds){ for(const x of ds){ if(R.sameDay.has(rkey(s,x))){ return false; } } }
+      if(prev!=null && R.notAdj.has(rkey(s,prev))) return false; return true; };
     let idx=-1;
-    for(let i=0;i<rem.length;i++){ const s=rem[i]; let ok=true;
-      if(ds){ for(const x of ds){ if(R.sameDay.has(rkey(s,x))){ ok=false; break; } } }
-      if(ok && prev!=null && R.notAdj.has(rkey(s,prev))) ok=false;
-      if(ok){ idx=i; break; }
-    }
+    // pass 1 (spread on): first rule-valid subject NOT already placed today → subjects spread across the week
+    if(optSpread){ for(let i=0;i<rem.length;i++){ if(ruleOk(rem[i]) && !(ds&&ds.has(rem[i]))){ idx=i; break; } } }
+    // pass 2: any rule-valid subject
+    if(idx<0){ for(let i=0;i<rem.length;i++){ if(ruleOk(rem[i])){ idx=i; break; } } }
     if(idx<0) idx=0;   // nothing satisfies the rules → take next to avoid leaving a gap
     const s=rem.splice(idx,1)[0];
     (daySubs[cid+'_'+di]=daySubs[cid+'_'+di]||new Set()).add(s);
@@ -587,7 +595,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
         const subjId=pickSubject(c.id,di,pi);
         if(subjId==null) return;   // class has no schedulable subjects
         let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&!blocked(teacherBlock,t,di,pi)&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
-        opts.sort((a,b)=>(load[a]||0)-(load[b]||0));
+        if(optBalance) opts.sort((a,b)=>(load[a]||0)-(load[b]||0));   // least-loaded first when balancing
         let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
         const room=rooms.find(r=>!usedR.has(r.id)&&!blocked(roomBlock,r.id,di,pi));
         toInsert.push([c.id,di,pi,subjId,t,room?room.id:null,sid]);
