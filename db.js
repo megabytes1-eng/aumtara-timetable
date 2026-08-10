@@ -141,6 +141,11 @@ async function init() {
   // Explicit period counts (NULL/0 = derive count from end time — the original behaviour)
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS num_periods INTEGER`);
   await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS sat_num_periods INTEGER`);
+  // Labels & Terminology — custom names for the core entities (blank = default)
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS label_class TEXT`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS label_teacher TEXT`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS label_room TEXT`);
+  await run(`ALTER TABLE tt_config ADD COLUMN IF NOT EXISTS label_subject TEXT`);
   // Timetable windows: bind a saved version to a term + capture its School Hours config
   await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS term_id INTEGER`);
   await run(`ALTER TABLE tt_snapshot ADD COLUMN IF NOT EXISTS config_json TEXT`);

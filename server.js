@@ -345,6 +345,9 @@ app.put('/api/timetable/config', h(async (req,res)=>{
      v('num_periods'),v('sat_num_periods'), req.sid]);
   // keep the school registry name in sync if the school name was edited here
   if(b.school_name!==undefined) await run('UPDATE tt_school SET name=? WHERE id=?',[b.school_name, req.sid]);
+  // custom entity labels (Labels & Terminology)
+  for(const k of ['label_class','label_teacher','label_room','label_subject'])
+    if(b[k]!==undefined) await run(`UPDATE tt_config SET ${k}=? WHERE school_id=?`,[(b[k]||'').trim()||null, req.sid]);
   await loadConfig(req.sid);
   res.json(getConfig(req.sid));
 }));
