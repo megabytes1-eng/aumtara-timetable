@@ -163,6 +163,9 @@ async function init() {
      id SERIAL PRIMARY KEY, school_id INTEGER, entity_type TEXT, entity_id INTEGER,
      day_of_week INTEGER, period_index INTEGER, created_at TEXT,
      UNIQUE(school_id, entity_type, entity_id, day_of_week, period_index))`);
+  // Configurable leave types (Sick, Casual, Duty …) + a type on each leave application
+  await run(`CREATE TABLE IF NOT EXISTS tt_leave_type (id SERIAL PRIMARY KEY, school_id INTEGER, name TEXT, active INTEGER DEFAULT 1, created_at TEXT)`);
+  await run(`ALTER TABLE tt_leave ADD COLUMN IF NOT EXISTS leave_type TEXT`);
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived

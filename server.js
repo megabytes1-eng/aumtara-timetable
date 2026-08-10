@@ -718,9 +718,17 @@ app.post('/api/leaves', h(async (req,res)=>{
   if(req.user && req.user.role==='teacher'){ teacher_id=await myTeacherId(req); if(!teacher_id){ res.status(400).json({error:'Your teacher profile was not found — your user name must match a teacher name.'}); return; } }
   if(!teacher_id||!b.date_from||!b.date_to){ res.status(400).json({error:'Teacher and both dates are required.'}); return; }
   if(b.date_to<b.date_from){ res.status(400).json({error:'End date is before start date.'}); return; }
-  const r=await q1('INSERT INTO tt_leave(school_id,teacher_id,date_from,date_to,reason,status,created_at) VALUES(?,?,?,?,?,?,now()::text) RETURNING id',[req.sid,teacher_id,b.date_from,b.date_to,b.reason||null,'pending']);
+  const r=await q1('INSERT INTO tt_leave(school_id,teacher_id,date_from,date_to,reason,leave_type,status,created_at) VALUES(?,?,?,?,?,?,?,now()::text) RETURNING id',[req.sid,teacher_id,b.date_from,b.date_to,b.reason||null,b.leave_type||null,'pending']);
   res.json({ok:true,id:r.id});
 }));
+// ---------- LEAVE TYPES (config list) ----------
+app.get('/api/leave-types', h(async (req,res)=>{ res.json(await q('SELECT * FROM tt_leave_type WHERE school_id=? AND active=1 ORDER BY id',[req.sid])); }));
+app.post('/api/leave-types', h(async (req,res)=>{
+  const name=(req.body.name||'').trim(); if(!name){ res.status(400).json({error:'name required'}); return; }
+  const r=await q1('INSERT INTO tt_leave_type(school_id,name,active,created_at) VALUES(?,?,1,now()::text) RETURNING id',[req.sid,name]);
+  res.json({ok:true,id:r.id});
+}));
+app.delete('/api/leave-types/:id', h(async (req,res)=>{ await run('DELETE FROM tt_leave_type WHERE id=? AND school_id=?',[req.params.id,req.sid]); res.json({ok:true}); }));
 app.post('/api/leaves/:id/approve', h(async (req,res)=>{
   if(!isAdminRole(req)){ res.status(403).json({error:'forbidden'}); return; }
   const id=req.params.id, sid=req.sid;
