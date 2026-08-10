@@ -285,7 +285,7 @@ app.delete('/api/schools/:id', h(async (req,res)=>{
   // wipe this school's data
   await run('DELETE FROM tt_snapshot_cell WHERE snapshot_id IN (SELECT id FROM tt_snapshot WHERE school_id=?)',[id]);
   await run('DELETE FROM tt_teacher_subject WHERE teacher_id IN (SELECT id FROM tt_teacher WHERE school_id=?)',[id]);
-  for(const tbl of ['tt_timetable','tt_quota','tt_chapter','tt_absence','tt_substitution','tt_diary','tt_snapshot','tt_student','tt_elective','tt_elective_option','tt_student_choice','tt_class','tt_subject','tt_room','tt_teacher','tt_config'])
+  for(const tbl of ['tt_timetable','tt_quota','tt_chapter','tt_absence','tt_substitution','tt_diary','tt_snapshot','tt_student','tt_elective','tt_elective_option','tt_student_choice','tt_combine','tt_class','tt_subject','tt_room','tt_teacher','tt_config'])
     await run(`DELETE FROM ${tbl} WHERE school_id=?`,[id]);
   // detach users of that school (don't delete accounts)
   await run('UPDATE tt_user SET school_id=NULL WHERE school_id=?',[id]);
@@ -588,11 +588,36 @@ async function conflictFor(class_id, day, period, teacher_id, room_id, sid, wk){
   return out;
 }
 app.get('/api/timetable/conflicts', h(async (req,res)=>{
+  // combined sessions (shared combine_id) count as ONE booking, so they are not flagged as a teacher/room clash
   const teacher=await q(`SELECT day_of_week,period_index,week_index,teacher_id,string_agg(class_id::text,',') classes,COUNT(*)::int n FROM tt_timetable
-     WHERE teacher_id IS NOT NULL AND school_id=? GROUP BY day_of_week,period_index,week_index,teacher_id HAVING COUNT(*)>1`,[req.sid]);
+     WHERE teacher_id IS NOT NULL AND school_id=? GROUP BY day_of_week,period_index,week_index,teacher_id HAVING COUNT(DISTINCT COALESCE(combine_id,-id))>1`,[req.sid]);
   const room=await q(`SELECT day_of_week,period_index,week_index,room_id,string_agg(class_id::text,',') classes,COUNT(*)::int n FROM tt_timetable
-     WHERE room_id IS NOT NULL AND school_id=? GROUP BY day_of_week,period_index,week_index,room_id HAVING COUNT(*)>1`,[req.sid]);
+     WHERE room_id IS NOT NULL AND school_id=? GROUP BY day_of_week,period_index,week_index,room_id HAVING COUNT(DISTINCT COALESCE(combine_id,-id))>1`,[req.sid]);
   res.json({teacher, room});
+}));
+// ---------- MERGED / COMBINED CLASSES (one shared session across several classes) ----------
+app.get('/api/combines', h(async (req,res)=> res.json(await q('SELECT * FROM tt_combine WHERE school_id=? ORDER BY day_of_week,period_index,id',[req.sid]))));
+app.post('/api/combines', h(async (req,res)=>{
+  const b=req.body; const sid=req.sid;
+  const ids=(Array.isArray(b.class_ids)?b.class_ids:String(b.class_ids||'').split(',')).map(x=>parseInt(x,10)).filter(n=>!isNaN(n));
+  if(ids.length<2) return res.status(400).json({error:'Pick at least two classes to combine.'});
+  if(b.subject_id==null||b.day==null||b.period==null) return res.status(400).json({error:'Subject, day and period are required.'});
+  const wk=+b.week||0;
+  const row=await q1(`INSERT INTO tt_combine(school_id,name,subject_id,teacher_id,room_id,day_of_week,period_index,week_index,class_ids,created_at)
+     VALUES(?,?,?,?,?,?,?,?,?,now()::text) RETURNING id`,
+     [sid, b.name||null, b.subject_id, b.teacher_id||null, b.room_id||null, +b.day, +b.period, wk, ids.join(',')]);
+  // write one locked, combine-tagged cell per member class at the shared slot
+  for(const cid of ids){
+    await run(`INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index,locked,combine_id) VALUES(?,?,?,?,?,?,?,?,1,?)
+       ON CONFLICT(class_id,day_of_week,period_index,week_index) DO UPDATE SET subject_id=excluded.subject_id,teacher_id=excluded.teacher_id,room_id=excluded.room_id,locked=1,combine_id=excluded.combine_id`,
+      [cid, +b.day, +b.period, b.subject_id, b.teacher_id||null, b.room_id||null, sid, wk, row.id]);
+  }
+  res.json({id:row.id});
+}));
+app.delete('/api/combines/:id', h(async (req,res)=>{
+  await run('DELETE FROM tt_timetable WHERE combine_id=? AND school_id=?',[req.params.id, req.sid]);
+  await run('DELETE FROM tt_combine WHERE id=? AND school_id=?',[req.params.id, req.sid]);
+  res.json({ok:true});
 }));
 
 // ---------- CELL upsert / delete ----------
@@ -654,12 +679,12 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const absent={}; (await q('SELECT * FROM tt_absence WHERE school_id=?',[sid])).forEach(a=>{(absent[a.teacher_id]=absent[a.teacher_id]||new Set()).add(a.day_of_week);});
   // locked/pinned cells — preserved as-is; generator never schedules over them, avoids their teacher/room, and pre-counts their teacher load
   const lockedRows = await q('SELECT class_id,day_of_week,period_index,week_index,teacher_id,room_id FROM tt_timetable WHERE school_id=? AND COALESCE(locked,0)=1',[sid]);
-  const lockSlot=new Set(); const lockUseAt={}; const lockLoadWk={};
+  const lockSlot=new Set(); const lockUseAt={}; const lockLoadWk={}; const seenLoad=new Set();
   lockedRows.forEach(r=>{ const w=r.week_index||0;
     lockSlot.add(w+'_'+r.class_id+'_'+r.day_of_week+'_'+r.period_index);
     const sk=w+'_'+r.day_of_week+'_'+r.period_index; const u=lockUseAt[sk]||(lockUseAt[sk]={T:new Set(),R:new Set()});
     if(r.teacher_id) u.T.add(r.teacher_id); if(r.room_id) u.R.add(r.room_id);
-    if(r.teacher_id) (lockLoadWk[w]=lockLoadWk[w]||[]).push({t:r.teacher_id,di:r.day_of_week});
+    if(r.teacher_id){ const lk=sk+'_'+r.teacher_id; if(!seenLoad.has(lk)){ seenLoad.add(lk); (lockLoadWk[w]=lockLoadWk[w]||[]).push({t:r.teacher_id,di:r.day_of_week}); } }   // count a combined teacher once per slot, not per member class
   });
   // per-period availability blocks
   const teacherBlock={}, classBlock={}, roomBlock={};

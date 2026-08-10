@@ -164,6 +164,9 @@ async function init() {
   await run(`ALTER TABLE tt_timetable ADD COLUMN IF NOT EXISTS week_index INTEGER DEFAULT 0`);
   // locked/pinned cells: auto-generate preserves these and never schedules over them (Assembly/PT/Library etc.)
   await run(`ALTER TABLE tt_timetable ADD COLUMN IF NOT EXISTS locked INTEGER DEFAULT 0`);
+  // merged/combined sessions: cells sharing a combine_id at the same slot are one shared class (not a clash)
+  await run(`ALTER TABLE tt_timetable ADD COLUMN IF NOT EXISTS combine_id INTEGER`);
+  await run(`CREATE TABLE IF NOT EXISTS tt_combine (id SERIAL PRIMARY KEY, school_id INTEGER, name TEXT, subject_id INTEGER, teacher_id INTEGER, room_id INTEGER, day_of_week INTEGER, period_index INTEGER, week_index INTEGER DEFAULT 0, class_ids TEXT, created_at TEXT)`);
   // drop ANY old 3-column UNIQUE constraint on (class_id,day_of_week,period_index) — name may vary — so weeks can repeat a slot
   await run(`DO $$
     DECLARE cname text;
