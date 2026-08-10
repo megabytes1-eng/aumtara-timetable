@@ -1129,7 +1129,7 @@ app.get('/api/export/diary.xlsx', h(async (req,res)=>{
   hdr.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};c.alignment={horizontal:'center',wrapText:true};c.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};});
   let sql=`SELECT d.*, c.name cls, s.name subj, t.name teacher FROM tt_diary d
      LEFT JOIN tt_class c ON c.id=d.class_id LEFT JOIN tt_subject s ON s.id=d.subject_id JOIN tt_teacher t ON t.id=d.teacher_id`;
-  const w=['d.school_id=?'],p=[req.sid]; if(req.query.teacher_id){w.push('d.teacher_id=?');p.push(req.query.teacher_id);} if(req.query.date){w.push('d.entry_date=?');p.push(req.query.date);} sql+=' WHERE '+w.join(' AND ');
+  const w=['d.school_id=?'],p=[req.sid]; if(req.query.teacher_id){w.push('d.teacher_id=?');p.push(req.query.teacher_id);} if(req.query.date){w.push('d.entry_date=?');p.push(req.query.date);} if(req.query.from){w.push('d.entry_date>=?');p.push(req.query.from);} if(req.query.to){w.push('d.entry_date<=?');p.push(req.query.to);} sql+=' WHERE '+w.join(' AND ');
   sql+=' ORDER BY d.entry_date DESC, d.period_index';
   (await q(sql,p)).forEach(d=>{ const r=ws.addRow([d.entry_date, d.day_of_week!=null?DAYS[d.day_of_week]:'', d.teacher, d.cls||'', d.subj||'', d.lesson||'', d.topic||'', d.learning_outcome||'', d.assessment_lo||'', d.homework||'', d.teaching_aids||'']); r.eachCell(c=>{c.alignment={wrapText:true,vertical:'top'};c.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};}); });
   ws.columns.forEach((c,i)=>c.width=[11,6,15,10,12,8,22,26,26,20,20][i]);
@@ -1168,6 +1168,38 @@ app.get('/api/export/timetable.xlsx', h(async (req,res)=>{
     ws.columns.forEach((col,i)=>{col.width=i===0?12:16;});
   });
   res.setHeader('Content-Disposition','attachment; filename=timetable.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
+// TEACHER-WISE report: one sheet per teacher = their weekly grid (day × period → class + subject) + total load
+app.get('/api/export/teachers-report.xlsx', h(async (req,res)=>{
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const sid=req.sid;
+  const teachers=await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY name,id',[sid]);
+  const clsById={}; (await q('SELECT id,name FROM tt_class WHERE school_id=?',[sid])).forEach(c=>clsById[c.id]=c.name);
+  const subjById={}; (await q('SELECT id,name FROM tt_subject WHERE school_id=?',[sid])).forEach(s=>subjById[s.id]=s.name);
+  const roomById={}; (await q('SELECT id,name FROM tt_room WHERE school_id=?',[sid])).forEach(r=>roomById[r.id]=r.name);
+  const cells=await q('SELECT * FROM tt_timetable WHERE school_id=? AND week_index=0',[sid]);
+  const dayList=workingDaysArr(sid);
+  const dayLbl = d => rotMode(sid) ? rotLabel(sid,d) : DAYS[d];
+  const maxSlots=Math.max(1,...dayList.map(d=>teachingSlots(d,sid).length));
+  const hdr=['Day/Period',...Array.from({length:maxSlots},(_,i)=>'P'+(i+1))];
+  teachers.forEach(tc=>{
+    const ws=wb.addWorksheet((tc.name||('T'+tc.id)).slice(0,28).replace(/[\\\/\?\*\[\]:]/g,' '));
+    ws.addRow(['Teacher: '+(tc.name||'')]).getCell(1).font={bold:true,size:13,color:{argb:'FF1F3864'}};
+    ws.addRow(hdr); styleHeader(ws.getRow(ws.rowCount));
+    let load=0;
+    dayList.forEach(di=>{ const slots=teachingSlots(di,sid); const row=[dayLbl(di)];
+      for(let p=0;p<maxSlots;p++){ if(p>=slots.length){ row.push(''); continue; }
+        const c=cells.find(x=>x.teacher_id===tc.id && x.day_of_week===di && x.period_index===p);
+        if(c){ load++; row.push((clsById[c.class_id]||'')+'\n'+(subjById[c.subject_id]||'')+(c.room_id?'\n'+(roomById[c.room_id]||''):'')); }
+        else row.push(''); }
+      const r=ws.addRow(row); r.eachCell(cc=>{cc.alignment={wrapText:true,vertical:'top'};}); r.getCell(1).font={bold:true}; });
+    const lr=ws.addRow(['Total periods: '+load+(tc.max_load?(' / '+tc.max_load+' max'):'')]); lr.getCell(1).font={bold:true,color:{argb:'FF7030A0'}};
+    ws.columns.forEach((col,i)=>{col.width=i===0?14:18;});
+  });
+  if(!teachers.length){ const ws=wb.addWorksheet('Teachers'); ws.addRow(['No teachers yet']); }
+  res.setHeader('Content-Disposition','attachment; filename=teachers-report.xlsx');
   res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   await wb.xlsx.write(res); res.end();
 }));
