@@ -86,6 +86,11 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .feat div:nth-child(3){background:linear-gradient(135deg,#f3eaff,#fdfbff);border-color:#e0cef5;border-left-color:var(--accent);}
 .feat div[onclick]{cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;} .feat div[onclick]:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(37,99,235,.14);}
 .setcols{display:grid;grid-template-columns:1fr 1fr;gap:16px;} @media(max-width:820px){.setcols{grid-template-columns:1fr;}.kpis{grid-template-columns:1fr 1fr;}}
+.teacherrow{padding:7px 2px;border-bottom:1px solid #eef1f6;}
+.teacherrow .tname{width:160px;font-weight:600;}
+.subchip{display:inline-flex;align-items:center;gap:5px;background:#eef2fb;color:#33415a;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:13px;}
+.subchip b{cursor:pointer;color:#9aa3b6;font-weight:800;font-size:11px;line-height:1;} .subchip b:hover{color:#dc2626;}
+.addsub{font-size:11.5px;padding:3px 7px;border:1px dashed #c3ccde;border-radius:8px;color:#5c6580;background:#fafbff;}
 .listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
 .guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
@@ -1255,16 +1260,24 @@ function mRoomsView(){
   return `<div class="card"><h2>🚪 ${L('room')||t('setup_rooms')}</h2>${roomList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:12px"><input id="nroom" placeholder="${t('ph_room_name')}" style="min-width:200px"><input id="ncap" type="number" style="width:90px" placeholder="${t('ph_cap')}"><button onclick="addRoom()">${t('add')}</button></div></div>`;
 }
 function mTeachersView(){
-  const tchList=teachers.map(t2=>`<div style="padding:8px 0;border-bottom:1px solid #f0f2f6">
-     <div class="listrow"><input value="${t2.name}" onchange="updTeacher(${t2.id},{name:this.value})"><button class="ghost mini red" onclick="delTeacher(${t2.id})">✕</button></div>
-     <div class="row" style="gap:8px;margin:4px 0">
-       <input style="flex:1;min-width:150px" value="${t2.qualification||''}" placeholder="${t('ph_qualification')}" onchange="updTeacher(${t2.id},{qualification:this.value})">
-       <select onchange="updTeacher(${t2.id},{main_subject_id:this.value?+this.value:null})"><option value="">${t('opt_main_subject')}</option>${subjects.map(s=>`<option value="${s.id}" ${t2.main_subject_id===s.id?'selected':''}>${s.name}</option>`).join('')}</select>
-       <input type="number" style="width:120px" value="${t2.max_load||''}" placeholder="${t('ph_weekly_load')}" onchange="updTeacher(${t2.id},{max_load:+this.value||null})">
-       <input type="number" min="0" style="width:130px" title="${t('ph_max_per_day')}" value="${t2.max_per_day||''}" placeholder="${t('ph_max_per_day')}" onchange="updTeacher(${t2.id},{max_per_day:+this.value||null})">
-       <input type="number" min="0" style="width:130px" title="${t('ph_max_consec')}" value="${t2.max_consecutive||''}" placeholder="${t('ph_max_consec')}" onchange="updTeacher(${t2.id},{max_consecutive:+this.value||null})"></div>
-     <div><span class="small">${t('can_teach')} </span>${subjects.map(s=>`<label class="chk"><input type="checkbox" ${t2.subjects.includes(s.id)?'checked':''} onchange="toggleSub(${t2.id},${s.id},this.checked)">${s.name}</label>`).join('')}</div>
-     <div style="margin-top:3px"><label class="chk" title="${t('can_sub_hint')}"><input type="checkbox" ${(+t2.can_substitute!==0)?'checked':''} onchange="updTeacher(${t2.id},{can_substitute:this.checked?1:0})">${t('can_substitute')}</label></div></div>`).join('');
+  const tchList=teachers.map(t2=>{
+    const taught=subjects.filter(s=>t2.subjects.includes(s.id));
+    const notTaught=subjects.filter(s=>!t2.subjects.includes(s.id));
+    const chips=taught.length?taught.map(s=>`<span class="subchip">${sesc(s.name)}<b title="${t('logo_remove')}" onclick="toggleSub(${t2.id},${s.id},false)">✕</b></span>`).join(''):'<span class="small" style="color:#aab2c4">—</span>';
+    const addSel=notTaught.length?`<select class="addsub" onchange="if(this.value)toggleSub(${t2.id},+this.value,true)"><option value="">+ ${t('can_teach')}</option>${notTaught.map(s=>`<option value="${s.id}">${sesc(s.name)}</option>`).join('')}</select>`:'';
+    return `<div class="teacherrow">
+      <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap">
+        <input class="tname" value="${sesc(t2.name)}" onchange="updTeacher(${t2.id},{name:this.value})">
+        <input style="width:130px" value="${(t2.qualification||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_qualification')}" onchange="updTeacher(${t2.id},{qualification:this.value})">
+        <select style="max-width:130px" title="${t('opt_main_subject')}" onchange="updTeacher(${t2.id},{main_subject_id:this.value?+this.value:null})"><option value="">${t('opt_main_subject')}</option>${subjects.map(s=>`<option value="${s.id}" ${t2.main_subject_id===s.id?'selected':''}>${sesc(s.name)}</option>`).join('')}</select>
+        <input type="number" style="width:66px" title="${t('ph_weekly_load')}" value="${t2.max_load||''}" placeholder="${t('ph_weekly_load')}" onchange="updTeacher(${t2.id},{max_load:+this.value||null})">
+        <input type="number" min="0" style="width:58px" title="${t('ph_max_per_day')}" value="${t2.max_per_day||''}" placeholder="/day" onchange="updTeacher(${t2.id},{max_per_day:+this.value||null})">
+        <input type="number" min="0" style="width:58px" title="${t('ph_max_consec')}" value="${t2.max_consecutive||''}" placeholder="/row" onchange="updTeacher(${t2.id},{max_consecutive:+this.value||null})">
+        <label class="chk" title="${t('can_sub_hint')}"><input type="checkbox" ${(+t2.can_substitute!==0)?'checked':''} onchange="updTeacher(${t2.id},{can_substitute:this.checked?1:0})">${t('can_substitute')}</label>
+        <button class="ghost mini red" onclick="delTeacher(${t2.id})" style="margin-left:auto">✕</button>
+      </div>
+      <div class="row" style="gap:5px;align-items:center;margin-top:4px;flex-wrap:wrap"><span class="small" style="color:#5c6580;font-weight:600">${t('can_teach')}</span>${chips}${addSel}</div>
+    </div>`;}).join('');
   return `<div class="card"><h2>👩‍🏫 ${L('teacher')||t('setup_teachers')}</h2><div class="desc">${t('teachers_desc')}</div>${tchList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:12px"><input id="ntch" placeholder="${t('ph_new_teacher')}" style="min-width:220px"><button onclick="addTeacher()">${t('add')}</button></div></div>`;
 }
 function chaptersCard(){
