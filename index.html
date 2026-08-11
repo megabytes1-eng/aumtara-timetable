@@ -877,7 +877,8 @@ const actSubs=()=>subjects.filter(s=>s.active===undefined||s.active===null||+s.a
 let clsFilter={board:'',medium:'',standard:'',section:''};
 const clsUniq=field=>[...new Set(classes.map(c=>(c[field]||'').trim()).filter(Boolean))].sort();
 const hasStructure=()=>classes.some(c=>c.board||c.medium||c.standard||c.section);
-function filteredClasses(){return classes.filter(c=>(!clsFilter.board||c.board===clsFilter.board)&&(!clsFilter.medium||c.medium===clsFilter.medium)&&(!clsFilter.standard||c.standard===clsFilter.standard)&&(!clsFilter.section||c.section===clsFilter.section));}
+function clsOrder(a,b){return String(a.name||'').localeCompare(String(b.name||''),undefined,{numeric:true,sensitivity:'base'});}   // natural order: 1a,2a,…,5a,5b,6a,10a
+function filteredClasses(){return classes.filter(c=>(!clsFilter.board||c.board===clsFilter.board)&&(!clsFilter.medium||c.medium===clsFilter.medium)&&(!clsFilter.standard||c.standard===clsFilter.standard)&&(!clsFilter.section||c.section===clsFilter.section)).sort(clsOrder);}
 function setClsFilter(k,v){clsFilter[k]=v;const fc=filteredClasses();if(fc.length&&!fc.find(c=>c.id===curClass))curClass=fc[0].id;render();}
 function clearClsFilter(){clsFilter={board:'',medium:'',standard:'',section:''};render();}
 function filterBar(){if(!hasStructure())return '';
@@ -1252,7 +1253,8 @@ async function autoGen(){const b=event&&event.target;if(b){b.disabled=true;b.dat
 // ---------- SETUP (CRUD) ----------
 // ---- Master data: Classes / Subjects / Teachers / Rooms — each its own full-page view ----
 function mClassesView(){
-  const classList=classes.map(c=>`<div class="clsrow">
+  const list=filteredClasses();   // apply the board/medium/standard/section filter + natural sort
+  const classList=list.map(c=>`<div class="clsrow">
      <input class="cn" title="${t('u_name')}" value="${(c.name||'').replace(/"/g,'&quot;')}" placeholder="${t('u_name')}" onchange="upd('classes',${c.id},{name:this.value})">
      <input title="${t('ph_standard')}" style="width:62px" value="${(c.standard||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_standard')}" onchange="upd('classes',${c.id},{standard:this.value})">
      <input title="${t('ph_section')}" style="width:58px" value="${(c.section||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_section')}" onchange="upd('classes',${c.id},{section:this.value})">
@@ -1262,13 +1264,14 @@ function mClassesView(){
      <button class="ghost mini red" style="margin-left:auto" onclick="del('classes',${c.id})">✕</button></div>`).join('');
   return `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
-      <h2 style="margin:0">🏫 ${L('class')||t('setup_classes')}</h2>
-      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">${dedupeBtnHtml('classes',classes)}
+      <h2 style="margin:0">🏫 ${L('class')||t('setup_classes')} <span class="small" style="color:#8891a6;font-weight:600">(${list.length})</span></h2>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">${filterBar()}${dedupeBtnHtml('classes',classes)}
+        <button class="ghost mini" title="Refresh" onclick="loadAll()">🔄</button>
         <button class="green" onclick="addCls=!addCls;render();if(addCls)setTimeout(()=>{var n=document.getElementById('nc_name');if(n)n.focus();},30)">${addCls?'✕ '+t('cancel'):'＋ '+t('add')}</button>
       </div>
     </div>
     ${addCls?addClassForm():''}
-    ${filterBar()}<div class="clsgrid">${classList||'<span class="small">'+t('none')+'</span>'}</div></div>`;
+    <div class="clsgrid">${classList||'<span class="small">'+t('none')+'</span>'}</div></div>`;
 }
 function addClassForm(){
   return `<div class="card" style="background:#f2f7ff;border:1.5px solid #b9d1f5;margin:4px 0 12px">
@@ -1973,7 +1976,23 @@ function cleanupCard(){
       <button id="resetbtn" class="ghost red" disabled style="font-weight:700" onclick="adminFullReset()">⚠ Full reset — wipe everything</button>
     </div>
     <div class="note" style="margin-top:6px">Safety: tick the box to enable the buttons. To clear a <b>whole list</b> or do a <b>Full reset</b>, you must also type the exact school name in the box above.</div>
+    <div id="cleanmsg" style="margin-top:10px"></div>
   </div>`;
+}
+let _cleanPending=null;
+function showCleanConfirm(msg){
+  const box=document.getElementById('cleanmsg'); if(!box)return;
+  box.innerHTML='<div style="background:#fff3cd;border:1px solid #f0d089;border-radius:8px;padding:10px 12px"><b style="color:#a15c00">⚠ '+String(msg).replace(/</g,'&lt;')+'</b><div class="row" style="gap:8px;margin-top:9px"><button class="green" onclick="adminCleanGo()">✓ Yes, clear it</button><button class="ghost" onclick="adminCleanCancel()">✕ No, cancel</button></div></div>';
+  box.scrollIntoView({block:'nearest'});
+}
+function adminCleanCancel(){ _cleanPending=null; const b=document.getElementById('cleanmsg'); if(b)b.innerHTML=''; }
+async function adminCleanGo(){
+  const p=_cleanPending; if(!p)return; _cleanPending=null;
+  const box=document.getElementById('cleanmsg'); if(box)box.innerHTML='<span class="small" style="color:#5c6580">⏳ Working…</span>';
+  const res=await api('POST','/api/admin/clean',{target:p.target,confirm:((document.getElementById('resetconfirm')||{}).value)||''});
+  if(!res||res.error){ if(box)box.innerHTML=''; showErr((res&&res.error)||'Clean failed'); return; }
+  toast('✓ '+(p.full?'School data reset — start fresh':('Cleared: '+p.label)));
+  await loadAll();
 }
 function cleanAckOk(){ const a=document.getElementById('cleanack'); if(!a||!a.checked){ showErr('Tick the "I understand" box first'); return false; } return true; }
 function cleanNameOk(){
@@ -1981,26 +2000,19 @@ function cleanNameOk(){
   const el=document.getElementById('resetconfirm');
   return !!nm && el && (el.value||'').trim().toLowerCase()===nm;
 }
-async function adminClean(target,label){
+function adminClean(target,label){
   if(!target){toast('Pick something to clear first');return;}
   if(!cleanAckOk()) return;
   if(/^m_/.test(target) && !cleanNameOk()){ showErr('To clear a whole list, type the exact school name in the box first'); return; }
-  if(!confirm('Clean "'+label+'" for this school?\n\nThis permanently clears the selected data and CANNOT be undone. Continue?')) return;
-  const res=await api('POST','/api/admin/clean',{target:target,confirm:((document.getElementById('resetconfirm')||{}).value)||''});
-  if(!res||res.error){showErr((res&&res.error)||'Clean failed');return;}
-  toast('✓ Cleared: '+label);
-  await loadAll();
+  _cleanPending={target:target,label:label,full:false};
+  showCleanConfirm('Clear "'+label+'" for this school? This permanently removes the selected data and cannot be undone.');
 }
-async function adminFullReset(){
-  const nm=(SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{}).name||'this school';
+function adminFullReset(){
   if(!cleanAckOk()) return;
   if(!cleanNameOk()){ showErr('Type the exact school name in the box to confirm a full reset'); return; }
-  if(!confirm('FULL RESET of "'+nm+'": delete ALL data — classes, subjects, teachers, rooms, timetable, quota, everything.\n\nThe school, its settings and user logins are kept. This CANNOT be undone.')) return;
-  if(!confirm('Are you absolutely sure? This wipes all data in "'+nm+'".')) return;
-  const res=await api('POST','/api/admin/clean',{target:'all',confirm:((document.getElementById('resetconfirm')||{}).value)||''});
-  if(!res||res.error){showErr((res&&res.error)||'Reset failed');return;}
-  toast('✓ School data reset — start fresh');
-  await loadAll();
+  const nm=(SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{}).name||'this school';
+  _cleanPending={target:'all',label:'Full reset',full:true};
+  showCleanConfirm('FULL RESET of "'+nm+'": delete ALL data — classes, subjects, teachers, rooms, timetable, quota — everything. The school, its settings and user logins are kept. This CANNOT be undone.');
 }
 async function doImport(){ const f=document.getElementById('impfile').files[0]; const box=document.getElementById('impresult');
   if(!f){box.innerHTML='<div class="errmsg">'+t('err_choose_file')+'</div>';showErr(t('err_choose_file'));return;}
