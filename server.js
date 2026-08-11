@@ -452,7 +452,7 @@ function simpleCrud(route, tbl, cols){
   app.delete('/api/'+route+'/:id', h(async (req,res)=>{ await run(`DELETE FROM ${tbl} WHERE id=? AND school_id=?`, [req.params.id, req.sid]); res.json({ok:true}); }));
 }
 simpleCrud('classes','tt_class',['name','class_teacher_id','board','medium','standard','section']);
-simpleCrud('subjects','tt_subject',['name','active','double_period']);
+simpleCrud('subjects','tt_subject',['name','active','double_period','medium']);
 simpleCrud('rooms','tt_room',['name','capacity']);
 
 // ---------- SETUP READINESS (checklist %) ----------

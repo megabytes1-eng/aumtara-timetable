@@ -214,6 +214,7 @@ async function init() {
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS double_period INTEGER DEFAULT 0`); // 1=schedule as consecutive double periods (labs / lock-together)
+  await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS medium TEXT`); // optional medium tag (English / Gujarati …) so subjects can be filtered per medium
   // Teacher daily / consecutive period caps (0 or NULL = no cap)
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS max_per_day INTEGER`);      // max periods a teacher can take in one day
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS max_consecutive INTEGER`);  // max back-to-back periods in a day
