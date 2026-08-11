@@ -875,10 +875,21 @@ function slotsFor(di){
 function firstWD(){return WD()[0]??0;}
 const actSubs=()=>subjects.filter(s=>s.active===undefined||s.active===null||+s.active!==0);
 let clsFilter={board:'',medium:'',standard:'',section:''};
-const clsUniq=field=>[...new Set(classes.map(c=>(c[field]||'').trim()).filter(Boolean))].sort();
-const hasStructure=()=>classes.some(c=>c.board||c.medium||c.standard||c.section);
-function clsOrder(a,b){return String(a.name||'').localeCompare(String(b.name||''),undefined,{numeric:true,sensitivity:'base'});}   // natural order: 1a,2a,…,5a,5b,6a,10a
-function filteredClasses(){return classes.filter(c=>(!clsFilter.board||c.board===clsFilter.board)&&(!clsFilter.medium||c.medium===clsFilter.medium)&&(!clsFilter.standard||c.standard===clsFilter.standard)&&(!clsFilter.section||c.section===clsFilter.section)).sort(clsOrder);}
+// Derive standard & section from the class name when the fields aren't filled (handles "1-A", "STD 9 A", "Class VI-A" Roman numerals)
+function romanToNum(r){r=String(r).toUpperCase();const m={I:1,V:5,X:10,L:50};let n=0;for(let i=0;i<r.length;i++){const c=m[r[i]];if(!c)return null;const nx=m[r[i+1]];n+=(nx&&c<nx)?-c:c;}return n||null;}
+function clsStd(c){const f=(c.standard||'').trim();if(f)return f;const nm=(c.name||'');let m=nm.match(/\d+/);if(m)return m[0];m=nm.match(/(?:^|[^A-Za-z])([IVXL]+)(?=$|[^A-Za-z])/i);if(m){const r=romanToNum(m[1]);if(r)return String(r);}return '';}
+function clsSec(c){const f=(c.section||'').trim();if(f)return f.toUpperCase();const m=(c.name||'').match(/(?:^|[-\s])([A-Za-z])\s*$/);return m?m[1].toUpperCase():'';}
+const clsUniq=field=>{
+  if(field==='standard'||field==='section'){
+    const vals=[...new Set(classes.map(c=>field==='standard'?clsStd(c):clsSec(c)).filter(Boolean))];
+    return field==='standard'?vals.sort((a,b)=>{const na=parseInt(a,10),nb=parseInt(b,10);return (isNaN(na)?9999:na)-(isNaN(nb)?9999:nb)||String(a).localeCompare(String(b));}):vals.sort();
+  }
+  return [...new Set(classes.map(c=>(c[field]||'').trim()).filter(Boolean))].sort();
+};
+const hasStructure=()=>classes.some(c=>c.board||c.medium||clsStd(c)||clsSec(c));
+// order: section first (all A, then B…), then standard number → 1A,2A,…,8A,9A, 1B,2B,…
+function clsOrder(a,b){const xa=clsSec(a),xb=clsSec(b);if(xa!==xb)return xa<xb?-1:1;const na=parseInt(clsStd(a),10),nb=parseInt(clsStd(b),10);const va=isNaN(na)?9999:na,vb=isNaN(nb)?9999:nb;if(va!==vb)return va-vb;return String(a.name||'').localeCompare(String(b.name||''),undefined,{numeric:true});}
+function filteredClasses(){return classes.filter(c=>(!clsFilter.board||c.board===clsFilter.board)&&(!clsFilter.medium||c.medium===clsFilter.medium)&&(!clsFilter.standard||clsStd(c)===clsFilter.standard)&&(!clsFilter.section||clsSec(c)===clsFilter.section)).sort(clsOrder);}
 function setClsFilter(k,v){clsFilter[k]=v;const fc=filteredClasses();if(fc.length&&!fc.find(c=>c.id===curClass))curClass=fc[0].id;render();}
 function clearClsFilter(){clsFilter={board:'',medium:'',standard:'',section:''};render();}
 function filterBar(){if(!hasStructure())return '';
