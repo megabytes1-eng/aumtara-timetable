@@ -1616,9 +1616,8 @@ function hoursTimingsCard(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());co
      <div><label>${t('lbl_sat_start')}</label><input type="time" value="${config.saturday_start||config.weekday_start}" onchange="cfg('saturday_start',this.value)"></div>
      <div><label>${t('lbl_sat_end')}</label><input type="time" value="${config.saturday_end}" onchange="cfg('saturday_end',this.value)"></div>
      <div><label>${t('lbl_period_min')}</label><input type="number" value="${config.period_minutes}" style="width:80px" onchange="cfg('period_minutes',+this.value)"></div>
-     <div><label>${t('lbl_num_periods')}</label><input type="number" value="${config.num_periods||''}" placeholder="${t('hint_num_periods')}" style="width:90px" onchange="cfg('num_periods',+this.value||null)"></div></div>
-   <div style="margin-bottom:6px"><b class="small">${t('lbl_breaks')}</b></div>
-   <div class="row" style="margin-bottom:14px">
+     <div><label>${t('lbl_num_periods')}</label><input type="number" value="${config.num_periods||''}" placeholder="${t('hint_num_periods')}" style="width:90px" onchange="cfg('num_periods',+this.value||null)"></div>
+     <div style="width:1px;align-self:stretch;background:#e2e8f0;margin:0 3px"></div>
      <div><label>${t('lbl_lunch_after')}</label><input type="number" value="${config.lunch_after??config.break_after_period??''}" style="width:80px" onchange="cfg('lunch_after',+this.value||null)"></div>
      <div><label>${t('lbl_lunch_min')}</label><input type="number" value="${config.lunch_minutes??config.break_minutes??''}" style="width:80px" onchange="cfg('lunch_minutes',+this.value||0)"></div>
      <div><label>${t('lbl_short_after')}</label><input value="${config.short_break_after||''}" placeholder="${t('hint_short_after')}" style="width:160px" onchange="cfg('short_break_after',this.value)"></div>
