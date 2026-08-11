@@ -1824,6 +1824,51 @@ app.post('/api/dedupe/:entity', h(async (req,res)=>{
   res.json({ok:true, ...out});
 }));
 
+// ---------- ADMIN DATA CLEANUP (clear a field / a section / a master list / everything — current school only) ----------
+// Each target = ordered list of statements; every `?` is the school_id. Scoped to req.sid; never touches other schools,
+// and (except 'all') never deletes the school, its config or user logins. Admin/master only.
+const CLEAN_TARGETS={
+  // field clears (blank a column for all rows)
+  t_qual:     ['UPDATE tt_teacher SET qualification=NULL WHERE school_id=?'],
+  t_caps:     ['UPDATE tt_teacher SET max_load=NULL,max_per_day=NULL,max_consecutive=NULL WHERE school_id=?'],
+  t_main:     ['UPDATE tt_teacher SET main_subject_id=NULL WHERE school_id=?'],
+  t_canteach: ['DELETE FROM tt_teacher_subject WHERE teacher_id IN (SELECT id FROM tt_teacher WHERE school_id=?)'],
+  s_medium:   ['UPDATE tt_subject SET medium=NULL WHERE school_id=?'],
+  s_double:   ['UPDATE tt_subject SET double_period=0 WHERE school_id=?'],
+  c_struct:   ['UPDATE tt_class SET board=NULL,medium=NULL,standard=NULL,section=NULL WHERE school_id=?'],
+  c_teacher:  ['UPDATE tt_class SET class_teacher_id=NULL WHERE school_id=?'],
+  r_cap:      ['UPDATE tt_room SET capacity=NULL WHERE school_id=?'],
+  // section clears (delete data, keep the master lists)
+  d_timetable:['DELETE FROM tt_timetable WHERE school_id=?'],
+  d_quota:    ['DELETE FROM tt_quota WHERE school_id=?'],
+  d_chapters: ['DELETE FROM tt_chapter WHERE school_id=?'],
+  d_avail:    ['DELETE FROM tt_avail WHERE school_id=?'],
+  d_subs:     ['DELETE FROM tt_substitution WHERE school_id=?','DELETE FROM tt_datesub WHERE school_id=?','DELETE FROM tt_leave WHERE school_id=?','DELETE FROM tt_absence WHERE school_id=?'],
+  d_diary:    ['DELETE FROM tt_diary WHERE school_id=?'],
+  d_versions: ['DELETE FROM tt_snapshot_cell WHERE snapshot_id IN (SELECT id FROM tt_snapshot WHERE school_id=?)','DELETE FROM tt_snapshot WHERE school_id=?'],
+  d_combines: ['DELETE FROM tt_combine WHERE school_id=?'],
+  d_students: ['DELETE FROM tt_student_choice WHERE school_id=?','DELETE FROM tt_student WHERE school_id=?','DELETE FROM tt_elective_option WHERE school_id=?','DELETE FROM tt_elective WHERE school_id=?'],
+  d_rules:    ['DELETE FROM tt_rule WHERE school_id=?'],
+  // master-list clears (delete the list + its directly-dependent data, to avoid orphans)
+  m_subjects: ['DELETE FROM tt_timetable WHERE school_id=?','DELETE FROM tt_quota WHERE school_id=?','DELETE FROM tt_chapter WHERE school_id=?','DELETE FROM tt_rule WHERE school_id=?','DELETE FROM tt_teacher_subject WHERE teacher_id IN (SELECT id FROM tt_teacher WHERE school_id=?)','UPDATE tt_teacher SET main_subject_id=NULL WHERE school_id=?','DELETE FROM tt_subject WHERE school_id=?'],
+  m_classes:  ['DELETE FROM tt_timetable WHERE school_id=?','DELETE FROM tt_quota WHERE school_id=?','DELETE FROM tt_student_choice WHERE school_id=?','DELETE FROM tt_student WHERE school_id=?','DELETE FROM tt_elective_option WHERE school_id=?','DELETE FROM tt_elective WHERE school_id=?','DELETE FROM tt_datesub WHERE school_id=?','DELETE FROM tt_substitution WHERE school_id=?','DELETE FROM tt_diary WHERE school_id=?','DELETE FROM tt_rule WHERE school_id=?','DELETE FROM tt_combine WHERE school_id=?','DELETE FROM tt_class WHERE school_id=?'],
+  m_teachers: ['UPDATE tt_timetable SET teacher_id=NULL WHERE school_id=?','UPDATE tt_class SET class_teacher_id=NULL WHERE school_id=?','DELETE FROM tt_teacher_subject WHERE teacher_id IN (SELECT id FROM tt_teacher WHERE school_id=?)','DELETE FROM tt_absence WHERE school_id=?','DELETE FROM tt_leave WHERE school_id=?','DELETE FROM tt_datesub WHERE school_id=?','DELETE FROM tt_teacher WHERE school_id=?'],
+  m_rooms:    ['UPDATE tt_timetable SET room_id=NULL WHERE school_id=?','UPDATE tt_combine SET room_id=NULL WHERE school_id=?','UPDATE tt_elective_option SET room_id=NULL WHERE school_id=?','DELETE FROM tt_room WHERE school_id=?'],
+  // full reset — wipe ALL data for this school, keep the school row, its config and user logins
+  all: ['DELETE FROM tt_snapshot_cell WHERE snapshot_id IN (SELECT id FROM tt_snapshot WHERE school_id=?)',
+        'DELETE FROM tt_teacher_subject WHERE teacher_id IN (SELECT id FROM tt_teacher WHERE school_id=?)',
+        'DELETE FROM tt_timetable WHERE school_id=?','DELETE FROM tt_quota WHERE school_id=?','DELETE FROM tt_chapter WHERE school_id=?','DELETE FROM tt_absence WHERE school_id=?','DELETE FROM tt_substitution WHERE school_id=?','DELETE FROM tt_datesub WHERE school_id=?','DELETE FROM tt_leave WHERE school_id=?','DELETE FROM tt_diary WHERE school_id=?','DELETE FROM tt_snapshot WHERE school_id=?','DELETE FROM tt_student_choice WHERE school_id=?','DELETE FROM tt_student WHERE school_id=?','DELETE FROM tt_elective_option WHERE school_id=?','DELETE FROM tt_elective WHERE school_id=?','DELETE FROM tt_combine WHERE school_id=?','DELETE FROM tt_rule WHERE school_id=?','DELETE FROM tt_avail WHERE school_id=?','DELETE FROM tt_sharelink WHERE school_id=?','DELETE FROM tt_term WHERE school_id=?','DELETE FROM tt_class WHERE school_id=?','DELETE FROM tt_subject WHERE school_id=?','DELETE FROM tt_room WHERE school_id=?','DELETE FROM tt_teacher WHERE school_id=?'],
+};
+app.post('/api/admin/clean', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  const sid=req.sid;
+  if(sid==null){ res.status(400).json({error:'no school selected'}); return; }
+  const stmts=CLEAN_TARGETS[(req.body||{}).target];
+  if(!stmts){ res.status(400).json({error:'unknown clean target'}); return; }
+  await tx(async (cq)=>{ for(const s of stmts){ const n=(s.split('?').length-1); await cq(s, Array(n).fill(sid)); } });
+  res.json({ok:true});
+}));
+
 // ---------- AUTO-FILL HOURS FROM EXCEL (deterministic, no AI) ----------
 function hm(v){
   if(v==null) return '';
