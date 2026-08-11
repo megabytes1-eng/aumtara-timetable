@@ -1307,21 +1307,22 @@ function mediumList(){
 }
 function mSubjectsView(){
   const M=mediumList();
-  const canFilter=M.sub.length>=2;   // only show the medium filter once 2+ mediums exist among subjects
-  if(subjMed===null||(M.sub.length && !M.sub.includes(subjMed))) subjMed=M.sub[0]||'';
-  const showAll=subjAllMed||!canFilter||!subjMed;
-  const shown=showAll?subjects:subjects.filter(s=>(s.medium||'').trim()===subjMed);
+  if(subjMed===null) subjMed='';   // '' = All mediums (default)
+  const medOpts=[...new Set([...M.all, subjMed].filter(Boolean))].sort();   // dropdown options (keep current pick even if it has 0 subjects)
+  const shown=subjMed?subjects.filter(s=>(s.medium||'').trim()===subjMed):subjects;   // filter to selected medium, else all
   const medlist=`<datalist id="medlist">${M.all.map(m=>`<option value="${m.replace(/"/g,'&quot;')}">`).join('')}</datalist>`;
   const subList=shown.map(s=>{const off=+s.active===0;return `<div class="subrow" style="${off?'opacity:.55':''}"><input value="${(s.name||'').replace(/"/g,'&quot;')}" onchange="upd('subjects',${s.id},{name:this.value})">
      <input class="smed" list="medlist" title="${t('ph_medium')}" style="width:96px" value="${(s.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('subjects',${s.id},{medium:this.value})">
      <label class="chk" title="${t('subj_active_hint')}"><input type="checkbox" ${off?'':'checked'} onchange="upd('subjects',${s.id},{active:this.checked?1:0})">${off?t('subj_inactive'):t('subj_active')}</label>
      <label class="chk" title="${t('dbl_hint')}"><input type="checkbox" ${+s.double_period===1?'checked':''} onchange="upd('subjects',${s.id},{double_period:this.checked?1:0})">${t('dbl_label')}</label>
      <button class="ghost mini red" style="margin-left:auto" onclick="del('subjects',${s.id})">✕</button></div>`;}).join('');
-  const medFilter=canFilter?`<div class="row" style="gap:8px;align-items:center">
+  const medFilter=`<div class="row" style="gap:6px;align-items:center">
        <span class="small" style="color:#5c6580;font-weight:700">${t('ph_medium')}:</span>
-       <select ${subjAllMed?'disabled':''} onchange="subjMed=this.value;render()" style="max-width:150px">${M.sub.map(m=>`<option value="${m.replace(/"/g,'&quot;')}" ${m===subjMed?'selected':''}>${m}</option>`).join('')}</select>
-       <label class="chk" title="${t('all_mediums')}"><input type="checkbox" ${subjAllMed?'checked':''} onchange="subjAllMed=this.checked;render()">${t('all_mediums')}</label>
-     </div>`:'';
+       <select onchange="subjMed=this.value;render()" style="max-width:170px">
+         <option value="" ${!subjMed?'selected':''}>${t('all_mediums')}</option>
+         ${medOpts.map(m=>`<option value="${m.replace(/"/g,'&quot;')}" ${m===subjMed?'selected':''}>${m}</option>`).join('')}
+       </select>
+     </div>`;
   return `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
       <h2 style="margin:0">📚 ${L('subject')||t('setup_subjects')}</h2>
