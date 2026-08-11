@@ -152,6 +152,14 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .htab{border:1px solid #d8dff0;background:#f4f7fe;color:#334;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;transition:.12s;}
 .htab:hover{background:#e8eefc;}
 .htab.on{background:#1F2B57;color:#fff;border-color:#1F2B57;}
+.hoursCompact>div{margin-bottom:9px!important;}
+.hoursCompact .row{margin-bottom:9px!important;row-gap:8px;}
+.hoursCompact .desc{margin-bottom:7px;font-size:12px;}
+.hoursCompact label{font-size:11px;}
+.hoursCompact input,.hoursCompact select{padding:4px 7px;font-size:12.5px;}
+.hoursCompact .hours-row{padding:6px 9px;margin:0 0 6px!important;}
+.hoursCompact .tag{font-size:11px;padding:2px 6px;}
+.hoursCompact .chk{font-size:12px;}
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
 .guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
 .dropzone{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted);}
@@ -1596,11 +1604,11 @@ function hours(){
   const body=hoursTab==='excel'?hoursImportCard():hoursTab==='terms'?termsSection():hoursTab==='schedule'?weekCycleCard():hoursTab==='labels'?labelsCard():hoursTimingsCard();
   return hoursTabBar()+body;
 }
-function hoursTimingsCard(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new Set(WD());return `<div class="card"><h2>${t('hours_title')} <span class="tag">${t('tag_config')}</span></h2>
+function hoursTimingsCard(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new Set(WD());return `<div class="card hoursCompact">
    <div class="desc">${t('hours_desc')}</div>
-   <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:220px"><label>${t('lbl_school_name')}</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div>
-     <div style="width:160px"><label>${t('lbl_session')}</label><input style="width:100%" value="${(config.academic_session||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_session')}" onchange="cfg('academic_session',this.value)"></div></div>
-   ${(()=>{const cs=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};return `<div class="row" style="margin-bottom:14px;align-items:center;gap:12px"><div><label>${t('logo_word')}</label><br>${cs.logo?`<img src="${cs.logo}" style="height:48px;max-width:130px;border:1px solid #e2e8f0;border-radius:6px;vertical-align:middle;padding:2px">`:'<span class="small" style="color:#5c6580">'+t('none')+'</span>'}</div>${SCHOOL?`<div style="align-self:flex-end"><button class="ghost" onclick="pickLogo(${SCHOOL})">${cs.logo?t('logo_change'):t('logo_upload')}</button>${cs.logo?` <button class="ghost red" onclick="removeLogo(${SCHOOL})">${t('logo_remove')}</button>`:''}<div class="small" style="color:#5c6580;margin-top:3px">${t('logo_hint')}</div></div>`:''}</div>`;})()}
+   <div class="row" style="margin-bottom:14px;align-items:flex-end;gap:14px;flex-wrap:wrap"><div style="width:250px;max-width:100%"><label>${t('lbl_school_name')}</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div>
+     <div style="width:150px"><label>${t('lbl_session')}</label><input style="width:100%" value="${(config.academic_session||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_session')}" onchange="cfg('academic_session',this.value)"></div>
+     ${(()=>{const cs=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};return `<div style="display:flex;align-items:flex-end;gap:12px"><div><label>${t('logo_word')}</label><br>${cs.logo?`<img src="${cs.logo}" style="height:44px;max-width:120px;border:1px solid #e2e8f0;border-radius:6px;vertical-align:middle;padding:2px">`:'<span class="small" style="color:#5c6580">'+t('none')+'</span>'}</div>${SCHOOL?`<div><button class="ghost" onclick="pickLogo(${SCHOOL})">${cs.logo?t('logo_change'):t('logo_upload')}</button>${cs.logo?` <button class="ghost red" onclick="removeLogo(${SCHOOL})">${t('logo_remove')}</button>`:''}</div>`:''}</div>`;})()}</div>
    <div style="margin-bottom:14px"><label>${t('lbl_working_days')}</label>${DAYS.map((d,i)=>`<label class="chk"><input type="checkbox" ${wds.has(i)?'checked':''} onchange="toggleWD(${i},this.checked)">${DD()[i]}</label>`).join('')}</div>
    <div class="row" style="margin-bottom:14px">
      <div><label>${t('lbl_wd_start')}</label><input type="time" value="${config.weekday_start}" onchange="cfg('weekday_start',this.value)"></div>
