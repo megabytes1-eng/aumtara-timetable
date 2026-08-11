@@ -36,6 +36,24 @@ header h1{font-size:18px;margin:0;} header .sub{font-size:12.5px;opacity:.92;}
 .hlp-sec ol{margin:6px 0 4px 4px;padding-left:20px;} .hlp-sec ol li{margin:4px 0;line-height:1.4;}
 .hlp-sec .tip{background:#eef7ee;border-left:3px solid #2e7d32;border-radius:6px;padding:7px 10px;margin-top:8px;font-size:12.8px;color:#24492a;}
 .hlp-sec .where{font-size:12.5px;color:#5c6580;margin:2px 0 6px;} .hlp-sec .where b{color:#1F2B57;}
+/* Help Center modal (AumCare-style) */
+.hm-back{position:fixed;inset:0;z-index:100001;background:rgba(20,28,48,.5);display:flex;align-items:flex-start;justify-content:center;padding:40px 14px;overflow:auto;}
+.hm-card{background:#fff;border-radius:16px;width:100%;max-width:600px;box-shadow:0 18px 50px rgba(0,0,0,.35);overflow:hidden;animation:hmpop .16s ease;}
+@keyframes hmpop{from{transform:translateY(-10px);opacity:.4}to{transform:none;opacity:1}}
+.hm-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px 10px;}
+.hm-head b{font-size:18px;color:#1F2B57;}
+.hm-x{cursor:pointer;font-size:20px;color:#8a93a6;line-height:1;padding:2px 6px;border-radius:6px;} .hm-x:hover{background:#eef1f6;color:#1F2B57;}
+.hm-tabs{display:flex;gap:8px;padding:0 18px 12px;border-bottom:1px solid #eef1f6;}
+.hm-tab{border:1px solid #dbe1ee;background:#fff;color:#33415a;border-radius:9px;padding:8px 15px;font-size:13.5px;font-weight:700;cursor:pointer;}
+.hm-tab.on{background:#1F2B57;color:#fff;border-color:#1F2B57;}
+.hm-body{padding:14px 18px 20px;max-height:64vh;overflow:auto;}
+.hm-title2{font-size:17px;font-weight:800;color:#1F2B57;margin-bottom:2px;}
+.hm-in{color:#4a5670;font-size:13.5px;line-height:1.45;margin:2px 0 8px;}
+.hm-where{font-size:12.5px;color:#5c6580;background:#f4f6fb;border-radius:8px;padding:6px 10px;margin:4px 0 8px;}
+.hm-ol{margin:6px 0 4px;padding-left:26px;} .hm-ol li{margin:6px 0;line-height:1.45;font-size:14px;color:#26324c;}
+.hm-tip{background:#eef7ee;border-left:3px solid #2e7d32;border-radius:7px;padding:8px 11px;margin-top:9px;font-size:13px;color:#24492a;}
+.hm-sec{border-bottom:1px solid #eef1f6;padding:10px 0 4px;} .hm-sec:last-child{border-bottom:none;}
+.hm-st{font-size:15.5px;font-weight:800;color:#1F2B57;margin-bottom:2px;}
 #shell{display:flex;align-items:flex-start;}
 .tabs{display:flex;flex-direction:column;gap:1px;background:#fff;border-right:1px solid var(--line);padding:8px 8px 26px;width:216px;flex:0 0 216px;position:sticky;top:0;align-self:flex-start;max-height:100vh;overflow-y:auto;}
 .navgrp{font-size:13.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);padding:11px 8px 11px 10px;margin:3px 6px 0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;border-radius:8px;transition:background .12s,color .12s;}
@@ -149,7 +167,6 @@ td.cell.dragover{outline:2px dashed var(--accent);outline-offset:-2px;}
   <button class="navtoggle" id="navtoggle" onclick="toggleSidebar()" title="Menu" aria-label="Menu">☰</button>
   <div class="logo">A</div>
   <div><h1 id="apptitle">Aumtara — Timetable Module</h1><div class="sub" id="appsub"></div></div>
-  <button class="helpbtn" id="helpbtn" onclick="openHelp()" title="Help & Guide for this screen" aria-label="Help">?</button>
   <select class="langsel" id="langsel" onchange="setLang(this.value)"></select>
   <div class="savebadge" id="saved">✓ Saved</div>
 </header>
@@ -792,7 +809,7 @@ async function doLogin(){const login_id=(document.getElementById('li_user').valu
 async function doLogout(){try{await fetch('/api/logout',{method:'POST',headers:{'Authorization':'Bearer '+AUTH}});}catch(e){}AUTH=null;ME=null;try{localStorage.removeItem('tt_token');}catch(e){}renderLogin();}
 function showUserChip(){if(!ME)return;let c=document.getElementById('userchip');if(!c){c=document.createElement('div');c.id='userchip';c.style.cssText='display:flex;align-items:center;gap:8px;color:#fff;font-size:13px;margin-left:12px';const hdr=document.querySelector('header');hdr.insertBefore(c,document.getElementById('saved'));}
   const nm=String(ME.name||ME.login_id||'').replace(/</g,'&lt;');
-  c.innerHTML=`<span>👤 ${nm} · <b>${t('role_'+ME.role)}</b></span><button class="ghost mini" style="background:#2c4a7c;color:#fff;border-color:#3f5f95" onclick="doLogout()">${t('logout')}</button>`;}
+  c.innerHTML=`<span>👤 ${nm} · <b>${t('role_'+ME.role)}</b></span><button class="helpbtn" id="helpbtn" onclick="openHelp()" title="Help Center" aria-label="Help">?</button><button class="ghost mini" style="background:#2c4a7c;color:#fff;border-color:#3f5f95" onclick="doLogout()">${t('logout')}</button>`;}
 // role → which tabs are visible
 const ROLE_TABS={
   principal:['dash','mclasses','msubjects','mteachers','mrooms','hours','quota','avail','build','optimizer','class','students','teacher','diary','school','insights','sub','monitor','notify','reports','versions','data','help'],
@@ -2174,9 +2191,9 @@ const HELPSECTIONS=[
   tip:"Any failed action now shows a red banner at the top with the reason."},
 ];
 const HELP_UI={
- en:{title:"Help & Guide",lead:"A step-by-step guide to every screen. Tap the yellow ? at the top of any screen to jump straight to that screen's help. Jump to a topic:",where:"Where:",tip:"Tip:",status:"Status colours on the live board:",live:"teaching now",free:"free",proxy:"proxy cover"},
- hi:{title:"मदद और गाइड",lead:"हर स्क्रीन की स्टेप-बाय-स्टेप गाइड। किसी भी स्क्रीन पर ऊपर दिए पीले ? को दबाएँ — वह सीधे उसी स्क्रीन की मदद पर ले जाएगा। किसी विषय पर जाएँ:",where:"कहाँ:",tip:"सुझाव:",status:"लाइव बोर्ड के रंग:",live:"अभी पढ़ा रहे",free:"खाली",proxy:"प्रॉक्सी"},
- gu:{title:"મદદ અને માર્ગદર્શિકા",lead:"દરેક સ્ક્રીનની સ્ટેપ-બાય-સ્ટેપ માર્ગદર્શિકા. કોઈપણ સ્ક્રીન પર ઉપર આપેલ પીળા ? પર ક્લિક કરો — તે સીધું એ જ સ્ક્રીનની મદદ પર લઈ જશે. વિષય પર જાઓ:",where:"ક્યાં:",tip:"ટીપ:",status:"લાઈવ બોર્ડના રંગ:",live:"અત્યારે ભણાવે છે",free:"ખાલી",proxy:"પ્રોક્સી"}
+ en:{title:"Help Center",lead:"A step-by-step guide to every screen. Tap the ? next to Logout on any screen to open help for that screen. Jump to a topic:",where:"Where:",tip:"Tip:",status:"Status colours on the live board:",live:"teaching now",free:"free",proxy:"proxy cover",thispage:"This Page",fullguide:"Full Guide"},
+ hi:{title:"मदद केंद्र",lead:"हर स्क्रीन की स्टेप-बाय-स्टेप गाइड। किसी भी स्क्रीन पर Logout के पास ? दबाएँ — उसी स्क्रीन की मदद खुलेगी। किसी विषय पर जाएँ:",where:"कहाँ:",tip:"सुझाव:",status:"लाइव बोर्ड के रंग:",live:"अभी पढ़ा रहे",free:"खाली",proxy:"प्रॉक्सी",thispage:"यह पेज",fullguide:"पूरी गाइड"},
+ gu:{title:"મદદ કેન્દ્ર",lead:"દરેક સ્ક્રીનની સ્ટેપ-બાય-સ્ટેપ માર્ગદર્શિકા. કોઈપણ સ્ક્રીન પર Logout પાસે ? દબાવો — એ જ સ્ક્રીનની મદદ ખૂલશે. વિષય પર જાઓ:",where:"ક્યાં:",tip:"ટીપ:",status:"લાઈવ બોર્ડના રંગ:",live:"અત્યારે ભણાવે છે",free:"ખાલી",proxy:"પ્રોક્સી",thispage:"આ પેજ",fullguide:"પૂરી માર્ગદર્શિકા"}
 };
 const HELP_TR={
  hi:{
@@ -2236,29 +2253,39 @@ const HELP_TR={
 };
 // tab → help section, so the header ? opens help for the screen you are on
 const HELP_TAB_MAP={dash:"insights",mclasses:"classes",msubjects:"subjects",mteachers:"teachers",mrooms:"rooms",hours:"hours",quota:"quota",avail:"availability",build:"build",optimizer:"optimizer",class:"views",teacher:"views",school:"views",insights:"insights",students:"students",sub:"substitution",monitor:"liveclass",diary:"diary",notify:"notifications",reports:"reports",versions:"versions",data:"data",schools:"schools",users:"users",help:"getstarted"};
-function openHelp(sectionId){
-  const target=(typeof sectionId==='string'&&sectionId)?sectionId:(HELP_TAB_MAP[tab]||'getstarted');
-  setTab('help');
-  setTimeout(()=>{const el=document.getElementById('help-'+target);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});const o=el.style.boxShadow;el.style.boxShadow='0 0 0 3px #ffd34d';setTimeout(()=>{el.style.boxShadow=o;},1600);}},70);
+let _helpMode='page', _helpSection='getstarted';
+function helpLoc(s){const o=(HELP_TR[LANG]||{})[s.id]||{};return {id:s.id,icon:s.icon,title:o.title||s.title,who:o.who||s.who,intro:o.intro||s.intro,where:o.where||s.where,steps:o.steps||s.steps,tip:o.tip||s.tip};}
+function openHelp(sectionId){_helpMode='page';_helpSection=(typeof sectionId==='string'&&sectionId)?sectionId:(HELP_TAB_MAP[tab]||'getstarted');renderHelpModal();}
+function openFullGuide(){_helpMode='full';renderHelpModal();}
+function helpClose(){const m=document.getElementById('helpmodal');if(m)m.remove();}
+function helpMode(m){_helpMode=m;renderHelpModal();}
+function renderHelpModal(){
+  const ui=HELP_UI[LANG]||HELP_UI.en;
+  let body;
+  if(_helpMode==='full'){
+    body=HELPSECTIONS.map(helpLoc).map(s=>'<div class="hm-sec"><div class="hm-st">'+s.icon+' '+s.title+'</div><div class="hm-in">'+s.intro+'</div><ol class="hm-ol">'+s.steps.map(x=>'<li>'+x+'</li>').join('')+'</ol>'+(s.tip?'<div class="hm-tip">💡 '+ui.tip+' '+s.tip+'</div>':'')+'</div>').join('');
+  }else{
+    const base=HELPSECTIONS.find(s=>s.id===_helpSection)||HELPSECTIONS[0];const s=helpLoc(base);
+    body='<div class="hm-title2">'+s.icon+' '+s.title+'</div><div class="hm-in">'+s.intro+'</div>'+(s.where?'<div class="hm-where">📍 '+ui.where+' '+s.where+'</div>':'')+'<ol class="hm-ol">'+s.steps.map(x=>'<li>'+x+'</li>').join('')+'</ol>'+(s.tip?'<div class="hm-tip">💡 '+ui.tip+' '+s.tip+'</div>':'');
+  }
+  const html='<div class="hm-back" onclick="if(event.target===this)helpClose()"><div class="hm-card">'
+    +'<div class="hm-head"><b>❓ '+ui.title+'</b><span class="hm-x" onclick="helpClose()">✕</span></div>'
+    +'<div class="hm-tabs"><button class="hm-tab '+(_helpMode!=='full'?'on':'')+'" onclick="helpMode(\'page\')">📄 '+ui.thispage+'</button><button class="hm-tab '+(_helpMode==='full'?'on':'')+'" onclick="helpMode(\'full\')">📖 '+ui.fullguide+'</button></div>'
+    +'<div class="hm-body">'+body+'</div></div></div>';
+  let m=document.getElementById('helpmodal');if(!m){m=document.createElement('div');m.id='helpmodal';document.body.appendChild(m);}
+  m.innerHTML=html;
 }
 function help(){
   const ui=HELP_UI[LANG]||HELP_UI.en;
-  const trAll=HELP_TR[LANG]||{};
-  const loc=s=>{const o=trAll[s.id]||{};return {id:s.id,icon:s.icon,title:o.title||s.title,who:o.who||s.who,intro:o.intro||s.intro,where:o.where||s.where,steps:o.steps||s.steps,tip:o.tip||s.tip};};
-  const list=HELPSECTIONS.map(loc);
-  const toc=list.map(s=>'<a href="#help-'+s.id+'" onclick="event.preventDefault();openHelp(\''+s.id+'\')">'+s.icon+' '+s.title+'</a>').join('');
-  const secs=list.map(s=>'<div class="hlp-sec" id="help-'+s.id+'"><h3>'+s.icon+' '+s.title+'</h3>'
-    +'<div><span class="who">👤 '+s.who+'</span></div>'
-    +'<div class="intro">'+s.intro+'</div>'
-    +(s.where?'<div class="where">📍 <b>'+ui.where+'</b> '+s.where+'</div>':'')
-    +'<ol>'+s.steps.map(x=>'<li>'+x+'</li>').join('')+'</ol>'
-    +(s.tip?'<div class="tip">💡 <b>'+ui.tip+'</b> '+s.tip+'</div>':'')
-    +'</div>').join('');
-  return '<div class="card"><h2>❓ '+ui.title+'</h2>'
-    +'<div class="desc">'+ui.lead+'</div>'
-    +'<div class="hlp-toc">'+toc+'</div>'
-    +secs
-    +'<div class="note" style="margin-top:14px">'+ui.status+' <span class="pill live">'+t('st_live')+'</span> '+ui.live+' · <span class="pill idle">'+t('st_idle')+'</span> '+ui.free+' · <span class="pill proxy">'+t('st_proxy')+'</span> '+ui.proxy+'.</div></div>';
+  const toc=HELPSECTIONS.map(helpLoc).map(s=>'<a href="#" onclick="event.preventDefault();openHelp(\''+s.id+'\')">'+s.icon+' '+s.title+'</a>').join('');
+  return '<div class="card" style="text-align:center;padding:26px 18px">'
+    +'<div style="font-size:40px">❓</div>'
+    +'<h2 style="margin:6px 0 4px">'+ui.title+'</h2>'
+    +'<div class="desc" style="max-width:560px;margin:0 auto 14px">'+ui.lead.replace(/[:：].*$/,'.')+'</div>'
+    +'<div class="row" style="gap:10px;justify-content:center;flex-wrap:wrap">'
+    +'<button class="green" onclick="openHelp()">📄 '+ui.thispage+'</button>'
+    +'<button class="ghost" onclick="openFullGuide()">📖 '+ui.fullguide+'</button></div>'
+    +'<div class="hlp-toc" style="justify-content:center;margin-top:16px">'+toc+'</div></div>';
 }
 
 // ---------- TEACHER DIARY (official format) ----------
