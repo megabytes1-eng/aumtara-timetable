@@ -24,6 +24,18 @@ header h1{font-size:18px;margin:0;} header .sub{font-size:12.5px;opacity:.92;}
 .savebadge.show{opacity:1;}
 .navtoggle{background:#2c4a7c;color:#fff;border:1px solid #3f5f95;border-radius:8px;padding:5px 11px;font-size:17px;line-height:1;cursor:pointer;font-weight:700;}
 .navtoggle:hover{background:#345592;}
+.helpbtn{background:#ffd34d;color:#1F2B57;border:none;border-radius:50%;width:30px;height:30px;font-size:17px;font-weight:800;cursor:pointer;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,.2);flex:0 0 auto;}
+.helpbtn:hover{background:#ffc21a;}
+.hlp-toc{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px;}
+.hlp-toc a{font-size:12.5px;background:#eef2fb;color:#1F2B57;padding:4px 10px;border-radius:14px;text-decoration:none;font-weight:600;}
+.hlp-toc a:hover{background:#dce6fb;}
+.hlp-sec{border:1px solid #e6eaf3;border-radius:12px;padding:13px 15px;margin:12px 0;background:#fff;scroll-margin-top:74px;}
+.hlp-sec h3{margin:0 0 4px;color:#1F2B57;font-size:16px;}
+.hlp-sec .who{display:inline-block;font-size:11px;font-weight:700;color:#6a5000;background:#fff3cd;border-radius:10px;padding:2px 9px;margin-bottom:7px;}
+.hlp-sec .intro{color:#3a4560;font-size:13px;}
+.hlp-sec ol{margin:6px 0 4px 4px;padding-left:20px;} .hlp-sec ol li{margin:4px 0;line-height:1.4;}
+.hlp-sec .tip{background:#eef7ee;border-left:3px solid #2e7d32;border-radius:6px;padding:7px 10px;margin-top:8px;font-size:12.8px;color:#24492a;}
+.hlp-sec .where{font-size:12.5px;color:#5c6580;margin:2px 0 6px;} .hlp-sec .where b{color:#1F2B57;}
 #shell{display:flex;align-items:flex-start;}
 .tabs{display:flex;flex-direction:column;gap:1px;background:#fff;border-right:1px solid var(--line);padding:8px 8px 26px;width:216px;flex:0 0 216px;position:sticky;top:0;align-self:flex-start;max-height:100vh;overflow-y:auto;}
 .navgrp{font-size:13.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);padding:11px 8px 11px 10px;margin:3px 6px 0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;border-radius:8px;transition:background .12s,color .12s;}
@@ -137,6 +149,7 @@ td.cell.dragover{outline:2px dashed var(--accent);outline-offset:-2px;}
   <button class="navtoggle" id="navtoggle" onclick="toggleSidebar()" title="Menu" aria-label="Menu">☰</button>
   <div class="logo">A</div>
   <div><h1 id="apptitle">Aumtara — Timetable Module</h1><div class="sub" id="appsub"></div></div>
+  <button class="helpbtn" id="helpbtn" onclick="openHelp()" title="Help & Guide for this screen" aria-label="Help">?</button>
   <select class="langsel" id="langsel" onchange="setLang(this.value)"></select>
   <div class="savebadge" id="saved">✓ Saved</div>
 </header>
@@ -2058,33 +2071,129 @@ async function doImport(){ const f=document.getElementById('impfile').files[0]; 
 }
 
 // ---------- HELP & GUIDE ----------
-function help(){ const steps=[
-   [t('step1_t'),t('step1_d')],[t('step2_t'),t('step2_d')],[t('step3_t'),t('step3_d')],[t('step4_t'),t('step4_d')],[t('step5_t'),t('step5_d')],[t('step6_t'),t('step6_d')],[t('step7_t'),t('step7_d')],[t('step8_t'),t('step8_d')],[t('step9_t'),t('step9_d')],[t('step10_t'),t('step10_d')],[t('step11_t'),t('step11_d')],
- ];
- return `<div class="card"><h2>${t('help_title')}</h2><div class="desc">${t('help_desc')}</div>
-   <div class="guide">${steps.map((s,i)=>`<div class="step"><div class="no">${i+1}</div><div class="txt"><b>${s[0]}</b><br>${s[1]}</div></div>`).join('')}</div>
-   <div class="note"><b>${t('legend_label')}</b> <span class="pill live">${t('st_live')}</span> ${t('legend_live')} · <span class="pill break">${t('st_break')}</span> · <span class="pill idle">${t('st_idle')}</span> ${t('legend_idle')} · <span class="pill proxy">${t('st_proxy')}</span> ${t('legend_proxy')}</div>
-   <div class="feat"><div><b>${t('help_feat1_t')}</b><br><span class="small">${t('help_feat1_d')}</span></div>
-     <div><b>${t('help_feat2_t')}</b><br><span class="small">${t('help_feat2_d')}</span></div>
-     <div><b>${t('help_feat3_t')}</b><br><span class="small">${t('help_feat3_d')}</span></div>
-     <div><b>${t('help_feat4_t')}</b><br><span class="small">${t('help_feat4_d')}</span></div></div>
-   <h3 style="margin:20px 0 8px;color:#1F3864">✨ ${t('help_new_title')}</h3>
-   <div class="feat"><div><b>⚙️ ${t('help_new1_t')}</b><br><span class="small">${t('help_new1_d')}</span></div>
-     <div><b>🔁 ${t('help_new2_t')}</b><br><span class="small">${t('help_new2_d')}</span></div>
-     <div><b>📅 ${t('help_new3_t')}</b><br><span class="small">${t('help_new3_d')}</span></div>
-     <div><b>🚫 ${t('help_new4_t')}</b><br><span class="small">${t('help_new4_d')}</span></div>
-     <div><b>🏷️ ${t('help_new5_t')}</b><br><span class="small">${t('help_new5_d')}</span></div>
-     <div><b>🔗 ${t('help_new6_t')}</b><br><span class="small">${t('help_new6_d')}</span></div></div>
-   <h3 style="margin:20px 0 8px;color:#1F3864">🆕 ${t('help_tb_title')}</h3>
-   <div class="feat">
-     <div><b>🔒 ${t('help_l1_t')}</b><br><span class="small">${t('help_l1_d')}</span></div>
-     <div><b>➿ ${t('help_l2_t')}</b><br><span class="small">${t('help_l2_d')}</span></div>
-     <div><b>🖱️ ${t('help_l3_t')}</b><br><span class="small">${t('help_l3_d')}</span></div>
-     <div><b>🔗 ${t('help_l4_t')}</b><br><span class="small">${t('help_l4_d')}</span></div>
-     <div><b>⧉ ${t('help_l5_t')}</b><br><span class="small">${t('help_l5_d')}</span></div>
-     <div><b>🖨️ ${t('help_l6_t')}</b><br><span class="small">${t('help_l6_d')}</span></div>
-     <div><b>📊 ${t('help_l7_t')}</b><br><span class="small">${t('help_l7_d')}</span></div>
-     <div><b>🔔 ${t('help_l8_t')}</b><br><span class="small">${t('help_l8_d')}</span></div></div></div>`;
+const HELPSECTIONS=[
+ {id:"getstarted",icon:"🚀",title:"Getting started & signing in",who:"Everyone",where:"Login screen",
+  intro:"How to sign in, create a school, and what you can do based on your role.",
+  steps:["Open the app link, enter your login ID (username, email or mobile) and password, then Sign in.","New school? On the login screen tap Create a school account, fill your school name, board and your details — you become its Admin.","Your role decides what you see: Master (everything, all schools), Admin (full setup + timetable), Principal / Supervisor (view + daily ops), Teacher (own timetable, diary, leave).","Use the ☰ button (top-left) to show or hide the left sidebar. Screens are grouped as Master, Timetable, Daily and Admin."],
+  tip:"Not sure where something is? Tap the yellow ? at the top of any screen — it jumps here to the guide for that exact screen."},
+ {id:"schools",icon:"🏫",title:"Schools & switching",who:"Master / Admin",where:"Top bar switcher · Admin → Schools",
+  intro:"Run many schools from one login; each keeps its own classes, timetable and settings.",
+  steps:["Use the school dropdown in the top bar to switch which school you are working on.","Admin → Schools: add a new school (name, board, medium) or upload a school logo.","Every screen only ever shows and edits the currently selected school."],
+  tip:"If a count or list looks wrong, first check you are on the right school in the top bar."},
+ {id:"classes",icon:"🏫",title:"Classes",who:"Admin",where:"Master → Classes",
+  intro:"Your list of classes / sections, each with structure (standard, section, medium, board) and an optional class teacher.",
+  steps:["Tap ＋ Add to open the form; enter the class name (e.g. 5-A), standard, section, medium, board and pick a class teacher, then Save.","Edit any class inline in the list. The ✕ deletes a class.","Use the Board / Medium / Standard / Section filter at the top to narrow the list; the number shows how many match. 🔄 refreshes the data.","Classes are shown in natural order — 1A…8A, then 1B…8B."],
+  tip:"If the standard/section fields are blank, the filter still reads them from the class name automatically."},
+ {id:"subjects",icon:"📚",title:"Subjects",who:"Admin",where:"Master → Subjects",
+  intro:"The subjects you teach. Archive ones you are not scheduling, tag a medium, and flag lab subjects as double-period.",
+  steps:["Tap ＋ Add → enter the subject name, optional medium, tick Active, and tick Double if it must be scheduled as two back-to-back periods. Save.","Untick Active to archive a subject without deleting it.","If you have two mediums, a Medium dropdown appears at the top to show only one medium at a time (pick All mediums to see every one)."],
+  tip:"Seeing the same subject twice (e.g. two PT)? Use ⚠ Remove duplicates to merge them safely — see Data Cleanup below."},
+ {id:"teachers",icon:"👩‍🏫",title:"Teachers",who:"Admin",where:"Master → Teachers",
+  intro:"Each teacher's qualification, main subject, the subjects they can teach, weekly load and daily caps.",
+  steps:["Tap ＋ Add to open the full form: name (required), qualification, main subject, weekly load, max periods per day, max in a row, can-substitute, and tick the subjects they can teach. Save.","Each row shows all of a teacher's settings on one line; the can-teach dropdown adds a subject, and the ✕ on a chip removes it.","Weekly load = how many periods a week the teacher should get; max per day and max in a row keep their day balanced."],
+  tip:"The can-substitute tick decides whether the teacher is suggested as a proxy when someone is absent."},
+ {id:"rooms",icon:"🚪",title:"Rooms",who:"Admin",where:"Master → Rooms",
+  intro:"Rooms and labs with an optional capacity.",
+  steps:["Tap ＋ Add → room name and capacity → Save.","Rooms are used when you assign a room to a period, and by the room-clash check."],
+  tip:"Duplicate rooms can be merged with the ⚠ Remove duplicates button here too."},
+ {id:"hours",icon:"⏰",title:"Academic Hours & terms",who:"Admin",where:"Master → Academic Hours",
+  intro:"Your daily timings — start/end, period length, breaks, lunch, number of periods — with separate Saturday timings, plus terms, labels and the schedule type.",
+  steps:["Set working days, day start and end, period length, lunch (after which period + minutes) and short breaks. Add separate Saturday times if your Saturday is different.","Set the number of periods per day (weekday and Saturday).","Academic terms: add a term and mark one active. Labels: rename Class / Teacher / Room / Subject to your school's own words.","Schedule type: Single week, Multi-week (Week A/B…) or Day rotation (Day A/B/C…)."],
+  tip:"Times are 24-hour — 2:30 PM must be entered as 14:30, otherwise the day stops after one period."},
+ {id:"quota",icon:"🎯",title:"Weekly Quota & rules",who:"Admin",where:"Master → Weekly Quota",
+  intro:"How many periods a week each subject gets in each class, plus placement rules.",
+  steps:["For each class, enter the per-week count for every subject.","Add rules: keep two subjects off the same day, or never back-to-back."],
+  tip:"Auto-generate fills exactly these weekly counts while honouring your rules."},
+ {id:"availability",icon:"🚫",title:"Availability",who:"Admin",where:"Master → Availability",
+  intro:"Block a teacher, class or room for specific periods so nothing is scheduled then.",
+  steps:["Pick teacher / class / room, then tap a cell to block or unblock that day + period."],
+  tip:"Blocks are respected by Auto-generate and flagged as clashes if broken."},
+ {id:"students",icon:"👧",title:"Students & electives",who:"Admin",where:"Master → Students",
+  intro:"Manage students and split a class into elective groups, each with its own subject, teacher and room.",
+  steps:["Add students to a class.","Add an elective for a class + its group options (each option = subject / teacher / room); assign students to options."],
+  tip:"Elective / parallel groups then show right inside the class grid."},
+ {id:"build",icon:"⚡",title:"Build the timetable",who:"Admin",where:"Timetable → Auto Set",
+  intro:"Build the timetable by hand or in one click, with locked, double and combined periods.",
+  steps:["Auto Set: pick a day, then set each cell's subject, teacher and room by hand. Clashes are flagged in red.","Auto-generate: once setup is done, press Auto-generate to build a clash-free timetable honouring quota, rules and availability.","🔒 Lock a fixed activity (Assembly / PT / Library) so Auto-generate keeps it and schedules around it.","Combined classes: teach several classes together in one shared session (Games / Assembly) — pick subject / teacher / room + day / period and tick 2+ classes.","Drag a cell's grip onto another cell to move or swap two periods."],
+  tip:"Lab subjects flagged as Double are placed as two back-to-back periods with the same teacher and room."},
+ {id:"optimizer",icon:"🧮",title:"Optimizer",who:"Admin",where:"Timetable → Optimizer",
+  intro:"Soft preferences that make a nicer timetable on the next Auto-generate.",
+  steps:["Tick preferences: spread subjects across the week, balance each teacher's load, put heavier subjects earlier, minimise teacher gaps.","Tick Deep optimise to rearrange periods within each day to cut idle gaps — without creating clashes."],
+  tip:"Optimizer settings apply the next time you press Auto-generate."},
+ {id:"rotation",icon:"🔁",title:"Multi-week & day rotation",who:"Admin",where:"Academic Hours → Schedule type",
+  intro:"Different plans per week, or per rotation day.",
+  steps:["Multi-week: choose Weekly plans and the number of weeks (Week A/B/C/D). Each week can differ.","Day rotation: choose Daily rotation and the number of days (Day A/B/C).","The rotation calendar tracks which Week / Day is active today from a start date."],
+  tip:"The Class and Teacher views have a Week / Day switcher to view each part of the cycle."},
+ {id:"views",icon:"👁️",title:"Class / Teacher / School views",who:"Everyone",where:"Timetable → Class / Teacher / School View",
+  intro:"See and share the timetable by Class, Teacher or the whole School.",
+  steps:["Class view: pick a class for its weekly grid; Print, export to Excel, or get a read-only Share link.","Teacher view: pick a teacher to see their week and total load.","School view: pick a day to see every class together.","Print all prints every class or teacher at once — then Save as PDF from your browser."],
+  tip:"A Share link opens the timetable with no login — handy for parents."},
+ {id:"insights",icon:"📊",title:"Insights dashboard",who:"Admin",where:"Timetable → Insights",
+  intro:"A dashboard of KPIs and charts about your timetable.",
+  steps:["See KPI tiles (classes, subjects, teachers, completion) plus a period-load heatmap and teacher-workload, subject-coverage and room-utilisation charts.","Tap any KPI tile to jump straight to that view."],
+  tip:"Use it to spot overloaded teachers or under-used rooms at a glance."},
+ {id:"substitution",icon:"👥",title:"Substitution, proxy & leave",who:"Admin / Teacher",where:"Daily → Substitution",
+  intro:"Cover absent teachers with a proxy on a date or range, plus a leave-approval workflow.",
+  steps:["Pick the absent teacher and the date(s), then assign a free teacher as proxy for each period.","Teachers can apply for leave; an admin approves it and the proxy rows are created automatically."],
+  tip:"Only teachers marked can-substitute are offered as proxies."},
+ {id:"liveclass",icon:"🟢",title:"Live Class",who:"Everyone",where:"Daily → Live Class",
+  intro:"Today's live status — who is teaching now, proxies and free periods.",
+  steps:["Open it to see the current period across all classes, including today's proxies and free slots."],
+  tip:"Great for the front office to see the whole school at a glance."},
+ {id:"diary",icon:"📓",title:"Teacher Diary & Chapters",who:"Teacher",where:"Daily → Teacher Diary",
+  intro:"A daily and monthly teaching register per teacher, plus chapters.",
+  steps:["Pick a teacher and date; fill the lesson, topic, homework, and so on.","Chapters: pick a subject and record its chapters to track the syllabus.","Switch between daily entry and the monthly register view."],
+  tip:"A Teacher login only sees their own diary."},
+ {id:"notifications",icon:"🔔",title:"Notifications",who:"Everyone",where:"Daily → Notifications",
+  intro:"Push alerts to your device, and school-wide announcements.",
+  steps:["Tap Enable notifications on your device to receive push alerts.","Admins can send an announcement to everyone."],
+  tip:"Works on phones and laptops once enabled."},
+ {id:"reports",icon:"📈",title:"Reports",who:"Admin",where:"Timetable → Reports",
+  intro:"Ready-made Excel reports, plus fill-your-own templates and a beautify-any-Excel tool.",
+  steps:["Pick a report (class workload, subject coverage, room use, teacher free periods, period load, diary) — it downloads as Excel.","Or upload your own Excel template with placeholders to fill with school data, or beautify any data file."],
+  tip:"Templates repeat a row using a {{rows:teachers}} marker then {{field}} tokens."},
+ {id:"versions",icon:"💾",title:"Save Timetable (versions)",who:"Admin",where:"Timetable → Save Timetable",
+  intro:"Save named copies of the timetable and restore any of them later.",
+  steps:["Save a named version (a snapshot of the current timetable + settings).","Restore brings a saved version back at any time."],
+  tip:"Save a version before a big change so you can roll back."},
+ {id:"data",icon:"📥",title:"Import / Export",who:"Admin",where:"Admin → Import / Export",
+  intro:"Bulk-load your setup from Excel, and export the timetable and setup to Excel.",
+  steps:["Download the setup template, fill the Classes / Subjects / Rooms / Teachers / Chapters sheets, then upload to import.","Export the timetable or setup to Excel any time."],
+  tip:"The importer adds only new names — running it twice will not create duplicates."},
+ {id:"cleanup",icon:"🧹",title:"Data Cleanup & Remove duplicates",who:"Admin",where:"Admin → Import / Export → Data Cleanup · and ⚠ Remove duplicates on each Master tab",
+  intro:"Fix mistakes by clearing a field, a section or a whole list — or merge duplicate rows.",
+  steps:["Remove duplicates: on Subjects / Classes / Teachers / Rooms an amber ⚠ Remove duplicates (N) button merges same-name rows into one, keeping the timetable intact.","Data Cleanup: pick a field (e.g. Teachers → Qualification), a section (Timetable, Quota…) or a whole list, tick the I-understand box, then Clear. A Yes/No box confirms.","Full reset: to wipe all data for the school, tick the box, type the exact school name, then tap Yes on the confirm."],
+  tip:"The school, its settings and user logins are always kept — only the chosen data is cleared, and it cannot be undone."},
+ {id:"users",icon:"👤",title:"Users & roles",who:"Admin",where:"Admin → Users",
+  intro:"Add logins for your staff and set each one's role.",
+  steps:["Add a user, choose a role (Admin / Principal / Supervisor / Teacher), and share their login ID.","Roles control which screens each person can open."],
+  tip:"A Teacher user's name should match a teacher in the list so their diary and leave link up."},
+ {id:"platform",icon:"🌐",title:"Language, install & offline",who:"Everyone",where:"Top bar language selector · your browser",
+  intro:"Use the app in your language, install it, and work offline.",
+  steps:["Pick your language from the dropdown at the top (12 languages).","Install: use your browser or phone Add to Home Screen to install the app.","Once installed it works offline for viewing."],
+  tip:"Any failed action now shows a red banner at the top with the reason."},
+];
+// tab → help section, so the header ? opens help for the screen you are on
+const HELP_TAB_MAP={dash:"insights",mclasses:"classes",msubjects:"subjects",mteachers:"teachers",mrooms:"rooms",hours:"hours",quota:"quota",avail:"availability",build:"build",optimizer:"optimizer",class:"views",teacher:"views",school:"views",insights:"insights",students:"students",sub:"substitution",monitor:"liveclass",diary:"diary",notify:"notifications",reports:"reports",versions:"versions",data:"data",schools:"schools",users:"users",help:"getstarted"};
+function openHelp(sectionId){
+  const target=(typeof sectionId==='string'&&sectionId)?sectionId:(HELP_TAB_MAP[tab]||'getstarted');
+  setTab('help');
+  setTimeout(()=>{const el=document.getElementById('help-'+target);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});const o=el.style.boxShadow;el.style.boxShadow='0 0 0 3px #ffd34d';setTimeout(()=>{el.style.boxShadow=o;},1600);}},70);
+}
+function help(){
+  const toc=HELPSECTIONS.map(s=>'<a href="#help-'+s.id+'" onclick="event.preventDefault();openHelp(\''+s.id+'\')">'+s.icon+' '+s.title+'</a>').join('');
+  const secs=HELPSECTIONS.map(s=>'<div class="hlp-sec" id="help-'+s.id+'"><h3>'+s.icon+' '+s.title+'</h3>'
+    +'<div><span class="who">👤 '+s.who+'</span></div>'
+    +'<div class="intro">'+s.intro+'</div>'
+    +(s.where?'<div class="where">📍 <b>Where:</b> '+s.where+'</div>':'')
+    +'<ol>'+s.steps.map(x=>'<li>'+x+'</li>').join('')+'</ol>'
+    +(s.tip?'<div class="tip">💡 <b>Tip:</b> '+s.tip+'</div>':'')
+    +'</div>').join('');
+  return '<div class="card"><h2>❓ Help &amp; Guide</h2>'
+    +'<div class="desc">A step-by-step guide to every screen. Tap the yellow <b>?</b> at the top of any screen to jump straight to that screen\'s help. Jump to a topic:</div>'
+    +'<div class="hlp-toc">'+toc+'</div>'
+    +secs
+    +'<div class="note" style="margin-top:14px">Status colours on the live board: <span class="pill live">'+t('st_live')+'</span> teaching now · <span class="pill idle">'+t('st_idle')+'</span> free · <span class="pill proxy">'+t('st_proxy')+'</span> proxy cover.</div></div>';
 }
 
 // ---------- TEACHER DIARY (official format) ----------
