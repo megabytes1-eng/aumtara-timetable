@@ -147,6 +147,11 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .choicegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 12px;margin-top:4px;}
 @media(max-width:640px){.clsgrid,.subgrid,.rmgrid,.stugrid,.choicegrid{grid-template-columns:1fr;}}
 .listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
+.htabbar{padding:8px 10px;margin-bottom:10px;}
+.htabs{display:flex;gap:8px;flex-wrap:wrap;}
+.htab{border:1px solid #d8dff0;background:#f4f7fe;color:#334;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;transition:.12s;}
+.htab:hover{background:#e8eefc;}
+.htab.on{background:#1F2B57;color:#fff;border-color:#1F2B57;}
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
 .guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
 .dropzone{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted);}
@@ -1581,7 +1586,17 @@ async function addChapter(){const sid=setupSubj||(subjects[0]||{}).id;const el=d
 async function delChapter(id){await api('DELETE','/api/chapters/'+id);toast();await loadAll();}
 
 // ---------- HOURS ----------
-function hours(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new Set(WD());return `<div class="card"><h2>${t('hours_title')} <span class="tag">${t('tag_config')}</span></h2>
+let hoursTab='timings';
+function setHoursTab(x){hoursTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
+function hoursTabBar(){
+  const tabs=[['timings','⏰ '+t('hours_title')],['excel','⚡ '+t('autofill_title')],['terms','📅 '+t('terms_title')],['schedule','🔁 '+t('cycle_title')],['labels','🏷 '+t('labels_title')]];
+  return `<div class="card htabbar"><div class="htabs">`+tabs.map(x=>`<button class="htab${hoursTab===x[0]?' on':''}" onclick="setHoursTab('${x[0]}')">${x[1]}</button>`).join('')+`</div></div>`;
+}
+function hours(){
+  const body=hoursTab==='excel'?hoursImportCard():hoursTab==='terms'?termsSection():hoursTab==='schedule'?weekCycleCard():hoursTab==='labels'?labelsCard():hoursTimingsCard();
+  return hoursTabBar()+body;
+}
+function hoursTimingsCard(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new Set(WD());return `<div class="card"><h2>${t('hours_title')} <span class="tag">${t('tag_config')}</span></h2>
    <div class="desc">${t('hours_desc')}</div>
    <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:220px"><label>${t('lbl_school_name')}</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div>
      <div style="width:160px"><label>${t('lbl_session')}</label><input style="width:100%" value="${(config.academic_session||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_session')}" onchange="cfg('academic_session',this.value)"></div></div>
@@ -1613,7 +1628,7 @@ function hours(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new
    <div class="hours-row"><div><b>${t('weekdays')}</b><br><span class="small">${wd.filter(s=>!s.brk).length} ${t('periods_word')} · ${config.period_minutes} min</span></div><div><b>${config.weekday_start} – ${(wd[wd.length-1]||{}).end||config.weekday_end}</b></div></div>
    ${(()=>{const ss=wds.has(5)?slotsFor(5):[];return `<div class="hours-row sat"><div><b>${t('saturdays')}</b><br><span class="small">${wds.has(5)?ss.filter(s=>!s.brk).length+' '+t('periods_word'):'—'}</span></div><div><b>${(config.saturday_start||config.weekday_start)} – ${(ss[ss.length-1]||{}).end||config.saturday_end}</b></div></div>`;})()}
    <div style="margin-top:10px"><b class="small">${t('weekday_slots')}</b><br>${wd.map(s=>`<span class="tag" ${s.brk?(s.kind==='lunch'?'style="background:#fef3c7;color:#92400e"':'style="background:#e0f2fe;color:#075985"'):''}>${s.brk?(s.kind==='lunch'?'🍽 '+t('lunch_word'):'☕ '+t('brk')):s.label} ${s.start}-${s.end}</span>`).join("")}</div>
-   ${wds.has(5)?`<div style="margin-top:10px"><b class="small">${t('saturday_slots')}</b><br>${slotsFor(5).map(s=>`<span class="tag" ${s.brk?(s.kind==='lunch'?'style="background:#fef3c7;color:#92400e"':'style="background:#e0f2fe;color:#075985"'):''}>${s.brk?(s.kind==='lunch'?'🍽 '+t('lunch_word'):'☕ '+t('brk')):s.label} ${s.start}-${s.end}</span>`).join("")}</div>`:''}</div>${hoursImportCard()}${termsSection()}${weekCycleCard()}${labelsCard()}`;}
+   ${wds.has(5)?`<div style="margin-top:10px"><b class="small">${t('saturday_slots')}</b><br>${slotsFor(5).map(s=>`<span class="tag" ${s.brk?(s.kind==='lunch'?'style="background:#fef3c7;color:#92400e"':'style="background:#e0f2fe;color:#075985"'):''}>${s.brk?(s.kind==='lunch'?'🍽 '+t('lunch_word'):'☕ '+t('brk')):s.label} ${s.start}-${s.end}</span>`).join("")}</div>`:''}</div>`;}
 function hoursImportCard(){
   return `<div class="card"><h2>⚡ ${t('autofill_title')}</h2><div class="desc">${t('autofill_desc')}</div>
     <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
