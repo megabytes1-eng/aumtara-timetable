@@ -188,6 +188,35 @@ app.use('/api', (req,res,next)=>{
 });
 app.get('/api/me', h(async (req,res)=>res.json(req.user)));
 
+// -------------------- PRODUCT ANALYTICS (self-hosted, consent-gated on the client) --------------------
+// Ingest one or more usage events for the current user + school. Best-effort; never blocks the UI.
+app.post('/api/analytics/event', h(async (req,res)=>{
+  const b=req.body||{};
+  const evs=Array.isArray(b.events)?b.events:[b];
+  let n=0;
+  for(const e of evs.slice(0,50)){
+    const name=String((e&&e.name)||'').trim().slice(0,60);
+    if(!name) continue;
+    let props=null; try{ if(e&&e.props&&typeof e.props==='object') props=JSON.stringify(e.props).slice(0,2000); }catch(_){ props=null; }
+    const pth=(e&&e.path)?String(e.path).slice(0,120):null;
+    await run('INSERT INTO tt_event(school_id,user_id,name,props,path,ts) VALUES(?,?,?,?::jsonb,?,now())',[req.sid, req.user.id, name, props, pth]);
+    n++;
+  }
+  res.json({ ok:true, stored:n });
+}));
+// Admin usage summary for the current school.
+app.get('/api/analytics/summary', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  const sid=req.sid;
+  const total=((await q1('SELECT count(*)::int n FROM tt_event WHERE school_id=?',[sid]))||{}).n||0;
+  const last24=((await q1("SELECT count(*)::int n FROM tt_event WHERE school_id=? AND ts > now()-interval '24 hours'",[sid]))||{}).n||0;
+  const users7=((await q1("SELECT count(DISTINCT user_id)::int n FROM tt_event WHERE school_id=? AND ts > now()-interval '7 days'",[sid]))||{}).n||0;
+  const top=await q("SELECT name, count(*)::int n FROM tt_event WHERE school_id=? GROUP BY name ORDER BY n DESC LIMIT 15",[sid]);
+  const daily=await q("SELECT to_char(date_trunc('day',ts),'YYYY-MM-DD') d, count(*)::int n FROM tt_event WHERE school_id=? AND ts > now()-interval '14 days' GROUP BY 1 ORDER BY 1",[sid]);
+  const pages=await q("SELECT (props->>'tab') tab, count(*)::int n FROM tt_event WHERE school_id=? AND name='page_view' AND (props->>'tab') IS NOT NULL GROUP BY 1 ORDER BY n DESC LIMIT 12",[sid]);
+  res.json({ total, last24, users7, top, daily, pages });
+}));
+
 // -------------------- SHAREABLE LINKS (public read-only class timetable) --------------------
 app.get('/api/sharelinks', h(async (req,res)=>{ res.json(await q('SELECT * FROM tt_sharelink WHERE school_id=? ORDER BY id DESC',[req.sid])); }));
 app.post('/api/sharelinks', h(async (req,res)=>{

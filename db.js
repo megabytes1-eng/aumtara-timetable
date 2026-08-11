@@ -210,6 +210,10 @@ async function init() {
   await run(`CREATE TABLE IF NOT EXISTS tt_elective (id SERIAL PRIMARY KEY, school_id INTEGER, class_id INTEGER, name TEXT, day_of_week INTEGER, period_index INTEGER, week_index INTEGER DEFAULT 0, created_at TEXT)`);
   await run(`CREATE TABLE IF NOT EXISTS tt_elective_option (id SERIAL PRIMARY KEY, school_id INTEGER, elective_id INTEGER, label TEXT, subject_id INTEGER, teacher_id INTEGER, room_id INTEGER, created_at TEXT)`);
   await run(`CREATE TABLE IF NOT EXISTS tt_student_choice (id SERIAL PRIMARY KEY, school_id INTEGER, student_id INTEGER, elective_id INTEGER, option_id INTEGER, UNIQUE(student_id, elective_id))`);
+  // Lightweight self-hosted product analytics — consent-gated event stream (no third-party trackers, no PII beyond internal ids)
+  await run(`CREATE TABLE IF NOT EXISTS tt_event (id BIGSERIAL PRIMARY KEY, school_id INTEGER, user_id INTEGER, name TEXT, props JSONB, path TEXT, ts TIMESTAMPTZ DEFAULT now())`);
+  await run(`CREATE INDEX IF NOT EXISTS ix_tt_event_school_ts ON tt_event(school_id, ts)`);
+  await run(`CREATE INDEX IF NOT EXISTS ix_tt_event_name ON tt_event(name)`);
   // Phase 2 — class-teacher assignment + subject active/inactive
   await run(`ALTER TABLE tt_class   ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER`); // designated class teacher
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 1`); // 1=schedulable, 0=archived
