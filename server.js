@@ -1736,6 +1736,44 @@ app.post('/api/import/setup', upload.single('file'), async (req,res)=>{
   }catch(e){ res.status(400).json({ok:false,error:String(e.message||e)}); }
 });
 
+// ---------- DE-DUPLICATE SUBJECTS (merge exact same-name rows, keep lowest id, repoint all refs) ----------
+// GET returns how many duplicate rows exist for THIS school (so the UI can show/hide the button + count).
+app.get('/api/dedupe/subjects/count', h(async (req,res)=>{
+  const groups=await q(`SELECT lower(btrim(name)) k, count(*)::int n FROM tt_subject WHERE school_id=? GROUP BY lower(btrim(name)) HAVING count(*)>1`,[req.sid]);
+  const extra=groups.reduce((a,g)=>a+(g.n-1),0);   // rows that would be removed
+  res.json({dupNames:groups.length, removable:extra});
+}));
+app.post('/api/dedupe/subjects', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  const sid=req.sid;
+  const out=await tx(async (cq,cq1)=>{
+    // discover every table.column that references a subject id — schema-driven so it never breaks on drift
+    const refs=(await cq(`SELECT table_name, column_name FROM information_schema.columns
+       WHERE table_schema='public' AND column_name IN ('subject_id','main_subject_id') AND table_name<>'tt_subject'`))
+       .filter(r=>/^[a-z_]+$/.test(r.table_name) && /^[a-z_]+$/.test(r.column_name));   // safety: identifiers only
+    // composite-PK junctions: drop the would-collide row before repointing (else duplicate-key error)
+    const guard={tt_quota:'class_id', tt_teacher_subject:'teacher_id'};
+    // groups of exact same (case-insensitive, trimmed) name within this school
+    const groups=await cq(`SELECT array_agg(id ORDER BY id) ids FROM tt_subject WHERE school_id=? GROUP BY lower(btrim(name)) HAVING count(*)>1`,[sid]);
+    let removed=0, merged=0;
+    for(const g of groups){
+      const ids=g.ids.map(Number); const keep=ids[0];
+      for(const dup of ids.slice(1)){
+        for(const r of refs){
+          if(guard[r.table_name]){ const gc=guard[r.table_name];
+            await cq(`DELETE FROM ${r.table_name} WHERE ${r.column_name}=? AND ${gc} IN (SELECT ${gc} FROM ${r.table_name} WHERE ${r.column_name}=?)`,[dup,keep]); }
+          await cq(`UPDATE ${r.table_name} SET ${r.column_name}=? WHERE ${r.column_name}=?`,[keep,dup]);
+        }
+        await cq(`DELETE FROM tt_subject WHERE id=? AND school_id=?`,[dup,sid]);
+        removed++;
+      }
+      merged++;
+    }
+    return {removed, merged};
+  });
+  res.json({ok:true, ...out});
+}));
+
 // ---------- AUTO-FILL HOURS FROM EXCEL (deterministic, no AI) ----------
 function hm(v){
   if(v==null) return '';
