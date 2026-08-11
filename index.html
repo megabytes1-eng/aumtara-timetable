@@ -91,6 +91,7 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .subchip{display:inline-flex;align-items:center;gap:5px;background:#eef2fb;color:#33415a;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:13px;}
 .subchip b{cursor:pointer;color:#9aa3b6;font-weight:800;font-size:11px;line-height:1;} .subchip b:hover{color:#dc2626;}
 .addsub{font-size:11.5px;padding:3px 7px;border:1px dashed #c3ccde;border-radius:8px;color:#5c6580;background:#fafbff;}
+.nf{display:inline-flex;flex-direction:column;gap:1px;font-size:9.5px;color:#7c869c;font-weight:700;white-space:nowrap;} .nf input{font-weight:400;}
 .listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
 .guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
@@ -1266,19 +1267,24 @@ function mTeachersView(){
     const chips=taught.length?taught.map(s=>`<span class="subchip">${sesc(s.name)}<b title="${t('logo_remove')}" onclick="toggleSub(${t2.id},${s.id},false)">✕</b></span>`).join(''):'<span class="small" style="color:#aab2c4">—</span>';
     const addSel=notTaught.length?`<select class="addsub" onchange="if(this.value)toggleSub(${t2.id},+this.value,true)"><option value="">+ ${t('can_teach')}</option>${notTaught.map(s=>`<option value="${s.id}">${sesc(s.name)}</option>`).join('')}</select>`:'';
     return `<div class="teacherrow">
-      <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap">
-        <input class="tname" value="${sesc(t2.name)}" onchange="updTeacher(${t2.id},{name:this.value})">
-        <input style="width:130px" value="${(t2.qualification||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_qualification')}" onchange="updTeacher(${t2.id},{qualification:this.value})">
-        <select style="max-width:130px" title="${t('opt_main_subject')}" onchange="updTeacher(${t2.id},{main_subject_id:this.value?+this.value:null})"><option value="">${t('opt_main_subject')}</option>${subjects.map(s=>`<option value="${s.id}" ${t2.main_subject_id===s.id?'selected':''}>${sesc(s.name)}</option>`).join('')}</select>
-        <input type="number" style="width:66px" title="${t('ph_weekly_load')}" value="${t2.max_load||''}" placeholder="${t('ph_weekly_load')}" onchange="updTeacher(${t2.id},{max_load:+this.value||null})">
-        <input type="number" min="0" style="width:58px" title="${t('ph_max_per_day')}" value="${t2.max_per_day||''}" placeholder="/day" onchange="updTeacher(${t2.id},{max_per_day:+this.value||null})">
-        <input type="number" min="0" style="width:58px" title="${t('ph_max_consec')}" value="${t2.max_consecutive||''}" placeholder="/row" onchange="updTeacher(${t2.id},{max_consecutive:+this.value||null})">
-        <label class="chk" title="${t('can_sub_hint')}"><input type="checkbox" ${(+t2.can_substitute!==0)?'checked':''} onchange="updTeacher(${t2.id},{can_substitute:this.checked?1:0})">${t('can_substitute')}</label>
-        <button class="ghost mini red" onclick="delTeacher(${t2.id})" style="margin-left:auto">✕</button>
+      <div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <label class="nf">${t('u_name')}<input class="tname" style="font-size:14px" value="${sesc(t2.name)}" onchange="updTeacher(${t2.id},{name:this.value})"></label>
+        <label class="nf">${t('ph_qualification')}<input style="width:130px" value="${(t2.qualification||'').replace(/"/g,'&quot;')}" onchange="updTeacher(${t2.id},{qualification:this.value})"></label>
+        <label class="nf">${t('opt_main_subject')}<select style="max-width:140px" onchange="updTeacher(${t2.id},{main_subject_id:this.value?+this.value:null})"><option value="">—</option>${subjects.map(s=>`<option value="${s.id}" ${t2.main_subject_id===s.id?'selected':''}>${sesc(s.name)}</option>`).join('')}</select></label>
+        <label class="nf">${t('ph_weekly_load')}<input type="number" min="0" style="width:88px" value="${t2.max_load||''}" onchange="updTeacher(${t2.id},{max_load:+this.value||null})"></label>
+        <label class="nf">${t('ph_max_per_day')}<input type="number" min="0" style="width:96px" value="${t2.max_per_day||''}" onchange="updTeacher(${t2.id},{max_per_day:+this.value||null})"></label>
+        <label class="nf">${t('ph_max_consec')}<input type="number" min="0" style="width:96px" value="${t2.max_consecutive||''}" onchange="updTeacher(${t2.id},{max_consecutive:+this.value||null})"></label>
+        <label class="chk" title="${t('can_sub_hint')}" style="align-self:center"><input type="checkbox" ${(+t2.can_substitute!==0)?'checked':''} onchange="updTeacher(${t2.id},{can_substitute:this.checked?1:0})">${t('can_substitute')}</label>
+        <button class="ghost mini red" onclick="delTeacher(${t2.id})" style="margin-left:auto;align-self:center">✕</button>
       </div>
-      <div class="row" style="gap:5px;align-items:center;margin-top:4px;flex-wrap:wrap"><span class="small" style="color:#5c6580;font-weight:600">${t('can_teach')}</span>${chips}${addSel}</div>
+      <div class="row" style="gap:5px;align-items:center;margin-top:5px;flex-wrap:wrap"><span class="small" style="color:#5c6580;font-weight:700">${t('can_teach')}</span>${chips}${addSel}</div>
     </div>`;}).join('');
-  return `<div class="card"><h2>👩‍🏫 ${L('teacher')||t('setup_teachers')}</h2><div class="desc">${t('teachers_desc')}</div>${tchList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:12px"><input id="ntch" placeholder="${t('ph_new_teacher')}" style="min-width:220px"><button onclick="addTeacher()">${t('add')}</button></div></div>`;
+  return `<div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+      <h2 style="margin:0">👩‍🏫 ${L('teacher')||t('setup_teachers')}</h2>
+      <div class="row" style="gap:6px"><input id="ntch" placeholder="${t('ph_new_teacher')}" style="width:210px"><button class="green" onclick="addTeacher()">＋ ${t('add')}</button></div>
+    </div>
+    <div class="desc">${t('teachers_desc')}</div>${tchList||'<span class="small">'+t('none')+'</span>'}</div>`;
 }
 function chaptersCard(){
   return `<div class="card"><h2>📖 ${t('chapters_title')}</h2><div class="desc">${t('chapters_desc')}</div>
