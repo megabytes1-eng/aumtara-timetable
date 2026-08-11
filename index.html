@@ -96,7 +96,11 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .clsrow{display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:5px 7px;border:1px solid #eef1f6;border-radius:8px;background:#fafbfe;}
 .clsrow input,.clsrow select{font-size:12.5px;padding:4px 6px;}
 .clsrow .cn{width:104px;font-weight:600;}
-@media(max-width:640px){.clsgrid{grid-template-columns:1fr;}}
+.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:6px 14px;margin-top:4px;}
+.subrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 7px;border:1px solid #eef1f6;border-radius:8px;background:#fafbfe;}
+.subrow>input:first-child{flex:1;min-width:110px;font-size:13px;font-weight:600;padding:4px 6px;}
+.subrow .chk{font-size:11.5px;white-space:nowrap;color:#4a5670;}
+@media(max-width:640px){.clsgrid,.subgrid{grid-template-columns:1fr;}}
 .listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
 .guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
@@ -1295,17 +1299,17 @@ async function saveNewClass(){
   addCls=false;toast('✓ '+name+' — '+t('saved'));await loadAll();
 }
 function mSubjectsView(){
-  const subList=subjects.map(s=>{const off=+s.active===0;return `<div class="listrow" style="${off?'opacity:.55':''}"><input value="${s.name}" onchange="upd('subjects',${s.id},{name:this.value})">
+  const subList=subjects.map(s=>{const off=+s.active===0;return `<div class="subrow" style="${off?'opacity:.55':''}"><input value="${(s.name||'').replace(/"/g,'&quot;')}" onchange="upd('subjects',${s.id},{name:this.value})">
      <label class="chk" title="${t('subj_active_hint')}"><input type="checkbox" ${off?'':'checked'} onchange="upd('subjects',${s.id},{active:this.checked?1:0})">${off?t('subj_inactive'):t('subj_active')}</label>
      <label class="chk" title="${t('dbl_hint')}"><input type="checkbox" ${+s.double_period===1?'checked':''} onchange="upd('subjects',${s.id},{double_period:this.checked?1:0})">${t('dbl_label')}</label>
-     <button class="ghost mini red" onclick="del('subjects',${s.id})">✕</button></div>`;}).join('');
+     <button class="ghost mini red" style="margin-left:auto" onclick="del('subjects',${s.id})">✕</button></div>`;}).join('');
   return `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
       <h2 style="margin:0">📚 ${L('subject')||t('setup_subjects')}</h2>
       <button class="green" onclick="addSub=!addSub;render();if(addSub)setTimeout(()=>{var n=document.getElementById('ns_name');if(n)n.focus();},30)">${addSub?'✕ '+t('cancel'):'＋ '+t('add')}</button>
     </div>
     ${addSub?addSubjectForm():''}
-    ${subList||'<span class="small">'+t('none')+'</span>'}</div>`;
+    <div class="subgrid">${subList||'<span class="small">'+t('none')+'</span>'}</div></div>`;
 }
 function addSubjectForm(){
   return `<div class="card" style="background:#f2f7ff;border:1.5px solid #b9d1f5;margin:4px 0 12px">
