@@ -831,7 +831,21 @@ let AUTH=null, ME=null, loggedOut=false, SCHOOL=null, SCHOOLS=[];
 try{AUTH=localStorage.getItem('tt_token');}catch(e){}
 try{SCHOOL=localStorage.getItem('tt_school')||null;}catch(e){}
 const ROLES=['master','admin','principal','supervisor','teacher'];
-const api=async(m,u,b)=>{const hd={'Content-Type':'application/json'};if(AUTH)hd['Authorization']='Bearer '+AUTH;if(SCHOOL)hd['X-School-Id']=SCHOOL;const r=await fetch(u,{method:m,headers:hd,body:b?JSON.stringify(b):undefined});if(r.status===401){onAuthFail();throw new Error('auth');}let j=null;try{j=await r.json();}catch(e){j=null;}if(!r.ok)return {error:(j&&j.error)||('HTTP '+r.status)};return j;};
+const api=async(m,u,b)=>{const hd={'Content-Type':'application/json'};if(AUTH)hd['Authorization']='Bearer '+AUTH;if(SCHOOL)hd['X-School-Id']=SCHOOL;let r;try{r=await fetch(u,{method:m,headers:hd,body:b?JSON.stringify(b):undefined});}catch(e){const em='Network error — check your connection';if(m!=='GET'){try{showErr(em);}catch(_){}}return {error:em};}if(r.status===401){onAuthFail();throw new Error('auth');}let j=null;try{j=await r.json();}catch(e){j=null;}if(!r.ok){const em=(j&&j.error)||('HTTP '+r.status);if(m!=='GET'){try{showErr(em);}catch(_){}}return {error:em};}return j;};
+// generic in-app Yes/No confirm (does NOT use the native confirm() dialog, which some setups suppress)
+function appConfirm(msg,onYes){
+  let e=document.getElementById('appconfirm');
+  if(!e){e=document.createElement('div');e.id='appconfirm';e.style.cssText='position:fixed;top:0;left:0;right:0;z-index:100000;display:flex;justify-content:center;padding:12px';document.body.appendChild(e);}
+  e.innerHTML='';
+  const box=document.createElement('div');box.style.cssText='background:#fff;border:1.5px solid #f0d089;border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.22);padding:13px 16px;max-width:560px;width:100%';
+  box.innerHTML='<div style="font-weight:600;color:#1a2233;font-size:14px">⚠ '+String(msg).replace(/</g,'&lt;')+'</div>';
+  const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;margin-top:11px;justify-content:flex-end';
+  const yes=document.createElement('button');yes.className='green';yes.textContent='✓ Yes';
+  const no=document.createElement('button');no.className='ghost';no.textContent='✕ No';
+  const close=()=>{e.remove();};
+  no.onclick=close; yes.onclick=()=>{close();try{onYes&&onYes();}catch(err){showErr(String(err&&err.message||err));}};
+  row.appendChild(yes);row.appendChild(no);box.appendChild(row);e.appendChild(box);
+}
 function onAuthFail(){AUTH=null;ME=null;loggedOut=true;try{localStorage.removeItem('tt_token');}catch(e){}renderLogin();}
 function dl(u){let x=u+(u.includes('?')?'&':'?')+'token='+encodeURIComponent(AUTH||'');if(SCHOOL)x+='&school='+encodeURIComponent(SCHOOL);location.href=x;}
 function toast(msg){const e=document.getElementById('saved');e.textContent=msg||t('saved');e.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>{e.classList.remove('show');e.textContent=t('saved');},msg?2800:1200);}
@@ -1381,15 +1395,16 @@ async function saveNewSubject(){
 }
 function countDupes(arr){const s={};let d=0;(arr||[]).forEach(x=>{const k=(x.name||'').trim().toLowerCase(); if(!k)return; if(s[k])d++; else s[k]=1;});return d;}
 function dedupeBtnHtml(entity,arr){const n=countDupes(arr); return n>0?`<button class="ghost" style="border-color:#e0a800;color:#a97400;font-weight:700" title="${t('dedupe_hint')}" onclick="dedupeRows('${entity}')">⚠ ${t('remove_dupes')} (${n})</button>`:'';}
-async function dedupeRows(entity){
+function dedupeRows(entity){
   const arr=({subjects:subjects,classes:classes,rooms:rooms,teachers:teachers})[entity]||[];
   const n=countDupes(arr);
   if(!n){toast(t('dupes_none'));return;}
-  if(!confirm(t('confirm_dedupe',{n:n}))) return;
-  const res=await api('POST','/api/dedupe/'+entity,{});
-  if(!res||res.error){showErr((res&&res.error)||t('save_failed'));return;}
-  toast(t('dupes_removed',{n:res.removed||0}));
-  await loadAll();
+  appConfirm(t('confirm_dedupe',{n:n}),async()=>{
+    const res=await api('POST','/api/dedupe/'+entity,{});
+    if(!res||res.error){return;}   // api() already shows the error banner
+    toast(t('dupes_removed',{n:res.removed||0}));
+    await loadAll();
+  });
 }
 function mRoomsView(){
   const roomList=rooms.map(r=>`<div class="listrow"><input value="${r.name}" onchange="upd('rooms',${r.id},{name:this.value})"><input type="number" style="width:90px" value="${r.capacity||''}" placeholder="${t('ph_cap')}" onchange="upd('rooms',${r.id},{capacity:+this.value})"><button class="ghost mini red" onclick="del('rooms',${r.id})">✕</button></div>`).join('');
@@ -1510,16 +1525,16 @@ function chaptersCard(){
      ${(()=>{const sid=setupSubj||(subjects[0]||{}).id;const list=chaptersForSubject(sid);return list.length?list.map(c=>`<div class="listrow"><input value="${c.name.replace(/"/g,'&quot;')}" disabled><button class="ghost mini red" onclick="delChapter(${c.id})">✕</button></div>`).join(''):'<span class="small">'+t('no_chapters')+'</span>';})()}
      <div class="row" style="margin-top:8px"><input id="nchap" placeholder="${t('ph_new_chapter')}"><button onclick="addChapter()">${t('add')}</button></div></div>`;
 }
-async function add(route,inp){const v=document.getElementById(inp).value.trim();if(!v)return;await api('POST','/api/'+route,{name:v});toast();await loadAll();}
-async function addRoom(){const v=document.getElementById('nroom').value.trim();if(!v)return;await api('POST','/api/rooms',{name:v,capacity:+document.getElementById('ncap').value||null});toast();await loadAll();}
-async function upd(route,id,body){await api('PUT','/api/'+route+'/'+id,body);toast();await loadAll();}
-async function del(route,id){await api('DELETE','/api/'+route+'/'+id);toast();await loadAll();}
-async function addTeacher(){const v=document.getElementById('ntch').value.trim();if(!v)return;await api('POST','/api/teachers',{name:v,subjects:[]});toast();await loadAll();}
-async function updTeacher(id,body){await api('PUT','/api/teachers/'+id,body);toast();await loadAll();}
-async function delTeacher(id){await api('DELETE','/api/teachers/'+id);toast();await loadAll();}
-async function toggleSub(tid,sid,on){const t2=teachers.find(x=>x.id===tid);const subs=new Set(t2.subjects);on?subs.add(sid):subs.delete(sid);await api('PUT','/api/teachers/'+tid,{subjects:[...subs]});toast();await loadAll();}
+async function add(route,inp){const v=document.getElementById(inp).value.trim();if(!v)return;const r=await api('POST','/api/'+route,{name:v});if(r&&r.error)return;toast();await loadAll();}
+async function addRoom(){const v=document.getElementById('nroom').value.trim();if(!v)return;const r=await api('POST','/api/rooms',{name:v,capacity:+document.getElementById('ncap').value||null});if(r&&r.error)return;toast();await loadAll();}
+async function upd(route,id,body){const r=await api('PUT','/api/'+route+'/'+id,body);if(r&&r.error)return;toast();await loadAll();}
+async function del(route,id){const r=await api('DELETE','/api/'+route+'/'+id);if(r&&r.error)return;toast();await loadAll();}
+async function addTeacher(){const v=document.getElementById('ntch').value.trim();if(!v)return;const r=await api('POST','/api/teachers',{name:v,subjects:[]});if(r&&r.error)return;toast();await loadAll();}
+async function updTeacher(id,body){const r=await api('PUT','/api/teachers/'+id,body);if(r&&r.error)return;toast();await loadAll();}
+async function delTeacher(id){const r=await api('DELETE','/api/teachers/'+id);if(r&&r.error)return;toast();await loadAll();}
+async function toggleSub(tid,sid,on){const t2=teachers.find(x=>x.id===tid);const subs=new Set(t2.subjects);on?subs.add(sid):subs.delete(sid);const r=await api('PUT','/api/teachers/'+tid,{subjects:[...subs]});if(r&&r.error)return;toast();await loadAll();}
 let setupSubj=null;
-async function addChapter(){const sid=setupSubj||(subjects[0]||{}).id;const el=document.getElementById('nchap');const v=(el.value||'').trim();if(!v||!sid)return;await api('POST','/api/chapters',{subject_id:sid,name:v});toast();await loadAll();}
+async function addChapter(){const sid=setupSubj||(subjects[0]||{}).id;const el=document.getElementById('nchap');const v=(el.value||'').trim();if(!v||!sid)return;const r=await api('POST','/api/chapters',{subject_id:sid,name:v});if(r&&r.error)return;toast();await loadAll();}
 async function delChapter(id){await api('DELETE','/api/chapters/'+id);toast();await loadAll();}
 
 // ---------- HOURS ----------
