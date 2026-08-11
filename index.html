@@ -139,7 +139,13 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .rmrow>input:first-child{flex:1 1 60px;min-width:44px;font-size:13px;font-weight:600;padding:4px 6px;}
 .rmrow>input.rmcap{flex:0 0 68px;width:68px;font-size:12.5px;font-weight:400;padding:4px 6px;}
 .rmrow>button{flex:0 0 auto;}
-@media(max-width:640px){.clsgrid,.subgrid,.rmgrid{grid-template-columns:1fr;}}
+.stugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:5px 10px;margin-top:4px;}
+.sturow{display:flex;gap:5px;align-items:center;padding:4px 7px;border:1px solid #eef1f6;border-radius:8px;background:#fafbfe;overflow:hidden;}
+.sturow>b{flex:1 1 auto;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sturow .tag{flex:0 0 auto;}
+.sturow>button{flex:0 0 auto;}
+.choicegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 12px;margin-top:4px;}
+@media(max-width:640px){.clsgrid,.subgrid,.rmgrid,.stugrid,.choicegrid{grid-template-columns:1fr;}}
 .listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
 .guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
@@ -1869,17 +1875,17 @@ function studentsView(){
   const cls=filteredClasses();
   if((!curSClass||!cls.find(c=>c.id===curSClass))&&cls[0]) curSClass=cls[0].id;
   const classSel=`<select onchange="curSClass=+this.value;curStudent=null;loadStudents()">${cls.map(c=>`<option value="${c.id}" ${c.id===curSClass?'selected':''}>${sesc(c.name)}</option>`).join('')}</select>`;
-  const stuRows=STUDENTS.length?STUDENTS.map(s=>`<div class="hours-row" style="align-items:center"><div><b>${sesc(s.name)}</b>${s.roll?` <span class="tag">${sesc(s.roll)}</span>`:''}</div><button class="ghost red mini" onclick="delStudent(${s.id})">🗑</button></div>`).join(''):`<div class="small" style="color:#5c6580">${t('stu_none')}</div>`;
+  const stuRows=STUDENTS.length?'<div class="stugrid">'+STUDENTS.map(s=>`<div class="sturow"><b>${sesc(s.name)}</b>${s.roll?`<span class="tag">${sesc(s.roll)}</span>`:''}<button class="ghost red mini" onclick="delStudent(${s.id})">🗑</button></div>`).join('')+'</div>':`<div class="small" style="color:#5c6580">${t('stu_none')}</div>`;
   const maxP=maxTeachPeriods();
   const dayOpts=WD().map(i=>`<option value="${i}">${DD()[i]}</option>`).join('');
   const perOpts=Array.from({length:maxP},(_,i)=>`<option value="${i}">P${i+1}</option>`).join('');
   const elRows=ELECTIVES.length?ELECTIVES.map(e=>electiveCard(e)).join(''):`<div class="small" style="color:#5c6580">${t('elec_none')}</div>`;
   // choices for current student
   const stuSel=STUDENTS.length?`<select onchange="pickStudent(this.value)">${STUDENTS.map(s=>`<option value="${s.id}" ${s.id===curStudent?'selected':''}>${sesc(s.name)}${s.roll?' ('+sesc(s.roll)+')':''}</option>`).join('')}</select>`:'';
-  const choiceRows=(curStudent&&ELECTIVES.length)?ELECTIVES.map(e=>{
+  const choiceRows=(curStudent&&ELECTIVES.length)?'<div class="choicegrid">'+ELECTIVES.map(e=>{
     const sel=`<option value="">${t('elec_pick')}</option>`+(e.options||[]).map(o=>`<option value="${o.id}" ${SCHOICES[e.id]===o.id?'selected':''}>${sesc(o.label)} — ${sesc(sName(o.subject_id)||'')}</option>`).join('');
     return `<div class="hours-row" style="align-items:center"><div><b>${sesc(e.name)}</b> <span class="tag">${DD()[e.day_of_week]} · P${e.period_index+1}</span></div><select onchange="setChoice(${e.id},this.value)">${sel}</select></div>`;
-  }).join(''):`<div class="small" style="color:#5c6580">${curStudent?t('elec_none'):t('stu_pick_first')}</div>`;
+  }).join('')+'</div>':`<div class="small" style="color:#5c6580">${curStudent?t('elec_none'):t('stu_pick_first')}</div>`;
   return `<div class="card"><h2>👪 ${t('students_title')}</h2><div class="desc">${t('students_desc')}</div>
     <div class="row" style="margin-bottom:10px"><div><label>${L('class')||t('nav_class')}</label>${classSel}</div></div></div>
   <div class="row" style="gap:14px;align-items:flex-start;flex-wrap:wrap">
