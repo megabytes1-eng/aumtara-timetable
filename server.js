@@ -1863,8 +1863,16 @@ app.post('/api/admin/clean', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
   const sid=req.sid;
   if(sid==null){ res.status(400).json({error:'no school selected'}); return; }
-  const stmts=CLEAN_TARGETS[(req.body||{}).target];
+  const target=(req.body||{}).target;
+  const stmts=CLEAN_TARGETS[target];
   if(!stmts){ res.status(400).json({error:'unknown clean target'}); return; }
+  // destructive targets (full reset + clearing a whole list) require typing the exact school name
+  if(target==='all' || /^m_/.test(target)){
+    const sch=await q1('SELECT name FROM tt_school WHERE id=?',[sid]);
+    const want=((sch&&sch.name)||'').trim().toLowerCase();
+    const got=(((req.body||{}).confirm)||'').trim().toLowerCase();
+    if(!want || got!==want){ res.status(400).json({error:'Type the exact school name to confirm this.'}); return; }
+  }
   await tx(async (cq)=>{ for(const s of stmts){ const n=(s.split('?').length-1); await cq(s, Array(n).fill(sid)); } });
   res.json({ok:true});
 }));

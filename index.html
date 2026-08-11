@@ -1964,24 +1964,40 @@ function cleanupCard(){
           ${opt('m_subjects','ALL subjects (+ timetable, quota, chapters)')}${opt('m_classes','ALL classes (+ their timetable, quota, students)')}${opt('m_teachers','ALL teachers (+ their links, keep cells)')}${opt('m_rooms','ALL rooms (+ unset from timetable)')}
         </optgroup>
       </select>
-      <button class="ghost" style="border-color:#e0a800;color:#a97400;font-weight:700" onclick="var s=document.getElementById('cleansel');adminClean(s.value,s.options[s.selectedIndex].text)">🧹 Clear selected</button>
-      <button class="ghost red" style="margin-left:auto;font-weight:700" onclick="adminFullReset()">⚠ Full reset — wipe everything</button>
     </div>
+    <label class="chk" style="margin-top:10px;font-weight:700;color:#a97400"><input type="checkbox" id="cleanack" onchange="var d=!this.checked,a=document.getElementById('cleanbtn'),b=document.getElementById('resetbtn');if(a)a.disabled=d;if(b)b.disabled=d;"> I understand — this permanently deletes the selected data and cannot be undone</label>
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      <button id="cleanbtn" class="ghost" disabled style="border-color:#e0a800;color:#a97400;font-weight:700" onclick="var s=document.getElementById('cleansel');adminClean(s.value,s.options[s.selectedIndex].text)">🧹 Clear selected</button>
+      <span style="flex:1;min-width:10px"></span>
+      <input id="resetconfirm" placeholder="type the school name…" style="width:190px" title="Required for a full reset or clearing a whole list">
+      <button id="resetbtn" class="ghost red" disabled style="font-weight:700" onclick="adminFullReset()">⚠ Full reset — wipe everything</button>
+    </div>
+    <div class="note" style="margin-top:6px">Safety: tick the box to enable the buttons. To clear a <b>whole list</b> or do a <b>Full reset</b>, you must also type the exact school name in the box above.</div>
   </div>`;
+}
+function cleanAckOk(){ const a=document.getElementById('cleanack'); if(!a||!a.checked){ showErr('Tick the "I understand" box first'); return false; } return true; }
+function cleanNameOk(){
+  const nm=((SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{}).name||'').trim().toLowerCase();
+  const el=document.getElementById('resetconfirm');
+  return !!nm && el && (el.value||'').trim().toLowerCase()===nm;
 }
 async function adminClean(target,label){
   if(!target){toast('Pick something to clear first');return;}
+  if(!cleanAckOk()) return;
+  if(/^m_/.test(target) && !cleanNameOk()){ showErr('To clear a whole list, type the exact school name in the box first'); return; }
   if(!confirm('Clean "'+label+'" for this school?\n\nThis permanently clears the selected data and CANNOT be undone. Continue?')) return;
-  const res=await api('POST','/api/admin/clean',{target:target});
+  const res=await api('POST','/api/admin/clean',{target:target,confirm:((document.getElementById('resetconfirm')||{}).value)||''});
   if(!res||res.error){showErr((res&&res.error)||'Clean failed');return;}
   toast('✓ Cleared: '+label);
   await loadAll();
 }
 async function adminFullReset(){
   const nm=(SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{}).name||'this school';
+  if(!cleanAckOk()) return;
+  if(!cleanNameOk()){ showErr('Type the exact school name in the box to confirm a full reset'); return; }
   if(!confirm('FULL RESET of "'+nm+'": delete ALL data — classes, subjects, teachers, rooms, timetable, quota, everything.\n\nThe school, its settings and user logins are kept. This CANNOT be undone.')) return;
   if(!confirm('Are you absolutely sure? This wipes all data in "'+nm+'".')) return;
-  const res=await api('POST','/api/admin/clean',{target:'all'});
+  const res=await api('POST','/api/admin/clean',{target:'all',confirm:((document.getElementById('resetconfirm')||{}).value)||''});
   if(!res||res.error){showErr((res&&res.error)||'Reset failed');return;}
   toast('✓ School data reset — start fresh');
   await loadAll();
