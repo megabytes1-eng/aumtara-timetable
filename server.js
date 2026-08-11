@@ -1736,41 +1736,91 @@ app.post('/api/import/setup', upload.single('file'), async (req,res)=>{
   }catch(e){ res.status(400).json({ok:false,error:String(e.message||e)}); }
 });
 
-// ---------- DE-DUPLICATE SUBJECTS (merge exact same-name rows, keep lowest id, repoint all refs) ----------
-// GET returns how many duplicate rows exist for THIS school (so the UI can show/hide the button + count).
-app.get('/api/dedupe/subjects/count', h(async (req,res)=>{
-  const groups=await q(`SELECT lower(btrim(name)) k, count(*)::int n FROM tt_subject WHERE school_id=? GROUP BY lower(btrim(name)) HAVING count(*)>1`,[req.sid]);
-  const extra=groups.reduce((a,g)=>a+(g.n-1),0);   // rows that would be removed
-  res.json({dupNames:groups.length, removable:extra});
-}));
-app.post('/api/dedupe/subjects', h(async (req,res)=>{
-  if(!requireAdmin(req,res)) return;
-  const sid=req.sid;
-  const out=await tx(async (cq,cq1)=>{
-    // discover every table.column that references a subject id — schema-driven so it never breaks on drift
-    const refs=(await cq(`SELECT table_name, column_name FROM information_schema.columns
-       WHERE table_schema='public' AND column_name IN ('subject_id','main_subject_id') AND table_name<>'tt_subject'`))
-       .filter(r=>/^[a-z_]+$/.test(r.table_name) && /^[a-z_]+$/.test(r.column_name));   // safety: identifiers only
-    // composite-PK junctions: drop the would-collide row before repointing (else duplicate-key error)
-    const guard={tt_quota:'class_id', tt_teacher_subject:'teacher_id'};
-    // groups of exact same (case-insensitive, trimmed) name within this school
-    const groups=await cq(`SELECT array_agg(id ORDER BY id) ids FROM tt_subject WHERE school_id=? GROUP BY lower(btrim(name)) HAVING count(*)>1`,[sid]);
-    let removed=0, merged=0;
-    for(const g of groups){
-      const ids=g.ids.map(Number); const keep=ids[0];
-      for(const dup of ids.slice(1)){
-        for(const r of refs){
-          if(guard[r.table_name]){ const gc=guard[r.table_name];
-            await cq(`DELETE FROM ${r.table_name} WHERE ${r.column_name}=? AND ${gc} IN (SELECT ${gc} FROM ${r.table_name} WHERE ${r.column_name}=?)`,[dup,keep]); }
-          await cq(`UPDATE ${r.table_name} SET ${r.column_name}=? WHERE ${r.column_name}=?`,[keep,dup]);
+// ---------- DE-DUPLICATE ENTITIES (merge exact same-name rows, keep lowest id, repoint EVERY ref) ----------
+// Works for subjects / classes / rooms / teachers. Schema-driven: discovers referencing columns from
+// information_schema and unique key-sets from pg_index, so collisions are guarded automatically. Also
+// handles the polymorphic tt_avail (entity_type,entity_id) + tt_sharelink (kind,target_id) and the
+// tt_combine.class_ids CSV. Timetable cells are preserved (their unique key is the slot, not the entity).
+const DEDUPE_CFG={
+  subjects:{ table:'tt_subject', colWhere:"column_name IN ('subject_id','main_subject_id')", avail:null,  csvCombine:false },
+  classes: { table:'tt_class',   colWhere:"column_name LIKE '%class_id' AND column_name<>'class_ids'",     avail:'class',  csvCombine:true  },
+  rooms:   { table:'tt_room',    colWhere:"column_name LIKE '%room_id'",                                   avail:'room',   csvCombine:false },
+  teachers:{ table:'tt_teacher', colWhere:"column_name LIKE '%teacher_id'",                                avail:'teacher',csvCombine:false },
+};
+async function dedupeCounts(qfn, sid){
+  const out={};
+  for(const k of Object.keys(DEDUPE_CFG)){
+    const g=await qfn(`SELECT count(*)::int n FROM (SELECT 1 FROM ${DEDUPE_CFG[k].table} WHERE school_id=? GROUP BY lower(btrim(name)) HAVING count(*)>1) x`,[sid]);
+    const rem=await qfn(`SELECT COALESCE(sum(c-1),0)::int r FROM (SELECT count(*) c FROM ${DEDUPE_CFG[k].table} WHERE school_id=? GROUP BY lower(btrim(name)) HAVING count(*)>1) y`,[sid]);
+    out[k]={dupNames:(g[0]&&g[0].n)||0, removable:(rem[0]&&rem[0].r)||0};
+  }
+  return out;
+}
+app.get('/api/dedupe/count', h(async (req,res)=>{ res.json(await dedupeCounts(q, req.sid)); }));
+// kept for backward-compat with the already-shipped subjects button
+app.get('/api/dedupe/subjects/count', h(async (req,res)=>{ res.json((await dedupeCounts(q, req.sid)).subjects); }));
+
+async function mergeEntity(cq, sid, cfg){
+  if(!cfg) throw new Error('bad entity');
+  // referencing columns (in OTHER tables), identifier-guarded
+  const refs=(await cq(`SELECT table_name, column_name FROM information_schema.columns
+     WHERE table_schema='public' AND (${cfg.colWhere}) AND table_name<>'${cfg.table}' AND table_name LIKE 'tt_%'`))
+     .filter(r=>/^[a-z_]+$/.test(r.table_name) && /^[a-z_]+$/.test(r.column_name));
+  // unique key-sets per table (covers PK + UNIQUE constraints + unique indexes — all backed by pg_index)
+  const ixRows=await cq(`SELECT tbl.relname tname, idx.relname iname, a.attname col
+     FROM pg_index ix JOIN pg_class idx ON idx.oid=ix.indexrelid JOIN pg_class tbl ON tbl.oid=ix.indrelid
+     JOIN pg_attribute a ON a.attrelid=tbl.oid AND a.attnum=ANY(ix.indkey)
+     WHERE ix.indisunique AND tbl.relkind='r' AND tbl.relname LIKE 'tt_%'`);
+  const uniq={};   // table -> array of column-sets
+  const seenIx={};
+  ixRows.forEach(r=>{ const key=r.tname+'|'+r.iname; (seenIx[key]=seenIx[key]||[]).push(r.col); });
+  Object.keys(seenIx).forEach(k=>{ const t=k.split('|')[0]; (uniq[t]=uniq[t]||[]).push(seenIx[k]); });
+  const ident=x=>/^[a-z_]+$/.test(x);
+
+  const groups=await cq(`SELECT array_agg(id ORDER BY id) ids FROM ${cfg.table} WHERE school_id=? GROUP BY lower(btrim(name)) HAVING count(*)>1`,[sid]);
+  let removed=0, merged=0;
+  for(const g of groups){
+    const ids=g.ids.map(Number); const keep=ids[0];
+    for(const dup of ids.slice(1)){
+      for(const r of refs){
+        if(!ident(r.table_name)||!ident(r.column_name)) continue;
+        // guard every unique key-set of this table that includes the ref column
+        for(const set of (uniq[r.table_name]||[])){
+          if(!set.includes(r.column_name)) continue;
+          const others=set.filter(c=>c!==r.column_name);
+          if(!others.length || !others.every(ident)) continue;
+          const cols=others.join(',');
+          await cq(`DELETE FROM ${r.table_name} WHERE ${r.column_name}=? AND (${cols}) IN (SELECT ${cols} FROM ${r.table_name} WHERE ${r.column_name}=?)`,[dup,keep]);
         }
-        await cq(`DELETE FROM tt_subject WHERE id=? AND school_id=?`,[dup,sid]);
-        removed++;
+        await cq(`UPDATE ${r.table_name} SET ${r.column_name}=? WHERE ${r.column_name}=?`,[keep,dup]);
       }
-      merged++;
+      // polymorphic availability (entity_type,entity_id) — guard on its unique slot key
+      if(cfg.avail){
+        await cq(`DELETE FROM tt_avail WHERE entity_type=? AND entity_id=? AND (school_id,day_of_week,period_index) IN (SELECT school_id,day_of_week,period_index FROM tt_avail WHERE entity_type=? AND entity_id=?)`,[cfg.avail,dup,cfg.avail,keep]);
+        await cq(`UPDATE tt_avail SET entity_id=? WHERE entity_type=? AND entity_id=?`,[keep,cfg.avail,dup]);
+        await cq(`UPDATE tt_sharelink SET target_id=? WHERE kind=? AND target_id=?`,[keep,cfg.avail,dup]);
+      }
+      // combined-classes CSV (class merge only): swap dup id -> keep id inside class_ids, de-dup
+      if(cfg.csvCombine){
+        const rows=await cq(`SELECT id,class_ids FROM tt_combine WHERE school_id=?`,[sid]);
+        for(const row of rows){ if(!row.class_ids) continue;
+          let arr=String(row.class_ids).split(',').map(x=>x.trim()).filter(Boolean);
+          if(arr.includes(String(dup))){ arr=[...new Set(arr.map(x=>x===String(dup)?String(keep):x))];
+            await cq(`UPDATE tt_combine SET class_ids=? WHERE id=?`,[arr.join(','),row.id]); }
+        }
+      }
+      await cq(`DELETE FROM ${cfg.table} WHERE id=? AND school_id=?`,[dup,sid]);
+      removed++;
     }
-    return {removed, merged};
-  });
+    merged++;
+  }
+  return {removed, merged};
+}
+app.post('/api/dedupe/:entity', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  const cfg=DEDUPE_CFG[req.params.entity];
+  if(!cfg){ res.status(400).json({error:'unknown entity'}); return; }
+  const out=await tx(async (cq)=>mergeEntity(cq, req.sid, cfg));
   res.json({ok:true, ...out});
 }));
 
