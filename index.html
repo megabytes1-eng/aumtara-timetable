@@ -92,6 +92,11 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .subchip b{cursor:pointer;color:#9aa3b6;font-weight:800;font-size:11px;line-height:1;} .subchip b:hover{color:#dc2626;}
 .addsub{font-size:11.5px;padding:3px 7px;border:1px dashed #c3ccde;border-radius:8px;color:#5c6580;background:#fafbff;}
 .nf{display:inline-flex;flex-direction:column;gap:1px;font-size:9.5px;color:#7c869c;font-weight:700;white-space:nowrap;} .nf input{font-weight:400;}
+.clsgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(470px,1fr));gap:6px 14px;margin-top:4px;}
+.clsrow{display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:5px 7px;border:1px solid #eef1f6;border-radius:8px;background:#fafbfe;}
+.clsrow input,.clsrow select{font-size:12.5px;padding:4px 6px;}
+.clsrow .cn{width:104px;font-weight:600;}
+@media(max-width:640px){.clsgrid{grid-template-columns:1fr;}}
 .listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
 .guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
@@ -1240,22 +1245,21 @@ async function autoGen(){const b=event&&event.target;if(b){b.disabled=true;b.dat
 // ---------- SETUP (CRUD) ----------
 // ---- Master data: Classes / Subjects / Teachers / Rooms — each its own full-page view ----
 function mClassesView(){
-  const classList=classes.map(c=>`<div style="padding:8px 0;border-bottom:1px solid #f0f2f6">
-     <div class="listrow"><input value="${c.name}" onchange="upd('classes',${c.id},{name:this.value})">
-       <select title="${t('class_teacher')}" style="max-width:180px" onchange="upd('classes',${c.id},{class_teacher_id:this.value?+this.value:null})"><option value="">${t('opt_no_ct')}</option>${teachers.map(t2=>`<option value="${t2.id}" ${c.class_teacher_id===t2.id?'selected':''}>${t2.name}</option>`).join('')}</select>
-       <button class="ghost mini red" onclick="del('classes',${c.id})">✕</button></div>
-     <div class="row" style="gap:6px;margin-top:4px">
-       <input style="width:110px" value="${(c.standard||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_standard')}" onchange="upd('classes',${c.id},{standard:this.value})">
-       <input style="width:100px" value="${(c.section||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_section')}" onchange="upd('classes',${c.id},{section:this.value})">
-       <input style="width:130px" value="${(c.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('classes',${c.id},{medium:this.value})">
-       <input style="width:130px" value="${(c.board||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_board')}" onchange="upd('classes',${c.id},{board:this.value})"></div></div>`).join('');
+  const classList=classes.map(c=>`<div class="clsrow">
+     <input class="cn" title="${t('u_name')}" value="${(c.name||'').replace(/"/g,'&quot;')}" placeholder="${t('u_name')}" onchange="upd('classes',${c.id},{name:this.value})">
+     <input title="${t('ph_standard')}" style="width:62px" value="${(c.standard||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_standard')}" onchange="upd('classes',${c.id},{standard:this.value})">
+     <input title="${t('ph_section')}" style="width:58px" value="${(c.section||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_section')}" onchange="upd('classes',${c.id},{section:this.value})">
+     <input title="${t('ph_medium')}" style="width:78px" value="${(c.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('classes',${c.id},{medium:this.value})">
+     <input title="${t('ph_board')}" style="width:78px" value="${(c.board||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_board')}" onchange="upd('classes',${c.id},{board:this.value})">
+     <select title="${t('class_teacher')}" style="max-width:112px" onchange="upd('classes',${c.id},{class_teacher_id:this.value?+this.value:null})"><option value="">${t('opt_no_ct')}</option>${teachers.map(t2=>`<option value="${t2.id}" ${c.class_teacher_id===t2.id?'selected':''}>${sesc(t2.name)}</option>`).join('')}</select>
+     <button class="ghost mini red" style="margin-left:auto" onclick="del('classes',${c.id})">✕</button></div>`).join('');
   return `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
       <h2 style="margin:0">🏫 ${L('class')||t('setup_classes')}</h2>
       <button class="green" onclick="addCls=!addCls;render();if(addCls)setTimeout(()=>{var n=document.getElementById('nc_name');if(n)n.focus();},30)">${addCls?'✕ '+t('cancel'):'＋ '+t('add')}</button>
     </div>
     ${addCls?addClassForm():''}
-    ${filterBar()}${classList||'<span class="small">'+t('none')+'</span>'}</div>`;
+    ${filterBar()}<div class="clsgrid">${classList||'<span class="small">'+t('none')+'</span>'}</div></div>`;
 }
 function addClassForm(){
   return `<div class="card" style="background:#f2f7ff;border:1.5px solid #b9d1f5;margin:4px 0 12px">
