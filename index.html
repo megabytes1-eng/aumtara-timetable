@@ -96,10 +96,11 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .clsrow{display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:5px 7px;border:1px solid #eef1f6;border-radius:8px;background:#fafbfe;}
 .clsrow input,.clsrow select{font-size:12.5px;padding:4px 6px;}
 .clsrow .cn{width:104px;font-weight:600;}
-.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:6px 14px;margin-top:4px;}
-.subrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 7px;border:1px solid #eef1f6;border-radius:8px;background:#fafbfe;}
-.subrow>input:first-child{flex:1;min-width:110px;font-size:13px;font-weight:600;padding:4px 6px;}
+.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:6px 14px;margin-top:4px;}
+.subrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:5px 7px;border:1px solid #eef1f6;border-radius:8px;background:#fafbfe;}
+.subrow>input:first-child{flex:1 1 90px;min-width:74px;max-width:150px;font-size:13px;font-weight:600;padding:4px 6px;}
 .subrow .smed{flex:0 0 auto;font-size:12px;font-weight:400;color:#4a5670;padding:4px 6px;background:#fff;}
+.subrow .chk{font-size:11.5px;white-space:nowrap;}
 .subrow .chk{font-size:11.5px;white-space:nowrap;color:#4a5670;}
 @media(max-width:640px){.clsgrid,.subgrid{grid-template-columns:1fr;}}
 .listrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;} .listrow input{flex:1;}
@@ -1314,7 +1315,7 @@ function mSubjectsView(){
   const shown=subjMed?subjects.filter(s=>(s.medium||'').trim()===subjMed):subjects;   // filter to selected medium, else all
   const medlist=`<datalist id="medlist">${M.all.map(m=>`<option value="${m.replace(/"/g,'&quot;')}">`).join('')}</datalist>`;
   const subList=shown.map(s=>{const off=+s.active===0;return `<div class="subrow" style="${off?'opacity:.55':''}"><input value="${(s.name||'').replace(/"/g,'&quot;')}" onchange="upd('subjects',${s.id},{name:this.value})">
-     <input class="smed" list="medlist" title="${t('ph_medium')}" style="width:96px" value="${(s.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('subjects',${s.id},{medium:this.value})">
+     <input class="smed" list="medlist" title="${t('ph_medium')}" style="width:78px" value="${(s.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('subjects',${s.id},{medium:this.value})">
      <label class="chk" title="${t('subj_active_hint')}"><input type="checkbox" ${off?'':'checked'} onchange="upd('subjects',${s.id},{active:this.checked?1:0})">${off?t('subj_inactive'):t('subj_active')}</label>
      <label class="chk" title="${t('dbl_hint')}"><input type="checkbox" ${+s.double_period===1?'checked':''} onchange="upd('subjects',${s.id},{double_period:this.checked?1:0})">${t('dbl_label')}</label>
      <button class="ghost mini red" style="margin-left:auto" onclick="del('subjects',${s.id})">✕</button></div>`;}).join('');
@@ -1416,20 +1417,18 @@ function mTeachersView(){
   const tchList=teachers.map(t2=>{
     const taught=subjects.filter(s=>t2.subjects.includes(s.id));
     const notTaught=subjects.filter(s=>!t2.subjects.includes(s.id));
-    const chips=taught.length?taught.map(s=>`<span class="subchip">${sesc(s.name)}<b title="${t('logo_remove')}" onclick="toggleSub(${t2.id},${s.id},false)">✕</b></span>`).join(''):'<span class="small" style="color:#aab2c4">—</span>';
+    const chips=taught.length?taught.map(s=>`<span class="subchip">${sesc(s.name)}<b title="${t('logo_remove')}" onclick="toggleSub(${t2.id},${s.id},false)">✕</b></span>`).join(''):'';
     const addSel=notTaught.length?`<select class="addsub" onchange="if(this.value)toggleSub(${t2.id},+this.value,true)"><option value="">+ ${t('can_teach')}</option>${notTaught.map(s=>`<option value="${s.id}">${sesc(s.name)}</option>`).join('')}</select>`:'';
     return `<div class="teacherrow">
-      <div class="row" style="gap:7px 9px;align-items:center;flex-wrap:wrap">
+      <div class="row" style="gap:6px 7px;align-items:center;flex-wrap:wrap">
         <label class="nf">${t('u_name')}<input class="tname" style="font-size:14px" value="${sesc(t2.name)}" onchange="updTeacher(${t2.id},{name:this.value})"></label>
-        <label class="nf">${t('ph_qualification')}<input style="width:120px" value="${(t2.qualification||'').replace(/"/g,'&quot;')}" onchange="updTeacher(${t2.id},{qualification:this.value})"></label>
-        <label class="nf">${t('opt_main_subject')}<select style="max-width:130px" onchange="updTeacher(${t2.id},{main_subject_id:this.value?+this.value:null})"><option value="">—</option>${subjects.map(s=>`<option value="${s.id}" ${t2.main_subject_id===s.id?'selected':''}>${sesc(s.name)}</option>`).join('')}</select></label>
-        <label class="nf">${t('ph_weekly_load')}<input type="number" min="0" style="width:80px" value="${t2.max_load||''}" onchange="updTeacher(${t2.id},{max_load:+this.value||null})"></label>
-        <label class="nf">${t('ph_max_per_day')}<input type="number" min="0" style="width:88px" value="${t2.max_per_day||''}" onchange="updTeacher(${t2.id},{max_per_day:+this.value||null})"></label>
-        <label class="nf">${t('ph_max_consec')}<input type="number" min="0" style="width:88px" value="${t2.max_consecutive||''}" onchange="updTeacher(${t2.id},{max_consecutive:+this.value||null})"></label>
+        <label class="nf">${t('ph_qualification')}<input style="width:96px" value="${(t2.qualification||'').replace(/"/g,'&quot;')}" onchange="updTeacher(${t2.id},{qualification:this.value})"></label>
+        <label class="nf">${t('opt_main_subject')}<select style="max-width:104px" onchange="updTeacher(${t2.id},{main_subject_id:this.value?+this.value:null})"><option value="">—</option>${subjects.map(s=>`<option value="${s.id}" ${t2.main_subject_id===s.id?'selected':''}>${sesc(s.name)}</option>`).join('')}</select></label>
+        <label class="nf">${t('ph_weekly_load')}<input type="number" min="0" style="width:56px" value="${t2.max_load||''}" onchange="updTeacher(${t2.id},{max_load:+this.value||null})"></label>
+        <label class="nf">${t('ph_max_per_day')}<input type="number" min="0" style="width:72px" value="${t2.max_per_day||''}" onchange="updTeacher(${t2.id},{max_per_day:+this.value||null})"></label>
+        <label class="nf">${t('ph_max_consec')}<input type="number" min="0" style="width:60px" value="${t2.max_consecutive||''}" onchange="updTeacher(${t2.id},{max_consecutive:+this.value||null})"></label>
         <label class="chk" title="${t('can_sub_hint')}"><input type="checkbox" ${(+t2.can_substitute!==0)?'checked':''} onchange="updTeacher(${t2.id},{can_substitute:this.checked?1:0})">${t('can_substitute')}</label>
-        <span style="width:1px;height:22px;background:#e2e7f0"></span>
-        <span class="small" style="color:#5c6580;font-weight:700;white-space:nowrap">${t('can_teach')}:</span>${chips}${addSel}
-        <button class="ghost mini red" onclick="delTeacher(${t2.id})" style="margin-left:auto">✕</button>
+        ${addSel}<button class="ghost mini red" onclick="delTeacher(${t2.id})">✕</button>${chips}
       </div>
     </div>`;}).join('');
   return `<div class="card">
