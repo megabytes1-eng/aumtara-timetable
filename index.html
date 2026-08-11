@@ -765,7 +765,7 @@ function showUserChip(){if(!ME)return;let c=document.getElementById('userchip');
   c.innerHTML=`<span>👤 ${nm} · <b>${t('role_'+ME.role)}</b></span><button class="ghost mini" style="background:#2c4a7c;color:#fff;border-color:#3f5f95" onclick="doLogout()">${t('logout')}</button>`;}
 // role → which tabs are visible
 const ROLE_TABS={
-  principal:['dash','setup','hours','quota','avail','build','optimizer','class','students','teacher','diary','school','insights','sub','monitor','notify','reports','versions','data','help'],
+  principal:['dash','mclasses','msubjects','mteachers','mrooms','hours','quota','avail','build','optimizer','class','students','teacher','diary','school','insights','sub','monitor','notify','reports','versions','data','help'],
   supervisor:['dash','class','students','teacher','school','insights','sub','monitor','notify','reports','diary','help'],
   teacher:['dash','class','teacher','diary','notify','reports','help'],
 };
@@ -879,7 +879,7 @@ const absentDay=tid=>absence.filter(a=>a.teacher_id===tid).map(a=>a.day_of_week)
 const conflictCount=()=>conflicts.teacher.length+conflicts.room.length;
 
 function L(ent){ const c=config&&config['label_'+ent]; return (c&&(''+c).trim())?(''+c):''; }  // custom entity label or ''
-const TABKEYS=[["dash","nav_dash"],["setup","nav_setup"],["hours","nav_hours"],["quota","nav_quota"],["avail","nav_avail"],["build","nav_build"],["optimizer","opt_title"],["class","nav_class"],["students","nav_students"],["teacher","nav_teacher"],["diary","nav_diary"],["school","nav_school"],["insights","nav_insights"],["sub","nav_sub"],["monitor","nav_monitor"],["notify","push_title"],["reports","nav_reports"],["versions","nav_versions"],["data","nav_data"],["schools","nav_schools"],["users","nav_users"],["help","nav_help"]];
+const TABKEYS=[["dash","nav_dash"],["mclasses","setup_classes"],["msubjects","setup_subjects"],["mteachers","setup_teachers"],["mrooms","setup_rooms"],["hours","nav_hours"],["quota","nav_quota"],["avail","nav_avail"],["build","nav_build"],["optimizer","opt_title"],["class","nav_class"],["students","nav_students"],["teacher","nav_teacher"],["diary","nav_diary"],["school","nav_school"],["insights","nav_insights"],["sub","nav_sub"],["monitor","nav_monitor"],["notify","push_title"],["reports","nav_reports"],["versions","nav_versions"],["data","nav_data"],["schools","nav_schools"],["users","nav_users"],["help","nav_help"]];
 function render(){
   if(loggedOut||!ME)return;
   const allow=allowedTabs();
@@ -894,7 +894,7 @@ function render(){
   const extra=allow.filter(([k])=>!seen.has(k));// any allowed tab not placed in a group
   if(extra.length)navHtml+=extra.map(([k,lk])=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${t(lk)}</div>`).join("");
   document.getElementById("tabs").innerHTML=navHtml;
-  document.getElementById("view").innerHTML=({dash,setup,hours,quota:quotaView,avail:availView,build:builder,optimizer:optimizerCard,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,notify:pushCard,reports:reportsView,versions:versionsView,data:dataView,schools:schoolsView,users:usersView,help}[tab])();
+  document.getElementById("view").innerHTML=({dash,mclasses:mClassesView,msubjects:mSubjectsView,mteachers:mTeachersView,mrooms:mRoomsView,hours,quota:quotaView,avail:availView,build:builder,optimizer:optimizerCard,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,notify:pushCard,reports:reportsView,versions:versionsView,data:dataView,schools:schoolsView,users:usersView,help}[tab])();
   if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary")loadDiary(); if(tab==="dash")loadReadiness(); if(tab==="notify"&&!PUSH._init){PUSH._init=true;initPush().then(()=>render());} if(tab==="versions")loadVersions(); if(tab==="build")loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="students")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
 }
 function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3>${title}</h3><div class="sub">${sub||''}</div>`;window.print();}
@@ -941,7 +941,7 @@ try{const _sp=localStorage.getItem('tt_sidenav');if(_sp==='off'||(_sp===null&&wi
 // sidebar groups — Master/Timetable/Daily/Admin; dash & help stand alone
 const NAVGROUPS=[
   {key:null, tabs:['dash']},
-  {key:'grp_master', tabs:['setup','hours','students','quota','avail']},   // define the school + constraints
+  {key:'grp_master', tabs:['mclasses','msubjects','mteachers','mrooms','hours','students','quota','avail']},   // define the school + constraints
   {key:'grp_build', tabs:['build','optimizer','class','teacher','school','insights','reports','versions']},   // build → view → insights → report → save
   {key:'grp_daily', tabs:['sub','monitor','diary','notify']},   // day-to-day operations
   {key:'grp_admin', tabs:['data','schools','users']},   // back-office
@@ -951,12 +951,12 @@ const NAVGROUPS=[
 // ---------- DASHBOARD ----------
 function dash(){return `<div class="kpis">
    <div class="kpi" onclick="setTab('class')" title="${t('kpi_classrooms')}"><div class="n">${classes.length}</div><div class="l">${t('kpi_classrooms')}</div></div>
-   <div class="kpi g" onclick="setTab('setup')" title="${t('kpi_subjects')}"><div class="n">${subjects.length}</div><div class="l">${t('kpi_subjects')}</div></div>
+   <div class="kpi g" onclick="setTab('msubjects')" title="${t('kpi_subjects')}"><div class="n">${subjects.length}</div><div class="l">${t('kpi_subjects')}</div></div>
    <div class="kpi a" onclick="setTab('teacher')" title="${t('kpi_teachers')}"><div class="n">${teachers.length}</div><div class="l">${t('kpi_teachers')}</div></div>
    <div class="kpi p" onclick="setTab('class')" title="${t('kpi_completed')}"><div class="n">${completed()}/${classes.length}</div><div class="l">${t('kpi_completed')}</div></div></div>
    <div class="card"><h2>${t('dash_title')}</h2><div class="desc">${t('dash_desc',{rooms:rooms.length,n:conflictCount()})}</div>
    <div class="row"><button class="green" onclick="autoGen()">${t('btn_autogen')}</button>
-     <button onclick="setTab('setup')">${t('btn_manage')}</button>
+     <button onclick="setTab('mclasses')">${t('btn_manage')}</button>
      <button class="amber" onclick="setTab('build')">${t('btn_build')}</button>
      <button class="purple" onclick="setTab('sub')">${t('btn_sub')}</button>
      <button class="teal" onclick="setTab('monitor')">${t('btn_monitor')}</button></div>
@@ -1230,40 +1230,48 @@ async function loadReadiness(){const box=document.getElementById('readybox');if(
 async function autoGen(){const b=event&&event.target;if(b){b.disabled=true;b.dataset.txt=b.textContent;b.textContent=t('btn_generating');}const r=await api('POST','/api/timetable/auto-generate');await loadAll();setTab('class');toast(t('toast_generated',{n:(r&&r.cells)||0}));if(b){b.disabled=false;b.textContent=b.dataset.txt;}}
 
 // ---------- SETUP (CRUD) ----------
-function setup(){
+// ---- Master data: Classes / Subjects / Teachers / Rooms — each its own full-page view ----
+function mClassesView(){
   const classList=classes.map(c=>`<div style="padding:8px 0;border-bottom:1px solid #f0f2f6">
      <div class="listrow"><input value="${c.name}" onchange="upd('classes',${c.id},{name:this.value})">
-       <select title="${t('class_teacher')}" style="max-width:150px" onchange="upd('classes',${c.id},{class_teacher_id:this.value?+this.value:null})"><option value="">${t('opt_no_ct')}</option>${teachers.map(t2=>`<option value="${t2.id}" ${c.class_teacher_id===t2.id?'selected':''}>${t2.name}</option>`).join('')}</select>
+       <select title="${t('class_teacher')}" style="max-width:180px" onchange="upd('classes',${c.id},{class_teacher_id:this.value?+this.value:null})"><option value="">${t('opt_no_ct')}</option>${teachers.map(t2=>`<option value="${t2.id}" ${c.class_teacher_id===t2.id?'selected':''}>${t2.name}</option>`).join('')}</select>
        <button class="ghost mini red" onclick="del('classes',${c.id})">✕</button></div>
      <div class="row" style="gap:6px;margin-top:4px">
-       <input style="width:88px" value="${(c.standard||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_standard')}" onchange="upd('classes',${c.id},{standard:this.value})">
-       <input style="width:78px" value="${(c.section||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_section')}" onchange="upd('classes',${c.id},{section:this.value})">
-       <input style="width:100px" value="${(c.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('classes',${c.id},{medium:this.value})">
-       <input style="width:100px" value="${(c.board||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_board')}" onchange="upd('classes',${c.id},{board:this.value})"></div></div>`).join('');
+       <input style="width:110px" value="${(c.standard||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_standard')}" onchange="upd('classes',${c.id},{standard:this.value})">
+       <input style="width:100px" value="${(c.section||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_section')}" onchange="upd('classes',${c.id},{section:this.value})">
+       <input style="width:130px" value="${(c.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('classes',${c.id},{medium:this.value})">
+       <input style="width:130px" value="${(c.board||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_board')}" onchange="upd('classes',${c.id},{board:this.value})"></div></div>`).join('');
+  return `<div class="card"><h2>🏫 ${L('class')||t('setup_classes')}</h2>${filterBar()}${classList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:12px"><input id="ncls" placeholder="${t('ph_new_class')}" style="min-width:220px"><button onclick="add('classes','ncls')">${t('add')}</button></div></div>`;
+}
+function mSubjectsView(){
   const subList=subjects.map(s=>{const off=+s.active===0;return `<div class="listrow" style="${off?'opacity:.55':''}"><input value="${s.name}" onchange="upd('subjects',${s.id},{name:this.value})">
      <label class="chk" title="${t('subj_active_hint')}"><input type="checkbox" ${off?'':'checked'} onchange="upd('subjects',${s.id},{active:this.checked?1:0})">${off?t('subj_inactive'):t('subj_active')}</label>
      <label class="chk" title="${t('dbl_hint')}"><input type="checkbox" ${+s.double_period===1?'checked':''} onchange="upd('subjects',${s.id},{double_period:this.checked?1:0})">${t('dbl_label')}</label>
      <button class="ghost mini red" onclick="del('subjects',${s.id})">✕</button></div>`;}).join('');
-  const roomList=rooms.map(r=>`<div class="listrow"><input value="${r.name}" onchange="upd('rooms',${r.id},{name:this.value})"><input type="number" style="width:70px" value="${r.capacity||''}" placeholder="${t('ph_cap')}" onchange="upd('rooms',${r.id},{capacity:+this.value})"><button class="ghost mini red" onclick="del('rooms',${r.id})">✕</button></div>`).join('');
+  return `<div class="card"><h2>📚 ${L('subject')||t('setup_subjects')}</h2>${subList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:12px"><input id="nsub" placeholder="${t('ph_new_subject')}" style="min-width:220px"><button onclick="add('subjects','nsub')">${t('add')}</button></div></div>`;
+}
+function mRoomsView(){
+  const roomList=rooms.map(r=>`<div class="listrow"><input value="${r.name}" onchange="upd('rooms',${r.id},{name:this.value})"><input type="number" style="width:90px" value="${r.capacity||''}" placeholder="${t('ph_cap')}" onchange="upd('rooms',${r.id},{capacity:+this.value})"><button class="ghost mini red" onclick="del('rooms',${r.id})">✕</button></div>`).join('');
+  return `<div class="card"><h2>🚪 ${L('room')||t('setup_rooms')}</h2>${roomList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:12px"><input id="nroom" placeholder="${t('ph_room_name')}" style="min-width:200px"><input id="ncap" type="number" style="width:90px" placeholder="${t('ph_cap')}"><button onclick="addRoom()">${t('add')}</button></div></div>`;
+}
+function mTeachersView(){
   const tchList=teachers.map(t2=>`<div style="padding:8px 0;border-bottom:1px solid #f0f2f6">
      <div class="listrow"><input value="${t2.name}" onchange="updTeacher(${t2.id},{name:this.value})"><button class="ghost mini red" onclick="delTeacher(${t2.id})">✕</button></div>
      <div class="row" style="gap:8px;margin:4px 0">
-       <input style="flex:1;min-width:120px" value="${t2.qualification||''}" placeholder="${t('ph_qualification')}" onchange="updTeacher(${t2.id},{qualification:this.value})">
+       <input style="flex:1;min-width:150px" value="${t2.qualification||''}" placeholder="${t('ph_qualification')}" onchange="updTeacher(${t2.id},{qualification:this.value})">
        <select onchange="updTeacher(${t2.id},{main_subject_id:this.value?+this.value:null})"><option value="">${t('opt_main_subject')}</option>${subjects.map(s=>`<option value="${s.id}" ${t2.main_subject_id===s.id?'selected':''}>${s.name}</option>`).join('')}</select>
-       <input type="number" style="width:110px" value="${t2.max_load||''}" placeholder="${t('ph_weekly_load')}" onchange="updTeacher(${t2.id},{max_load:+this.value||null})">
-       <input type="number" min="0" style="width:120px" title="${t('ph_max_per_day')}" value="${t2.max_per_day||''}" placeholder="${t('ph_max_per_day')}" onchange="updTeacher(${t2.id},{max_per_day:+this.value||null})">
-       <input type="number" min="0" style="width:120px" title="${t('ph_max_consec')}" value="${t2.max_consecutive||''}" placeholder="${t('ph_max_consec')}" onchange="updTeacher(${t2.id},{max_consecutive:+this.value||null})"></div>
+       <input type="number" style="width:120px" value="${t2.max_load||''}" placeholder="${t('ph_weekly_load')}" onchange="updTeacher(${t2.id},{max_load:+this.value||null})">
+       <input type="number" min="0" style="width:130px" title="${t('ph_max_per_day')}" value="${t2.max_per_day||''}" placeholder="${t('ph_max_per_day')}" onchange="updTeacher(${t2.id},{max_per_day:+this.value||null})">
+       <input type="number" min="0" style="width:130px" title="${t('ph_max_consec')}" value="${t2.max_consecutive||''}" placeholder="${t('ph_max_consec')}" onchange="updTeacher(${t2.id},{max_consecutive:+this.value||null})"></div>
      <div><span class="small">${t('can_teach')} </span>${subjects.map(s=>`<label class="chk"><input type="checkbox" ${t2.subjects.includes(s.id)?'checked':''} onchange="toggleSub(${t2.id},${s.id},this.checked)">${s.name}</label>`).join('')}</div>
      <div style="margin-top:3px"><label class="chk" title="${t('can_sub_hint')}"><input type="checkbox" ${(+t2.can_substitute!==0)?'checked':''} onchange="updTeacher(${t2.id},{can_substitute:this.checked?1:0})">${t('can_substitute')}</label></div></div>`).join('');
-  return `<div class="setcols">
-   <div class="card"><h2>${L('class')||t('setup_classes')}</h2>${classList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:8px"><input id="ncls" placeholder="${t('ph_new_class')}"><button onclick="add('classes','ncls')">${t('add')}</button></div></div>
-   <div class="card"><h2>${L('subject')||t('setup_subjects')}</h2>${subList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:8px"><input id="nsub" placeholder="${t('ph_new_subject')}"><button onclick="add('subjects','nsub')">${t('add')}</button></div></div>
-   <div class="card"><h2>${L('room')||t('setup_rooms')}</h2>${roomList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:8px"><input id="nroom" placeholder="${t('ph_room_name')}"><input id="ncap" type="number" style="width:70px" placeholder="${t('ph_cap')}"><button onclick="addRoom()">${t('add')}</button></div></div>
-   <div class="card"><h2>${L('teacher')||t('setup_teachers')}</h2><div class="desc">${t('teachers_desc')}</div>${tchList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:8px"><input id="ntch" placeholder="${t('ph_new_teacher')}"><button onclick="addTeacher()">${t('add')}</button></div></div>
-   <div class="card"><h2>${t('chapters_title')}</h2><div class="desc">${t('chapters_desc')}</div>
+  return `<div class="card"><h2>👩‍🏫 ${L('teacher')||t('setup_teachers')}</h2><div class="desc">${t('teachers_desc')}</div>${tchList||'<span class="small">'+t('none')+'</span>'}<div class="row" style="margin-top:12px"><input id="ntch" placeholder="${t('ph_new_teacher')}" style="min-width:220px"><button onclick="addTeacher()">${t('add')}</button></div></div>`;
+}
+function chaptersCard(){
+  return `<div class="card"><h2>📖 ${t('chapters_title')}</h2><div class="desc">${t('chapters_desc')}</div>
      <div class="row" style="margin-bottom:8px"><select onchange="setupSubj=+this.value;render()">${subjects.map(s=>`<option value="${s.id}" ${s.id===(setupSubj||(subjects[0]||{}).id)?'selected':''}>${s.name}</option>`).join('')}</select></div>
      ${(()=>{const sid=setupSubj||(subjects[0]||{}).id;const list=chaptersForSubject(sid);return list.length?list.map(c=>`<div class="listrow"><input value="${c.name.replace(/"/g,'&quot;')}" disabled><button class="ghost mini red" onclick="delChapter(${c.id})">✕</button></div>`).join(''):'<span class="small">'+t('no_chapters')+'</span>';})()}
-     <div class="row" style="margin-top:8px"><input id="nchap" placeholder="${t('ph_new_chapter')}"><button onclick="addChapter()">${t('add')}</button></div></div></div>`;
+     <div class="row" style="margin-top:8px"><input id="nchap" placeholder="${t('ph_new_chapter')}"><button onclick="addChapter()">${t('add')}</button></div></div>`;
 }
 async function add(route,inp){const v=document.getElementById(inp).value.trim();if(!v)return;await api('POST','/api/'+route,{name:v});toast();await loadAll();}
 async function addRoom(){const v=document.getElementById('nroom').value.trim();if(!v)return;await api('POST','/api/rooms',{name:v,capacity:+document.getElementById('ncap').value||null});toast();await loadAll();}
@@ -1775,7 +1783,7 @@ function diaryView(){ if(!diaryDate)diaryDate=new Date().toISOString().slice(0,1
        <button class="${diaryMode==='report'?'purple':'ghost'}" onclick="diaryMode='report';loadDiary()">${t('btn_daily')}</button>
        <button class="${diaryMode==='month'?'purple':'ghost'}" onclick="diaryMode='month';loadDiary()">${t('btn_monthly')}</button></div>
    </div>
-   <div id="diarybody">Loading…</div></div>`;
+   <div id="diarybody">Loading…</div></div>${chaptersCard()}`;
 }
 const chaptersForSubject=sid=>chaptersAll.filter(c=>c.subject_id===sid);
 function dateForDay(dow){ const d=new Date(diaryDate+'T00:00:00'); const cur=(d.getDay()+6)%7; d.setDate(d.getDate()-cur+dow); return d.toISOString().slice(0,10); }
