@@ -987,9 +987,10 @@ async function loadUsage(){
   const md=Math.max(1,...(d.daily||[]).map(function(x){return x.n;}));
   const bars=(d.daily||[]).map(function(x){return `<div style="display:flex;align-items:center;gap:8px;margin:2px 0"><span class="small" style="width:86px;color:#5c6580">${x.d}</span><span style="height:12px;border-radius:6px;background:#2563eb;width:${Math.round(x.n/md*220)}px;min-width:3px"></span><span class="small">${x.n}</span></div>`;}).join('');
   const esc=function(s){return String(s==null?'':s).replace(/</g,'&lt;');};
+  const PGN=Object.fromEntries(TABKEYS);const pgname=function(k){var key=PGN[k];return key?t(key):(k||'—');};
   const top=(d.top||[]).map(function(x){return `<tr><td>${esc(x.name)}</td><td style="text-align:right">${x.n}</td></tr>`;}).join('');
-  const pages=(d.pages||[]).map(function(x){return `<tr><td>${esc(x.tab)}</td><td style="text-align:right">${x.n}</td></tr>`;}).join('');
-  box.innerHTML=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${kpi(d.total,t('usage_total'))}${kpi(d.last24,t('usage_24'))}${kpi(d.users7,t('usage_users7'))}</div><div class="row" style="gap:18px;align-items:flex-start;flex-wrap:wrap;margin-top:10px"><div style="flex:1;min-width:280px"><b class="small">${t('usage_daily')}</b><div style="margin-top:6px">${bars}</div></div><div style="min-width:210px"><b class="small">${t('usage_top')}</b><table style="width:100%;margin-top:6px">${top}</table></div><div style="min-width:190px"><b class="small">${t('usage_pages')}</b><table style="width:100%;margin-top:6px">${pages}</table></div></div>`;
+  const pages=(d.pages||[]).map(function(x){return `<tr><td>${esc(pgname(x.tab))}</td><td style="text-align:right">${x.n}</td></tr>`;}).join('');
+  box.innerHTML=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${kpi(d.total,t('usage_total'))}${kpi(d.last24,t('usage_24'))}${kpi(d.users7,t('usage_users7'))}</div><div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;align-items:start;margin-top:10px"><div style="min-width:0"><b class="small">${t('usage_daily')}</b><div style="margin-top:6px">${bars}</div></div><div style="min-width:0"><b class="small">${t('usage_top')}</b><table style="width:100%;margin-top:6px">${top}</table></div><div style="min-width:0"><b class="small">${t('usage_pages')}</b><table style="width:100%;margin-top:6px">${pages}</table></div></div>`;
 }
 // generic in-app Yes/No confirm (does NOT use the native confirm() dialog, which some setups suppress)
 function appConfirm(msg,onYes){
