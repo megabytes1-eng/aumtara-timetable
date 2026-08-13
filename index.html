@@ -193,6 +193,14 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .ckbtn.ok{background:#16a34a;color:#fff;}
 .ckbtn.no{background:#31406b;color:#dbe4ff;}
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
+.wdchk{border:1px solid #d4dcf0;font-weight:600;}
+.wdchk:has(input:checked){background:var(--navy);color:#fff;font-weight:800;border-color:var(--navy);}
+.slotbox{border:1px solid #d9e4f5;border-left:5px solid var(--green);background:#f6fbff;border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+.slotbox.sat{border-left-color:var(--accent);background:#faf8ff;border-color:#e6ddf7;}
+.slotbox-hd{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:7px;}
+.slotbox-hd .st{font-size:15px;font-weight:800;color:var(--navy);}
+.slotbox-hd .sm{font-size:12px;color:#5c6580;font-weight:600;}
+.slotbox-hd .tm{font-size:14px;font-weight:800;color:var(--navy);}
 .guide{counter-reset:step;} .step{display:flex;gap:12px;margin-bottom:14px;} .step .no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;} .step .txt b{color:var(--navy);} .step .txt{font-size:13.5px;}
 .dropzone{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted);}
 .okmsg{background:#d1fae5;color:#065f46;padding:8px 12px;border-radius:8px;font-size:13px;margin-top:10px;}
@@ -1693,11 +1701,11 @@ let stuTab='list';function setStuTab(x){stuTab=x;render();window.scrollTo({top:0
 let bTab='grid';function setBTab(x){bTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
 let dTab='diary';function setDTab(x){dTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
 function hoursTimingsCard(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new Set(WD());return `<div class="card hoursCompact">
-   <div class="desc">${t('hours_desc')}</div>
+   <div class="desc" style="font-weight:700;color:#1F3864">${t('hours_desc')}</div>
    <div class="row" style="margin-bottom:14px;align-items:flex-end;gap:14px;flex-wrap:wrap"><div style="width:250px;max-width:100%"><label>${t('lbl_school_name')}</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div>
      <div style="width:150px"><label>${t('lbl_session')}</label><input style="width:100%" value="${(config.academic_session||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_session')}" onchange="cfg('academic_session',this.value)"></div>
      ${(()=>{const cs=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};return `<div style="display:flex;align-items:flex-end;gap:12px"><div><label>${t('logo_word')}</label><br>${cs.logo?`<img src="${cs.logo}" style="height:44px;max-width:120px;border:1px solid #e2e8f0;border-radius:6px;vertical-align:middle;padding:2px">`:'<span class="small" style="color:#5c6580">'+t('none')+'</span>'}</div>${SCHOOL?`<div><button class="ghost" onclick="pickLogo(${SCHOOL})">${cs.logo?t('logo_change'):t('logo_upload')}</button>${cs.logo?` <button class="ghost red" onclick="removeLogo(${SCHOOL})">${t('logo_remove')}</button>`:''}</div>`:''}</div>`;})()}</div>
-   <div style="margin-bottom:14px"><label>${t('lbl_working_days')}</label>${DAYS.map((d,i)=>`<label class="chk"><input type="checkbox" ${wds.has(i)?'checked':''} onchange="toggleWD(${i},this.checked)">${DD()[i]}</label>`).join('')}</div>
+   <div style="margin-bottom:14px"><label>${t('lbl_working_days')}</label> ${DAYS.map((d,i)=>`<label class="chk wdchk"><input type="checkbox" ${wds.has(i)?'checked':''} onchange="toggleWD(${i},this.checked)">${DD()[i]}</label>`).join('')}</div>
    <div class="row" style="margin-bottom:14px">
      <div><label>${t('lbl_wd_start')}</label><input type="time" value="${config.weekday_start}" onchange="cfg('weekday_start',this.value)"></div>
      <div><label>${t('lbl_wd_end')}</label><input type="time" value="${config.weekday_end}" onchange="cfg('weekday_end',this.value)"></div>
@@ -1720,10 +1728,14 @@ function hoursTimingsCard(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());co
      <div><label>${t('lbl_short_after')}</label><input value="${config.sat_short_break_after??config.short_break_after??''}" placeholder="${t('hint_short_after')}" style="width:160px" onchange="cfg('sat_short_break_after',this.value)"></div>
      <div><label>${t('lbl_short_min')}</label><input type="number" value="${config.sat_short_break_minutes??config.short_break_minutes??0}" style="width:90px" onchange="cfg('sat_short_break_minutes',+this.value||0)"></div></div>
    <div class="row" style="margin-bottom:14px"><div style="flex:1;min-width:280px"><label>${t('lbl_custom_dur')} · ${t('saturdays')}</label><input style="width:100%" value="${config.sat_period_durations??config.period_durations??''}" placeholder="${t('ph_custom_dur')}" onchange="cfg('sat_period_durations',this.value)"></div></div>`:''}
-   <div class="hours-row"><div><b>${t('weekdays')}</b><br><span class="small">${wd.filter(s=>!s.brk).length} ${t('periods_word')} · ${config.period_minutes} min</span></div><div><b>${config.weekday_start} – ${(wd[wd.length-1]||{}).end||config.weekday_end}</b></div></div>
-   ${(()=>{const ss=wds.has(5)?slotsFor(5):[];return `<div class="hours-row sat"><div><b>${t('saturdays')}</b><br><span class="small">${wds.has(5)?ss.filter(s=>!s.brk).length+' '+t('periods_word'):'—'}</span></div><div><b>${(config.saturday_start||config.weekday_start)} – ${(ss[ss.length-1]||{}).end||config.saturday_end}</b></div></div>`;})()}
-   <div style="margin-top:10px"><b class="small">${t('weekday_slots')}</b><br>${wd.map(s=>`<span class="tag" ${s.brk?(s.kind==='lunch'?'style="background:#fef3c7;color:#92400e"':'style="background:#e0f2fe;color:#075985"'):''}>${s.brk?(s.kind==='lunch'?'🍽 '+t('lunch_word'):'☕ '+t('brk')):s.label} ${s.start}-${s.end}</span>`).join("")}</div>
-   ${wds.has(5)?`<div style="margin-top:10px"><b class="small">${t('saturday_slots')}</b><br>${slotsFor(5).map(s=>`<span class="tag" ${s.brk?(s.kind==='lunch'?'style="background:#fef3c7;color:#92400e"':'style="background:#e0f2fe;color:#075985"'):''}>${s.brk?(s.kind==='lunch'?'🍽 '+t('lunch_word'):'☕ '+t('brk')):s.label} ${s.start}-${s.end}</span>`).join("")}</div>`:''}</div>`;}
+   <div class="slotbox">
+     <div class="slotbox-hd"><div><span class="st">${t('weekdays')}</span> <span class="sm">${wd.filter(s=>!s.brk).length} ${t('periods_word')} · ${config.period_minutes} min</span></div><span class="tm">${config.weekday_start} – ${(wd[wd.length-1]||{}).end||config.weekday_end}</span></div>
+     <div>${wd.map(s=>`<span class="tag" ${s.brk?(s.kind==='lunch'?'style="background:#fef3c7;color:#92400e"':'style="background:#e0f2fe;color:#075985"'):''}>${s.brk?(s.kind==='lunch'?'🍽 '+t('lunch_word'):'☕ '+t('brk')):s.label} ${s.start}-${s.end}</span>`).join("")}</div>
+   </div>
+   ${wds.has(5)?(()=>{const ss=slotsFor(5);return `<div class="slotbox sat">
+     <div class="slotbox-hd"><div><span class="st">${t('saturdays')}</span> <span class="sm">${ss.filter(s=>!s.brk).length} ${t('periods_word')}</span></div><span class="tm">${(config.saturday_start||config.weekday_start)} – ${(ss[ss.length-1]||{}).end||config.saturday_end}</span></div>
+     <div>${ss.map(s=>`<span class="tag" ${s.brk?(s.kind==='lunch'?'style="background:#fef3c7;color:#92400e"':'style="background:#e0f2fe;color:#075985"'):''}>${s.brk?(s.kind==='lunch'?'🍽 '+t('lunch_word'):'☕ '+t('brk')):s.label} ${s.start}-${s.end}</span>`).join("")}</div>
+   </div>`;})():''}</div>`;}
 function hoursImportCard(){
   return `<div class="card"><h2>⚡ ${t('autofill_title')}</h2><div class="desc">${t('autofill_desc')}</div>
     <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
