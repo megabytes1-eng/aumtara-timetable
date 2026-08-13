@@ -1060,7 +1060,7 @@ function render(){
   if(extra.length)navHtml+=extra.map(([k,lk])=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${t(lk)}</div>`).join("");
   document.getElementById("tabs").innerHTML=navHtml;
   document.getElementById("view").innerHTML=({dash,mclasses:mClassesView,msubjects:mSubjectsView,mteachers:mTeachersView,mrooms:mRoomsView,hours,quota:quotaView,avail:availView,build:builder,optimizer:optimizerCard,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,notify:pushCard,reports:reportsView,versions:versionsView,data:dataView,usage:usageView,schools:schoolsView,users:usersView,help}[tab])();
-  if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary")loadDiary(); if(tab==="dash")loadReadiness(); if(tab==="notify"&&!PUSH._init){PUSH._init=true;initPush().then(()=>render());} if(tab==="versions")loadVersions(); if(tab==="build")loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="students")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
+  if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary"&&dTab==='diary')loadDiary(); if(tab==="dash")loadReadiness(); if(tab==="notify"&&!PUSH._init){PUSH._init=true;initPush().then(()=>render());} if(tab==="versions")loadVersions(); if(tab==="build"&&bTab==='combine')loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="students")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
 }
 function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3>${title}</h3><div class="sub">${sub||''}</div>`;window.print();}
 function printPlain(){document.getElementById('printhead').innerHTML='';window.print();}
@@ -1672,6 +1672,10 @@ function subTabBar(tabs,active,setter){return `<div class="card htabbar"><div cl
 let repTab='timetable';function setRepTab(x){repTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
 let subTab='leave';function setSubTab(x){subTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
 let dataTab='export';function setDataTab(x){dataTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
+let qTab='quota';function setQTab(x){qTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
+let stuTab='list';function setStuTab(x){stuTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
+let bTab='grid';function setBTab(x){bTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
+let dTab='diary';function setDTab(x){dTab=x;render();window.scrollTo({top:0,behavior:'smooth'});}
 function hoursTimingsCard(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new Set(WD());return `<div class="card hoursCompact">
    <div class="desc">${t('hours_desc')}</div>
    <div class="row" style="margin-bottom:14px;align-items:flex-end;gap:14px;flex-wrap:wrap"><div style="width:250px;max-width:100%"><label>${t('lbl_school_name')}</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div>
@@ -1820,11 +1824,14 @@ function builder(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slo
         <select onchange="setRoom(${c.id},${di},${pi},this.value)">${ropt}</select>
         ${conf?`<div class="badge-bad">${conf.t?t('warn_teacher')+' '+conf.t:''} ${conf.r?t('warn_room')+' '+conf.r:''}</div>`:''}</td>`;pi++;});
     return `<tr>${cells}</tr>`;}).join("");
-  return `<div class="card"><h2>${t('builder_title')}</h2><div class="desc">${t('builder_desc')}</div>${filterBar()}
+  const bar=subTabBar([['grid','📅 '+t('builder_title')],['combine','🔗 '+t('combine_title')]],bTab,'setBTab');
+  const gridCard=`<div class="card"><h2>${t('builder_title')}</h2><div class="desc">${t('builder_desc')}</div>${filterBar()}
    <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <button class="green" onclick="autoGen()">${t('btn_autogen_all')}</button></div>
    <div class="small" style="color:#5c6580;margin:-4px 0 10px">🔒 ${t('lock_hint')} &nbsp;·&nbsp; ⠿ ${t('drag_hint')}</div>
-   ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>${combineCard()}`;}
+   ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;
+  const body=bTab==='combine'?combineCard():gridCard;
+  return bar+body;}
 function combineCard(){
   const per=maxTeachPeriods();
   const iv=v=>(v||'').replace(/"/g,'&quot;');
@@ -1976,21 +1983,24 @@ function studentsView(){
     const sel=`<option value="">${t('elec_pick')}</option>`+(e.options||[]).map(o=>`<option value="${o.id}" ${SCHOICES[e.id]===o.id?'selected':''}>${sesc(o.label)} — ${sesc(sName(o.subject_id)||'')}</option>`).join('');
     return `<div class="hours-row" style="align-items:center"><div><b>${sesc(e.name)}</b> <span class="tag">${DD()[e.day_of_week]} · P${e.period_index+1}</span></div><select onchange="setChoice(${e.id},this.value)">${sel}</select></div>`;
   }).join('')+'</div>':`<div class="small" style="color:#5c6580">${curStudent?t('elec_none'):t('stu_pick_first')}</div>`;
-  return `<div class="card"><h2>👪 ${t('students_title')}</h2><div class="desc">${t('students_desc')}</div>
-    <div class="row" style="margin-bottom:10px"><div><label>${L('class')||t('nav_class')}</label>${classSel}</div></div></div>
-  <div class="row" style="gap:14px;align-items:flex-start;flex-wrap:wrap">
+  const bar=subTabBar([['list','👪 '+t('students_title')],['choices','🎯 '+t('choices_title')],['timetable','🗓 '+t('stu_timetable')]],stuTab,'setStuTab');
+  const head=`<div class="card"><h2>👪 ${t('students_title')}</h2><div class="desc">${t('students_desc')}</div>
+    <div class="row" style="margin-bottom:10px"><div><label>${L('class')||t('nav_class')}</label>${classSel}</div></div></div>`;
+  const secList=`<div class="row" style="gap:14px;align-items:flex-start;flex-wrap:wrap">
     <div class="card" style="flex:1;min-width:280px"><h2>${t('stu_list')}</h2>${stuRows}
       <div class="row" style="margin-top:10px;gap:6px"><input id="stu_name" placeholder="${t('stu_name_ph')}" style="flex:1;min-width:120px"><input id="stu_roll" placeholder="${t('stu_roll_ph')}" style="width:90px"><button onclick="addStudent()">${t('add')}</button></div></div>
     <div class="card" style="flex:1;min-width:300px"><h2>${t('elec_title')}</h2><div class="desc">${t('elec_desc')}</div>${elRows}
       <div class="row" style="margin-top:10px;gap:6px;flex-wrap:wrap;align-items:center"><input id="el_name" placeholder="${t('elec_name_ph')}" style="width:150px"><select id="el_day">${dayOpts}</select><select id="el_period">${perOpts}</select><button onclick="addElective()">${t('add')}</button></div></div>
-  </div>
-  <div class="card"><h2>${t('choices_title')}</h2><div class="desc">${t('choices_desc')}</div>
+  </div>`;
+  const secChoices=`<div class="card"><h2>${t('choices_title')}</h2><div class="desc">${t('choices_desc')}</div>
     <div class="row" style="margin-bottom:10px"><div><label>${t('student')}</label>${stuSel||'<span class="small" style="color:#5c6580">'+t('stu_none')+'</span>'}</div></div>
-    ${choiceRows}</div>
-  <div class="card"><h2>🗓 ${t('stu_timetable')}</h2><div class="row" style="margin-bottom:10px;align-items:flex-end">
+    ${choiceRows}</div>`;
+  const secTt=`<div class="card"><h2>🗓 ${t('stu_timetable')}</h2><div class="row" style="margin-bottom:10px;align-items:flex-end">
      <div><label>${t('student')}</label>${stuSel}</div>
      ${curStudent?`<button class="ghost" onclick="printDoc(t('stu_timetable')+' — '+(STUDENTS.find(s=>s.id===curStudent)||{}).name,'Aumtara')">${t('print_pdf')}</button>`:''}</div>
     ${studentGrid()}</div>`;
+  const body=stuTab==='choices'?secChoices:stuTab==='timetable'?secTt:secList;
+  return head+bar+body;
 }
 
 // ---------- TEACHER VIEW ----------
@@ -2026,18 +2036,22 @@ function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=
 // ---------- QUOTA ----------
 let quotaData=[];
 async function loadQuota(){ if(!curClass)return; quotaData=await api('GET','/api/quota?class_id='+curClass); renderQuota(); }
-function quotaView(){ return `<div class="card"><h2>${t('quota_title')}</h2><div class="desc">${t('quota_desc')}</div>
+function quotaView(){
+  const bar=subTabBar([['quota','🎯 '+t('quota_title')],['rules','📏 '+t('rules_title')]],qTab,'setQTab');
+  const secQuota=`<div class="card"><h2>${t('quota_title')}</h2><div class="desc">${t('quota_desc')}</div>
    <div class="row" style="margin-bottom:12px"><div><label>${t('class_')}</label><select onchange="curClass=+this.value;loadQuota()">${classes.map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join('')}</select></div>
      <button class="green" onclick="autoGen()">${t('btn_autogen')}</button></div>
-   <div id="quotabox">Loading…</div></div>
-   <div class="card"><h2>${t('rules_title')}</h2><div class="desc">${t('rules_desc')}</div>
+   <div id="quotabox">Loading…</div></div>`;
+  const secRules=`<div class="card"><h2>${t('rules_title')}</h2><div class="desc">${t('rules_desc')}</div>
      <div class="row" style="margin-bottom:10px;gap:8px;flex-wrap:wrap;align-items:flex-end">
        <select id="ru_a">${actSubs().map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select>
        <select id="ru_type"><option value="not_same_day">${t('rule_not_same_day')}</option><option value="not_consecutive">${t('rule_not_consec')}</option></select>
        <select id="ru_b">${actSubs().map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select>
        <select id="ru_scope"><option value="">${t('rule_scope_all')}</option>${classes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select>
        <button class="green" onclick="addRule()">${t('add')}</button></div>
-     <div id="rulesbox" class="small">…</div></div>`; }
+     <div id="rulesbox" class="small">…</div></div>`;
+  const body=qTab==='rules'?secRules:secQuota;
+  return bar+body; }
 let rulesData=[];
 async function loadRules(){ const box=document.getElementById('rulesbox'); if(!box)return; try{rulesData=await api('GET','/api/rules');}catch(e){rulesData=[];} if(!Array.isArray(rulesData))rulesData=[]; renderRules(); }
 function ruleTypeLabel(ty){ return ty==='not_consecutive'?t('rule_not_consec'):t('rule_not_same_day'); }
@@ -2401,7 +2415,8 @@ const DFIELDS=[['lesson','f_lesson'],['topic','f_topic'],['learning_outcome','f_
 function dowFromDate(d){ return (new Date(d+'T00:00:00').getDay()+6)%7; }
 function longDate(d){ return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
 function diaryView(){ if(!diaryDate)diaryDate=new Date().toISOString().slice(0,10);
-  return `<div class="card"><h2>${t('diary_title')}</h2><div class="desc">${t('diary_desc')}</div>
+  const bar=subTabBar([['diary','📔 '+t('diary_title')],['chapters','📖 '+t('chapters_title')]],dTab,'setDTab');
+  const main=`<div class="card"><h2>${t('diary_title')}</h2><div class="desc">${t('diary_desc')}</div>
    <div class="row" style="margin-bottom:12px">
      <div><label>${t('teacher')}</label><select onchange="curTeacher=+this.value;loadDiary()">${teachers.map(t2=>`<option value="${t2.id}" ${t2.id===curTeacher?'selected':''}>${t2.name}</option>`).join('')}</select></div>
      <div><label>${t('day')}</label><select onchange="diaryDate=dateForDay(+this.value);loadDiary()">${WD().map((i)=>`<option value="${i}" ${i===dowFromDate(diaryDate)?'selected':''}>${DD()[i]}</option>`).join('')}</select></div>
@@ -2410,7 +2425,9 @@ function diaryView(){ if(!diaryDate)diaryDate=new Date().toISOString().slice(0,1
        <button class="${diaryMode==='report'?'purple':'ghost'}" onclick="diaryMode='report';loadDiary()">${t('btn_daily')}</button>
        <button class="${diaryMode==='month'?'purple':'ghost'}" onclick="diaryMode='month';loadDiary()">${t('btn_monthly')}</button></div>
    </div>
-   <div id="diarybody">Loading…</div></div>${chaptersCard()}`;
+   <div id="diarybody">Loading…</div></div>`;
+  const body=dTab==='chapters'?chaptersCard():main;
+  return bar+body;
 }
 const chaptersForSubject=sid=>chaptersAll.filter(c=>c.subject_id===sid);
 function dateForDay(dow){ const d=new Date(diaryDate+'T00:00:00'); const cur=(d.getDay()+6)%7; d.setDate(d.getDate()-cur+dow); return d.toISOString().slice(0,10); }
