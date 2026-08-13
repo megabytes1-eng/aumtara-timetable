@@ -1927,9 +1927,10 @@ function classView(){const slots0=slotsFor(firstWD());
     return `<tr>${cells}</tr>`;}).join("");
   const curCls=classes.find(c=>c.id===curClass)||{};
   const ctName=curCls.class_teacher_id?tName(curCls.class_teacher_id):'';
-  return `<div class="card"><h2>${t('class_title')}</h2>${ctName?`<div class="desc">👤 ${t('class_teacher')}: <b>${ctName}</b></div>`:''}${filterBar()}<div class="row" style="margin-bottom:12px">
-     <div><label>${t('class_')}</label><select onchange="curClass=+this.value;render()">${filteredClasses().map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join("")}</select></div>
-     <button class="ghost" onclick="printDoc(t('print_class_title')+' '+document.querySelector('#view select').selectedOptions[0].text,'Aumtara')">${t('print_pdf')}</button>
+  return `<div class="card"><h2>${t('class_title')}</h2>${ctName?`<div class="desc">👤 ${t('class_teacher')}: <b>${ctName}</b></div>`:''}
+   <div class="row" style="margin-bottom:12px;align-items:flex-end;gap:8px;flex-wrap:wrap">${filterSelectsHTML()}
+     <div><label>${t('class_')}</label><select id="clsSel" onchange="curClass=+this.value;render()">${filteredClasses().map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join("")}</select></div>
+     <button class="ghost" onclick="printDoc(t('print_class_title')+' '+document.getElementById('clsSel').selectedOptions[0].text,'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="dl('/api/export/timetable.xlsx')">${t('excel')}</button>
      <button class="ghost" onclick="printAll('class')">🖨 ${t('print_all_classes')}</button>
      <button class="ghost" onclick="shareClass()">🔗 ${t('share_link')}</button></div>
