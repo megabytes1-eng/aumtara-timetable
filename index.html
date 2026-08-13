@@ -101,6 +101,10 @@ body.sidenav-off .wrap{max-width:100%;}   /* hide sidebar → content uses the f
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
 label{font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;}
 input,select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;color:#222;}
+select{background:#eef2ff;border-color:#cdd7f5;cursor:pointer;font-weight:600;color:#1f2b57;}
+select:hover{background:#e3e9ff;}
+select:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 2px #dbe4ff;}
+label:has(+ select){font-weight:800;color:var(--navy);}
 button{background:var(--blue);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;}
 button.ghost{background:#fff;color:var(--navy);border:1px solid var(--line);} button.green{background:var(--green);}button.purple{background:var(--accent);}button.red{background:#fdecec;color:#c0392b;border:1px solid #f3c4c0;}button.red:hover{background:#fbdcdc;}button.amber{background:var(--amber);}button.teal{background:#0e8f9c;}
 button.mini{padding:4px 9px;font-size:12px;} button:hover{opacity:.92;}
@@ -2250,7 +2254,7 @@ const HELPSECTIONS=[
  {id:"getstarted",icon:"🚀",title:"Getting started & signing in",who:"Everyone",where:"Login screen",
   intro:"How to sign in, create a school, and what you can do based on your role.",
   steps:["Open the app link, enter your login ID (username, email or mobile) and password, then Sign in.","New school? On the login screen tap Create a school account, fill your school name, board and your details — you become its Admin.","Your role decides what you see: Master (everything, all schools), Admin (full setup + timetable), Principal / Supervisor (view + daily ops), Teacher (own timetable, diary, leave).","Use the ☰ button (top-left) to show or hide the left sidebar. Screens are grouped as Master, Timetable, Daily and Admin."],
-  tip:"Not sure where something is? Tap the yellow ? at the top of any screen — it jumps here to the guide for that exact screen."},
+  tip:"Not sure where something is? The Help screen shows a colourful card for every topic — tap one to open it, or tap the yellow ? at the top of any screen to jump to the guide for that exact screen."},
  {id:"schools",icon:"🏫",title:"Schools & switching",who:"Master / Admin",where:"Top bar switcher · Admin → Schools",
   intro:"Run many schools from one login; each keeps its own classes, timetable and settings.",
   steps:["Use the school dropdown in the top bar to switch which school you are working on.","Admin → Schools: add a new school (name, board, medium) or upload a school logo.","Every screen only ever shows and edits the currently selected school."],
@@ -2273,11 +2277,11 @@ const HELPSECTIONS=[
   tip:"Duplicate rooms can be merged with the ⚠ Remove duplicates button here too."},
  {id:"hours",icon:"⏰",title:"Academic Hours & terms",who:"Admin",where:"Master → Academic Hours",
   intro:"Your daily timings — start/end, period length, breaks, lunch, number of periods — with separate Saturday timings, plus terms, labels and the schedule type.",
-  steps:["Set working days, day start and end, period length, lunch (after which period + minutes) and short breaks. Add separate Saturday times if your Saturday is different.","Set the number of periods per day (weekday and Saturday).","Academic terms: add a term and mark one active. Labels: rename Class / Teacher / Room / Subject to your school's own words.","Schedule type: Single week, Multi-week (Week A/B…) or Day rotation (Day A/B/C…)."],
+  steps:["Academic Hours has tabs at the top — Timings, Auto-fill from Excel, Terms, Multi-week / rotating cycle and Labels; tap one to open that section.","Set working days, day start and end, period length, lunch (after which period + minutes) and short breaks. Add separate Saturday times if your Saturday is different.","Set the number of periods per day (weekday and Saturday).","Academic terms: add a term and mark one active. Labels: rename Class / Teacher / Room / Subject to your school's own words.","Schedule type: Single week, Multi-week (Week A/B…) or Day rotation (Day A/B/C…)."],
   tip:"Times are 24-hour — 2:30 PM must be entered as 14:30, otherwise the day stops after one period."},
  {id:"quota",icon:"🎯",title:"Weekly Quota & rules",who:"Admin",where:"Master → Weekly Quota",
   intro:"How many periods a week each subject gets in each class, plus placement rules.",
-  steps:["For each class, enter the per-week count for every subject.","Add rules: keep two subjects off the same day, or never back-to-back."],
+  steps:["Weekly Quota has two tabs at the top — Weekly Quota (per-subject counts) and Subject rules.","For each class, enter the per-week count for every subject.","Add rules: keep two subjects off the same day, or never back-to-back."],
   tip:"Auto-generate fills exactly these weekly counts while honouring your rules."},
  {id:"availability",icon:"🚫",title:"Availability",who:"Admin",where:"Master → Availability",
   intro:"Block a teacher, class or room for specific periods so nothing is scheduled then.",
@@ -2285,11 +2289,11 @@ const HELPSECTIONS=[
   tip:"Blocks are respected by Auto-generate and flagged as clashes if broken."},
  {id:"students",icon:"👧",title:"Students & electives",who:"Admin",where:"Master → Students",
   intro:"Manage students and split a class into elective groups, each with its own subject, teacher and room.",
-  steps:["Add students to a class.","Add an elective for a class + its group options (each option = subject / teacher / room); assign students to options."],
+  steps:["Students has tabs at the top — Students & electives, Student choices and Student timetable.","Add students to a class.","Add an elective for a class + its group options (each option = subject / teacher / room); assign students to options."],
   tip:"Elective / parallel groups then show right inside the class grid."},
  {id:"build",icon:"⚡",title:"Build the timetable",who:"Admin",where:"Timetable → Auto Set",
   intro:"Build the timetable by hand or in one click, with locked, double and combined periods.",
-  steps:["Auto Set: pick a day, then set each cell's subject, teacher and room by hand. Clashes are flagged in red.","Auto-generate: once setup is done, press Auto-generate to build a clash-free timetable honouring quota, rules and availability.","🔒 Lock a fixed activity (Assembly / PT / Library) so Auto-generate keeps it and schedules around it.","Combined classes: teach several classes together in one shared session (Games / Assembly) — pick subject / teacher / room + day / period and tick 2+ classes.","Drag a cell's grip onto another cell to move or swap two periods."],
+  steps:["Auto Set has two tabs at the top — Auto Set (the editable grid) and Combined / merged classes.","Auto Set: pick a day, then set each cell's subject, teacher and room by hand. Clashes are flagged in red.","Auto-generate: once setup is done, press Auto-generate to build a clash-free timetable honouring quota, rules and availability.","🔒 Lock a fixed activity (Assembly / PT / Library) so Auto-generate keeps it and schedules around it.","Combined classes: teach several classes together in one shared session (Games / Assembly) — pick subject / teacher / room + day / period and tick 2+ classes.","Drag a cell's grip onto another cell to move or swap two periods."],
   tip:"Lab subjects flagged as Double are placed as two back-to-back periods with the same teacher and room."},
  {id:"optimizer",icon:"🧮",title:"Optimizer",who:"Admin",where:"Timetable → Optimizer",
   intro:"Soft preferences that make a nicer timetable on the next Auto-generate.",
@@ -2309,7 +2313,7 @@ const HELPSECTIONS=[
   tip:"Use it to spot overloaded teachers or under-used rooms at a glance."},
  {id:"substitution",icon:"👥",title:"Substitution, proxy & leave",who:"Admin / Teacher",where:"Daily → Substitution",
   intro:"Cover absent teachers with a proxy on a date or range, plus a leave-approval workflow.",
-  steps:["Pick the absent teacher and the date(s), then assign a free teacher as proxy for each period.","Teachers can apply for leave; an admin approves it and the proxy rows are created automatically."],
+  steps:["Substitution has tabs at the top — Teacher leave, Date-based cover and a recurring Weekday cover.","Pick the absent teacher and the date(s), then assign a free teacher as proxy for each period.","Teachers can apply for leave; an admin approves it and the proxy rows are created automatically."],
   tip:"Only teachers marked can-substitute are offered as proxies."},
  {id:"liveclass",icon:"🟢",title:"Live Class",who:"Everyone",where:"Daily → Live Class",
   intro:"Today's live status — who is teaching now, proxies and free periods.",
@@ -2317,7 +2321,7 @@ const HELPSECTIONS=[
   tip:"Great for the front office to see the whole school at a glance."},
  {id:"diary",icon:"📓",title:"Teacher Diary & Chapters",who:"Teacher",where:"Daily → Teacher Diary",
   intro:"A daily and monthly teaching register per teacher, plus chapters.",
-  steps:["Pick a teacher and date; fill the lesson, topic, homework, and so on.","Chapters: pick a subject and record its chapters to track the syllabus.","Switch between daily entry and the monthly register view."],
+  steps:["Teacher Diary has two tabs at the top — the Diary and Chapters.","Pick a teacher and date; fill the lesson, topic, homework, and so on.","Chapters: pick a subject and record its chapters to track the syllabus.","Switch between daily entry and the monthly register view."],
   tip:"A Teacher login only sees their own diary."},
  {id:"notifications",icon:"🔔",title:"Notifications",who:"Everyone",where:"Daily → Notifications",
   intro:"Push alerts to your device, and school-wide announcements.",
@@ -2325,7 +2329,7 @@ const HELPSECTIONS=[
   tip:"Works on phones and laptops once enabled."},
  {id:"reports",icon:"📈",title:"Reports",who:"Admin",where:"Timetable → Reports",
   intro:"Ready-made Excel reports, plus fill-your-own templates and a beautify-any-Excel tool.",
-  steps:["Pick a report (class workload, subject coverage, room use, teacher free periods, period load, diary) — it downloads as Excel.","Or upload your own Excel template with placeholders to fill with school data, or beautify any data file."],
+  steps:["Reports has tabs at the top — Timetable, Analysis, Teacher Diary and Custom reports.","Pick a report (class workload, subject coverage, room use, teacher free periods, period load, diary) — it downloads as Excel.","Or upload your own Excel template with placeholders to fill with school data, or beautify any data file."],
   tip:"Templates repeat a row using a {{rows:teachers}} marker then {{field}} tokens."},
  {id:"versions",icon:"💾",title:"Save Timetable (versions)",who:"Admin",where:"Timetable → Save Timetable",
   intro:"Save named copies of the timetable and restore any of them later.",
@@ -2333,7 +2337,7 @@ const HELPSECTIONS=[
   tip:"Save a version before a big change so you can roll back."},
  {id:"data",icon:"📥",title:"Import / Export",who:"Admin",where:"Admin → Import / Export",
   intro:"Bulk-load your setup from Excel, and export the timetable and setup to Excel.",
-  steps:["Download the setup template, fill the Classes / Subjects / Rooms / Teachers / Chapters sheets, then upload to import.","Export the timetable or setup to Excel any time."],
+  steps:["Import / Export has tabs at the top — Export, Import and Cleanup.","Download the setup template, fill the Classes / Subjects / Rooms / Teachers / Chapters sheets, then upload to import.","Export the timetable or setup to Excel any time."],
   tip:"The importer adds only new names — running it twice will not create duplicates."},
  {id:"cleanup",icon:"🧹",title:"Data Cleanup & Remove duplicates",who:"Admin",where:"Admin → Import / Export → Data Cleanup · and ⚠ Remove duplicates on each Master tab",
   intro:"Fix mistakes by clearing a field, a section or a whole list — or merge duplicate rows.",
