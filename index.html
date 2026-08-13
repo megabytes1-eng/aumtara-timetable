@@ -97,20 +97,8 @@ body.sidenav-off .wrap{max-width:100%;}   /* hide sidebar → content uses the f
 .kpi[onclick]{cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;}
 .kpi[onclick]:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(37,99,235,.13);transform:translateY(-2px);}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
-/* light multi-colour boxes — every top-level card in a view gets a soft pastel (cards with their own inline background keep it) */
-#view>.card:nth-child(6n+1){background:#f2f7ff;border-color:#dbe7fb;}
-#view>.card:nth-child(6n+2){background:#f1fbf4;border-color:#d5efdd;}
-#view>.card:nth-child(6n+3){background:#fffaf1;border-color:#f4e7cb;}
-#view>.card:nth-child(6n+4){background:#fbf4ff;border-color:#ecd9f6;}
-#view>.card:nth-child(6n+5){background:#fff5f5;border-color:#f8dcdc;}
-#view>.card:nth-child(6n+6){background:#f0fbfc;border-color:#d0edf1;}
-.kpi:nth-child(6n+1){background:#eef4ff;border-color:#cdddf5;border-top-color:#2f5fd0;}
-.kpi:nth-child(6n+2){background:#ecfdf3;border-color:#c9eeda;border-top-color:#0e9f6e;}
-.kpi:nth-child(6n+3){background:#fff8ec;border-color:#f4e6c4;border-top-color:#c98a00;}
-.kpi:nth-child(6n+4){background:#f7f0ff;border-color:#e6d7f7;border-top-color:#7030a0;}
-.kpi:nth-child(6n+5){background:#fff1f2;border-color:#f8d7da;border-top-color:#dc4b4b;}
-.kpi:nth-child(6n+6){background:#ecfeff;border-color:#cbeef2;border-top-color:#0e8f9c;}
-@media print{#view>.card{background:#fff!important;}}
+/* light multi-colour boxes are painted per-element by paintBoxes() (JS) so every box on a page gets its own soft colour */
+@media print{#view .card,#view .kpi,#view select,#view input{background:#fff!important;border-color:#ddd!important;}}
 .card h2{margin:0 0 4px;font-size:17px;color:var(--navy);} .card .desc{color:#414a63;font-size:14.5px;line-height:1.5;margin-bottom:14px;font-weight:500;}
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
 label{font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;}
@@ -1113,6 +1101,19 @@ function render(){
   document.getElementById("tabs").innerHTML=navHtml;
   document.getElementById("view").innerHTML=({dash,mclasses:mClassesView,msubjects:mSubjectsView,mteachers:mTeachersView,mrooms:mRoomsView,hours,quota:quotaView,avail:availView,build:builder,optimizer:optimizerCard,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,notify:pushCard,reports:reportsView,versions:versionsView,data:dataView,usage:usageView,schools:schoolsView,users:usersView,help}[tab])();
   if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary"&&dTab==='diary')loadDiary(); if(tab==="dash")loadReadiness(); if(tab==="notify"&&!PUSH._init){PUSH._init=true;initPush().then(()=>render());} if(tab==="versions")loadVersions(); if(tab==="build"&&bTab==='combine')loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="students")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
+  paintBoxes();
+}
+// Give every box on a page its own soft light colour (cards, KPI tiles, dropdowns & inputs). Boxes that set their own background keep it; timetable-grid cells are left alone.
+const BOXPAL=[['#eef4ff','#cdddf5'],['#eafaf0','#c7ead6'],['#fff7e8','#f3e4bf'],['#f6efff','#e4d4f5'],['#fff0f1','#f7d4d8'],['#eafcff','#c8ebf0'],['#f2fae2','#dbe9bd'],['#fdf0f8','#f4d2e4'],['#eef7ff','#cfe0f5'],['#fef6ec','#f2e0c2']];
+function paintBoxes(){
+  const v=document.getElementById('view'); if(!v)return; let i=0;
+  v.querySelectorAll('.card,.kpi,select,input:not([type=checkbox]):not([type=radio]):not([type=file])').forEach(el=>{
+    const st=el.getAttribute('style')||'';
+    if(/background/i.test(st))return;                                   // keep boxes with their own colour
+    if((el.tagName==='SELECT'||el.tagName==='INPUT')&&el.closest('table'))return; // don't rainbow the timetable grid
+    const p=BOXPAL[i++%BOXPAL.length];
+    el.style.background=p[0]; el.style.borderColor=p[1];
+  });
 }
 function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3>${title}</h3><div class="sub">${sub||''}</div>`;window.print();}
 function printPlain(){document.getElementById('printhead').innerHTML='';window.print();}
