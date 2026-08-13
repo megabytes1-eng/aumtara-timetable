@@ -1039,10 +1039,12 @@ function clsOrder(a,b){const xa=clsSec(a),xb=clsSec(b);if(xa!==xb)return xa<xb?-
 function filteredClasses(){return classes.filter(c=>(!clsFilter.board||c.board===clsFilter.board)&&(!clsFilter.medium||c.medium===clsFilter.medium)&&(!clsFilter.standard||clsStd(c)===clsFilter.standard)&&(!clsFilter.section||clsSec(c)===clsFilter.section)).sort(clsOrder);}
 function setClsFilter(k,v){clsFilter[k]=v;const fc=filteredClasses();if(fc.length&&!fc.find(c=>c.id===curClass))curClass=fc[0].id;render();}
 function clearClsFilter(){clsFilter={board:'',medium:'',standard:'',section:''};render();}
-function filterBar(){if(!hasStructure())return '';
+function filterSelectsHTML(){if(!hasStructure())return '';
   const sel=(field,lbl)=>{const o=clsUniq(field);if(!o.length)return '';return `<div><label>${t(lbl)}</label><select onchange="setClsFilter('${field}',this.value)"><option value="">${t('filter_all')}</option>${o.map(x=>`<option value="${x}" ${clsFilter[field]===x?'selected':''}>${x}</option>`).join('')}</select></div>`;};
   const active=clsFilter.board||clsFilter.medium||clsFilter.standard||clsFilter.section;
-  return `<div class="row" style="margin-bottom:10px;gap:8px;background:#f7f9fd;padding:8px 10px;border-radius:8px;flex-wrap:wrap">${sel('board','flt_board')}${sel('medium','flt_medium')}${sel('standard','flt_standard')}${sel('section','flt_section')}${active?`<button class="ghost mini" style="align-self:flex-end" onclick="clearClsFilter()">${t('filter_clear')}</button>`:''}</div>`;}
+  return `${sel('board','flt_board')}${sel('medium','flt_medium')}${sel('standard','flt_standard')}${sel('section','flt_section')}${active?`<button class="ghost mini" style="align-self:flex-end" onclick="clearClsFilter()">${t('filter_clear')}</button>`:''}`;}
+function filterBar(){const inner=filterSelectsHTML();if(!inner)return '';
+  return `<div class="row" style="margin-bottom:10px;gap:8px;background:#f7f9fd;padding:8px 10px;border-radius:8px;flex-wrap:wrap;align-items:flex-end">${inner}</div>`;}
 const sName=id=>(subjects.find(s=>s.id===id)||{}).name||"";
 const tName=id=>(teachers.find(t=>t.id===id)||{}).name||"";
 const rName=id=>(rooms.find(r=>r.id===id)||{}).name||"";
@@ -1839,9 +1841,8 @@ function builder(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slo
         ${conf?`<div class="badge-bad">${conf.t?t('warn_teacher')+' '+conf.t:''} ${conf.r?t('warn_room')+' '+conf.r:''}</div>`:''}</td>`;pi++;});
     return `<tr>${cells}</tr>`;}).join("");
   const bar=subTabBar([['grid','📅 '+t('builder_title')],['combine','🔗 '+t('combine_title')]],bTab,'setBTab');
-  const gridCard=`<div class="card"><h2>${t('builder_title')}</h2><div class="desc">${t('builder_desc')}</div>${filterBar()}
-   <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
-     <button class="green" onclick="autoGen()">${t('btn_autogen_all')}</button></div>
+  const gridCard=`<div class="card"><h2>${t('builder_title')}</h2><div class="desc">${t('builder_desc')}</div>
+   <div class="row" style="margin-bottom:10px;gap:8px;background:#f7f9fd;padding:8px 10px;border-radius:8px;flex-wrap:wrap;align-items:flex-end">${filterSelectsHTML()}<div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div><button class="green" onclick="autoGen()">${t('btn_autogen_all')}</button></div>
    <div class="small" style="color:#5c6580;margin:-4px 0 10px">🔒 ${t('lock_hint')} &nbsp;·&nbsp; ⠿ ${t('drag_hint')}</div>
    ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;
   const body=bTab==='combine'?combineCard():gridCard;
