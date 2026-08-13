@@ -2065,8 +2065,8 @@ function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=
     slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}const cc=cell(c.id,di,pi);pi++;
       cells+=cc&&cc.subject_id?`<td><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}${cc.room_id?' · '+rName(cc.room_id):''}</div></td>`:`<td class="free">—</td>`;});
     return `<tr>${cells}</tr>`;}).join("");
-  return `<div class="card"><h2>${t('school_title')}</h2><div class="desc">${t('school_desc')}</div>
-   <div class="row" style="margin-bottom:12px;align-items:flex-end;gap:8px;flex-wrap:wrap">${filterSelectsHTML()}<div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
+  return `<div class="card">
+   <div class="row" style="margin-bottom:12px;align-items:flex-end;gap:12px;flex-wrap:wrap"><div style="flex:1 1 200px;min-width:170px"><h2 style="margin:0;font-size:20px">${t('school_title')}</h2><div class="desc" style="margin:2px 0 0">${t('school_desc')}</div></div>${filterSelectsHTML()}<div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <button class="ghost" onclick="printDoc(t('print_school_title')+' '+DD()[buildDay],'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="dl('/api/export/timetable.xlsx')">${t('excel_all')}</button></div>
    ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
