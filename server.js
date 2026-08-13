@@ -1035,6 +1035,33 @@ app.delete('/api/versions/:id', h(async (req,res)=>{
   await run('DELETE FROM tt_snapshot WHERE id=? AND school_id=?',[req.params.id, req.sid]);
   res.json({ok:true});
 }));
+// ---------- LOCAL-DRIVE backup (download the live timetable as a restorable JSON file; keeps cloud storage low) ----------
+app.get('/api/timetable/backup', h(async (req,res)=>{
+  const sid=req.sid;
+  const cfg=getConfig(sid)||{};
+  const config={}; HOURS_FIELDS.forEach(k=>{ config[k]=cfg[k]; });
+  const cells=await q('SELECT class_id,day_of_week,period_index,subject_id,teacher_id,room_id,week_index FROM tt_timetable WHERE school_id=?',[sid]);
+  const term=await q1('SELECT id,name FROM tt_term WHERE school_id=? AND active=1 ORDER BY id LIMIT 1',[sid]);
+  res.json({ format:'aumtara-timetable-backup', schema:1, name:null, session:(term&&term.name)||cfg.academic_session||null, cell_count:cells.length, config, cells });
+}));
+// restore the live timetable (+ School Hours) from an uploaded backup JSON — same overwrite behaviour as a cloud version restore, but the file lives on the user's computer
+app.post('/api/timetable/restore-backup', h(async (req,res)=>{
+  const sid=req.sid;
+  const body=req.body||{};
+  if(body.format && body.format!=='aumtara-timetable-backup'){ res.status(400).json({error:'not a timetable backup file'}); return; }
+  const cells=Array.isArray(body.cells)?body.cells:[];
+  await tx(async (cq)=>{
+    await cq('DELETE FROM tt_timetable WHERE school_id=?',[sid]);
+    for(const c of cells)
+      await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index) VALUES(?,?,?,?,?,?,?,?)',
+        [c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id,sid,c.week_index||0]);
+  });
+  let hoursRestored=false;
+  const cfg=body.config;
+  if(cfg){ try{ const ks=HOURS_FIELDS.filter(k=>k in cfg); if(ks.length){ await run(`UPDATE tt_config SET ${ks.map(k=>k+'=?').join(',')} WHERE school_id=?`,[...ks.map(k=>cfg[k]), sid]); hoursRestored=true; } }catch(e){} }
+  await loadConfig(sid);
+  res.json({ok:true, cells:cells.length, hoursRestored});
+}));
 
 // ---------- TEACHER schedule ----------
 app.get('/api/timetable/teacher/:id', h(async (req,res)=>{
