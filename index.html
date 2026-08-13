@@ -1857,8 +1857,9 @@ function builder(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slo
         <select onchange="setRoom(${c.id},${di},${pi},this.value)">${ropt}</select>
         ${conf?`<div class="badge-bad">${conf.t?t('warn_teacher')+' '+conf.t:''} ${conf.r?t('warn_room')+' '+conf.r:''}</div>`:''}</td>`;pi++;});
     return `<tr>${cells}</tr>`;}).join("");
-  const bar=subTabBar([['grid','📅 '+t('builder_title')],['combine','🔗 '+t('combine_title')]],bTab,'setBTab');
-  const gridCard=`<div class="card"><h2>${t('builder_title')}</h2><div class="desc">${t('builder_desc')}</div>
+  const bpills=[['grid','📅 '+t('builder_title')],['combine','🔗 '+t('combine_title')]].map(x=>`<button class="htab${bTab===x[0]?' on':''}" onclick="setBTab('${x[0]}')">${x[1]}</button>`).join('');
+  const bar=`<div class="card htabbar" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div class="htabs">${bpills}</div><div class="desc" style="margin:0;flex:1 1 220px;min-width:180px;color:#3d4663">${t('builder_desc')}</div></div>`;
+  const gridCard=`<div class="card">
    <div class="row" style="margin-bottom:10px;gap:8px;background:#f7f9fd;padding:8px 10px;border-radius:8px;flex-wrap:wrap;align-items:flex-end">${filterSelectsHTML()}<div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div><button class="green" onclick="autoGen()">${t('btn_autogen_all')}</button></div>
    <div class="small" style="color:#5c6580;margin:-4px 0 10px">🔒 ${t('lock_hint')} &nbsp;·&nbsp; ⠿ ${t('drag_hint')}</div>
    ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;
