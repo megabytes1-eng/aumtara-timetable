@@ -2796,7 +2796,11 @@ async function refreshMonitor(){const g=document.getElementById('mongrid');if(!g
   g.innerHTML=d.classes.map(c=>`<div class="mon ${c.status}"><div class="cn">${c.name}</div><div><span class="pill ${c.status}">${t('st_'+c.status)}</span></div><div class="info">${c.text}</div></div>`).join("");}
 
 /* ============================ boot ============================ */
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }); }
+if('serviceWorker' in navigator){
+  const _hadCtrl=!!navigator.serviceWorker.controller; let _swRl=false;
+  navigator.serviceWorker.addEventListener('controllerchange',function(){ if(_swRl||!_hadCtrl)return; _swRl=true; location.reload(); });   // a new version deployed → refresh the open app so users always run the latest code
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('/sw.js').then(function(reg){ try{reg.update();}catch(e){} setInterval(function(){ try{reg.update();}catch(e){} },60000); }).catch(()=>{}); });
+}
 boot();
 </script>
 </body>
