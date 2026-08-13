@@ -2064,7 +2064,7 @@ let quotaData=[];
 async function loadQuota(){ if(!curClass)return; quotaData=await api('GET','/api/quota?class_id='+curClass); renderQuota(); }
 function quotaView(){
   const bar=subTabBar([['quota','🎯 '+t('quota_title')],['rules','📏 '+t('rules_title')]],qTab,'setQTab');
-  const secQuota=`<div class="card"><h2>${t('quota_title')}</h2><div class="desc">${t('quota_desc')}</div>
+  const secQuota=`<div class="card"><div class="desc" style="font-weight:700;color:#1F3864;margin-top:2px">${t('quota_desc')}</div>
    <div class="row" style="margin-bottom:12px"><div><label>${t('class_')}</label><select onchange="curClass=+this.value;loadQuota()">${classes.map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join('')}</select></div>
      <button class="green" onclick="autoGen()">${t('btn_autogen')}</button></div>
    <div id="quotabox">Loading…</div></div>`;
