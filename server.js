@@ -1062,6 +1062,33 @@ app.post('/api/timetable/restore-backup', h(async (req,res)=>{
   await loadConfig(sid);
   res.json({ok:true, cells:cells.length, hoursRestored});
 }));
+// restore the live timetable from an Aumtara-exported .xlsx (reads its hidden _aumtara / _aumtara_cfg sheets)
+app.post('/api/timetable/restore-xlsx', upload.single('file'), async (req,res)=>{
+  try{
+    const sid=req.sid;
+    if(!req.file){ res.status(400).json({error:'no file'}); return; }
+    const wb=new ExcelJS.Workbook(); await wb.xlsx.load(req.file.buffer);
+    const dws=wb.getWorksheet('_aumtara');
+    if(!dws){ res.status(400).json({error:'This Excel is not an Aumtara backup — no restore data inside.'}); return; }
+    const num=v=>{ if(v==null||v==='')return null; if(typeof v==='object'){ if(v.result!=null)return Number(v.result); if(v.text!=null)return Number(v.text); return null; } const n=Number(v); return isNaN(n)?null:n; };
+    const cells=[];
+    dws.eachRow((row,n)=>{ if(n===1)return; const cid=num(row.getCell(1).value); if(cid==null)return;
+      cells.push({class_id:cid,day_of_week:num(row.getCell(2).value),period_index:num(row.getCell(3).value),subject_id:num(row.getCell(4).value),teacher_id:num(row.getCell(5).value),room_id:num(row.getCell(6).value),week_index:num(row.getCell(7).value)||0}); });
+    const cfg={}; const cws=wb.getWorksheet('_aumtara_cfg');
+    if(cws) cws.eachRow((row)=>{ let k=row.getCell(1).value; const v=row.getCell(2).value; if(k==null)return; k=String(k); if(k==='__format')return;
+      cfg[k]=(v==null?'':(typeof v==='object'&&v.text!=null?v.text:String(v))); });
+    await tx(async (cq)=>{
+      await cq('DELETE FROM tt_timetable WHERE school_id=?',[sid]);
+      for(const c of cells)
+        await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index) VALUES(?,?,?,?,?,?,?,?)',
+          [c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id,sid,c.week_index||0]);
+    });
+    let hoursRestored=false;
+    try{ const ks=HOURS_FIELDS.filter(k=>k in cfg && cfg[k]!==''); if(ks.length){ await run(`UPDATE tt_config SET ${ks.map(k=>k+'=?').join(',')} WHERE school_id=?`,[...ks.map(k=>cfg[k]), sid]); hoursRestored=true; } }catch(e){}
+    await loadConfig(sid);
+    res.json({ok:true, cells:cells.length, hoursRestored});
+  }catch(e){ res.status(400).json({error:'Could not read that Excel file.'}); }
+});
 
 // ---------- TEACHER schedule ----------
 app.get('/api/timetable/teacher/:id', h(async (req,res)=>{
@@ -1343,6 +1370,15 @@ app.get('/api/export/timetable.xlsx', h(async (req,res)=>{
     }
     ws.columns.forEach((col,i)=>{col.width=i===0?12:16;});
   });
+  // hidden machine-readable sheets → this same .xlsx can be re-imported to RESTORE the timetable
+  try{
+    const dws=wb.addWorksheet('_aumtara'); dws.state='veryHidden';
+    dws.addRow(['class_id','day_of_week','period_index','subject_id','teacher_id','room_id','week_index']);
+    (await q('SELECT class_id,day_of_week,period_index,subject_id,teacher_id,room_id,week_index FROM tt_timetable WHERE school_id=?',[sid])).forEach(c=>dws.addRow([c.class_id,c.day_of_week,c.period_index,c.subject_id,c.teacher_id,c.room_id,c.week_index||0]));
+    const cws=wb.addWorksheet('_aumtara_cfg'); cws.state='veryHidden';
+    cws.addRow(['__format','aumtara-timetable-backup']);
+    HOURS_FIELDS.forEach(k=>cws.addRow([k, cfg[k]==null?'':String(cfg[k])]));
+  }catch(e){}
   res.setHeader('Content-Disposition','attachment; filename=timetable.xlsx');
   res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   await wb.xlsx.write(res); res.end();
