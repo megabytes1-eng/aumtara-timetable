@@ -184,10 +184,12 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .hoursCompact .tag{font-size:11px;padding:2px 6px;}
 .hoursCompact .chk{font-size:12px;}
 /* Onboarding checklist */
-.obcard{border:1.5px solid #cfe0ff;background:linear-gradient(135deg,#f2f7ff,#ffffff);}
+.obcard{border:1.5px solid #cfe0ff;background:linear-gradient(135deg,#f2f7ff,#ffffff);padding:9px 13px!important;margin-bottom:10px!important;max-width:900px;}
+.obcard .desc{margin:1px 0 6px!important;font-size:13px!important;}
 .obhead{display:flex;justify-content:space-between;align-items:center;gap:8px;}
-.obgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:4px;max-width:1040px;margin-left:auto;margin-right:auto;}
-.obitem{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e3e9f5;border-radius:9px;background:#fff;cursor:pointer;font-size:13.5px;font-weight:600;color:#33415c;}
+.obhead b{font-size:14px;}
+.obgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:2px;}
+.obitem{display:flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid #e3e9f5;border-radius:8px;background:#fff;cursor:pointer;font-size:12.5px;font-weight:600;color:#33415c;}
 .obitem:hover{border-color:#2563eb;}
 .obitem.done{color:#166534;background:#f2fbf5;border-color:#c2edd6;}
 .obck{font-size:16px;width:20px;text-align:center;color:#9aa7c2;}
@@ -1179,7 +1181,7 @@ function printAll(kind){
   if(!w){ showErr(t('popup_blocked')); return; }
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+sesc(heading)+'</title><style>'+css+'</style></head><body><div class="doc"><div class="hd"><h1>'+sesc(school)+'</h1><div class="sub">'+sesc(heading)+wk+'</div></div>'+blocks+'</div><scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},350);};</scr'+'ipt></body></html>');
   w.document.close();}
-function setTab(t){tab=t;const g=NAVGROUPS.find(x=>x.key&&x.tabs.includes(t));if(g){GRPCOLL[g.key]=false;try{localStorage.setItem('tt_grpcoll',JSON.stringify(GRPCOLL));}catch(e){}}if(window.innerWidth<820)document.body.classList.add('sidenav-off');try{track('page_view',{tab:t});}catch(e){}render();}
+function setTab(t){tab=t;if(t==='dash'){try{localStorage.removeItem('tt_onboard');}catch(e){}}/* clicking Dashboard brings the Getting-started card back after Hide */const g=NAVGROUPS.find(x=>x.key&&x.tabs.includes(t));if(g){GRPCOLL[g.key]=false;try{localStorage.setItem('tt_grpcoll',JSON.stringify(GRPCOLL));}catch(e){}}if(window.innerWidth<820)document.body.classList.add('sidenav-off');try{track('page_view',{tab:t});}catch(e){}render();}
 function toggleSidebar(){document.body.classList.toggle('sidenav-off');try{localStorage.setItem('tt_sidenav',document.body.classList.contains('sidenav-off')?'off':'on');}catch(e){}}
 let GRPCOLL={};try{GRPCOLL=JSON.parse(localStorage.getItem('tt_grpcoll')||'{}')||{};}catch(e){GRPCOLL={};}
 function toggleGrp(k){GRPCOLL[k]=!GRPCOLL[k];try{localStorage.setItem('tt_grpcoll',JSON.stringify(GRPCOLL));}catch(e){}render();}
