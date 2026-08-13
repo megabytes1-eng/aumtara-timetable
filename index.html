@@ -29,6 +29,14 @@ header h1{font-size:18px;margin:0;} header .sub{font-size:12.5px;opacity:.92;}
 .hlp-toc{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px;}
 .hlp-toc a{font-size:12.5px;background:#eef2fb;color:#1F2B57;padding:4px 10px;border-radius:14px;text-decoration:none;font-weight:600;}
 .hlp-toc a:hover{background:#dce6fb;}
+.helpgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:14px;margin-top:16px;}
+.helpbox{border-radius:12px;padding:15px 16px;cursor:pointer;transition:transform .14s,box-shadow .14s;display:flex;flex-direction:column;}
+.helpbox:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(31,40,87,.14);}
+.hb-ic{font-size:32px;line-height:1;margin-bottom:8px;}
+.hb-tt{font-size:17px;font-weight:800;margin-bottom:5px;line-height:1.2;}
+.hb-in{font-size:14px;color:#3d4663;line-height:1.45;flex:1;}
+.hb-wh{font-size:12px;color:#616a86;margin-top:10px;font-weight:600;}
+@media(max-width:640px){.helpgrid{grid-template-columns:1fr;}}
 .hlp-sec{border:1px solid #e6eaf3;border-radius:12px;padding:13px 15px;margin:12px 0;background:#fff;scroll-margin-top:74px;}
 .hlp-sec h3{margin:0 0 4px;color:#1F2B57;font-size:16px;}
 .hlp-sec .who{display:inline-block;font-size:11px;font-weight:700;color:#6a5000;background:#fff3cd;border-radius:10px;padding:2px 9px;margin-bottom:7px;}
@@ -2398,15 +2406,21 @@ function renderHelpModal(){
 }
 function help(){
   const ui=HELP_UI[LANG]||HELP_UI.en;
-  const toc=HELPSECTIONS.map(helpLoc).map(s=>'<a href="#" onclick="event.preventDefault();openHelp(\''+s.id+'\')">'+s.icon+' '+s.title+'</a>').join('');
-  return '<div class="card" style="text-align:center;padding:26px 18px">'
-    +'<div style="font-size:40px">❓</div>'
-    +'<h2 style="margin:6px 0 4px">'+ui.title+'</h2>'
-    +'<div class="desc" style="max-width:560px;margin:0 auto 14px">'+ui.lead.replace(/[:：].*$/,'.')+'</div>'
-    +'<div class="row" style="gap:10px;justify-content:center;flex-wrap:wrap">'
+  const PAL=[['#eef4ff','#cdddff','#1F3864'],['#fef3f2','#fbd5d0','#b4443a'],['#ecfdf5','#bfe6d4','#0e7c56'],['#fff7ed','#fbe0bd','#a9730a'],['#f5f3ff','#e0d7fb','#6b30a0'],['#ecfeff','#c2ebf1','#0c7f8b']];
+  const boxes=HELPSECTIONS.map(helpLoc).map((s,i)=>{const p=PAL[i%PAL.length];
+    return '<div class="helpbox" style="background:'+p[0]+';border:1px solid '+p[1]+';border-left:5px solid '+p[2]+'" onclick="openHelp(\''+s.id+'\')">'
+      +'<div class="hb-ic">'+s.icon+'</div>'
+      +'<div class="hb-tt" style="color:'+p[2]+'">'+s.title+'</div>'
+      +'<div class="hb-in">'+s.intro+'</div>'
+      +(s.where?'<div class="hb-wh">📍 '+s.where+'</div>':'')+'</div>';}).join('');
+  return '<div class="card" style="padding:18px">'
+    +'<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">'
+    +'<div style="min-width:220px"><h2 style="margin:0;font-size:23px">❓ '+ui.title+'</h2>'
+    +'<div class="desc" style="margin:4px 0 0">'+ui.lead.replace(/[:：].*$/,'.')+'</div></div>'
+    +'<div class="row" style="gap:8px;flex-wrap:wrap">'
     +'<button class="green" onclick="openHelp()">📄 '+ui.thispage+'</button>'
-    +'<button class="ghost" onclick="openFullGuide()">📖 '+ui.fullguide+'</button></div>'
-    +'<div class="hlp-toc" style="justify-content:center;margin-top:16px">'+toc+'</div></div>';
+    +'<button class="ghost" onclick="openFullGuide()">📖 '+ui.fullguide+'</button></div></div>'
+    +'<div class="helpgrid">'+boxes+'</div></div>';
 }
 
 // ---------- TEACHER DIARY (official format) ----------
