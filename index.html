@@ -1257,7 +1257,7 @@ async function broadcastPush(){ const title=(document.getElementById('bc_title')
   if(!body){ showErr(t('push_need_msg')); return; } const r=await api('POST','/api/push/broadcast',{title,body});
   if(r&&r.error){ showErr(r.error); return; } const box=document.getElementById('pushmsg'); if(box)box.textContent=t('push_sent',{n:(r&&r.sent)||0}); toast(); const bb=document.getElementById('bc_body'); if(bb)bb.value=''; }
 function versionsView(){return `<div class="card" id="versioncard"><h2>${t('versions_title')}</h2><div class="desc">${t('versions_desc')}</div>
-     <div class="row" style="margin-bottom:6px"><input id="vname" placeholder="${t('ph_version_name')}" style="flex:1;min-width:180px"><button class="green" id="saveCurBtn" onclick="saveVersion()">☁ ${t('btn_save_version')}</button><button class="ghost" onclick="saveLocal()">${t('btn_save_local')}</button><button class="ghost" onclick="importLocalVersion()">${t('btn_import_local')}</button></div>
+     <div class="row" style="margin-bottom:6px"><input id="vname" placeholder="${t('ph_version_name')}" style="flex:1;min-width:180px"><button class="green" id="saveCurBtn" onclick="saveVersion()">☁ ${t('btn_save_version').replace(/^\s*(💾|☁)️?\s*/,'')}</button><button class="ghost" onclick="saveLocal()">${t('btn_save_local')}</button><button class="ghost" onclick="importLocalVersion()">${t('btn_import_local')}</button></div>
      <div id="cloudstat" class="small" style="margin:0 0 8px;color:#5c6580;font-weight:600"></div>
      <div class="note" style="margin-bottom:10px;font-size:12.5px">💡 ${t('ver_local_note')}</div>
      <div id="verfilterbox" style="margin-bottom:8px"></div>
@@ -1265,7 +1265,7 @@ function versionsView(){return `<div class="card" id="versioncard"><h2>${t('vers
 async function loadVersions(){const box=document.getElementById('versionbox');if(!box)return;let list;try{list=await api('GET','/api/versions');}catch(e){box.textContent='';return;}
   const all=Array.isArray(list)?list:[];
   const full=all.length>=3;   // cloud/local indicator on the Save button
-  const sb=document.getElementById('saveCurBtn'); if(sb) sb.innerHTML=(full?'💾 ':'☁ ')+t('btn_save_version');
+  const sb=document.getElementById('saveCurBtn'); if(sb) sb.innerHTML=(full?'💾 ':'☁ ')+t('btn_save_version').replace(/^\s*(💾|☁)️?\s*/,'');
   const cs=document.getElementById('cloudstat'); if(cs) cs.textContent=full? t('ver_cloud_full') : t('ver_cloud_room',{n:all.length});
   const terms=[...new Set(all.map(v=>v.term_name||v.session).filter(Boolean))];
   const fb=document.getElementById('verfilterbox');
