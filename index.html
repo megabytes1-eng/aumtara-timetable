@@ -1111,9 +1111,11 @@ function paintBoxes(){
   const v=document.getElementById('view'); if(!v)return;
   v.querySelectorAll(BOXSEL).forEach(el=>{
     if(el.dataset.bx)return;                                            // already handled
-    if(el.classList.contains('card')&&el.parentNode===v){el.dataset.bx='1';return;} // the main page card stays WHITE; only inner boxes get colour
     const st=el.getAttribute('style')||'';
     if(/background/i.test(st)){el.dataset.bx='1';return;}               // keeps its own colour (special cards)
+    const topCard=el.classList.contains('card')&&el.parentNode===v;
+    const rowBox=/(^|\s)(clsrow|subrow|rmrow|sturow|listrow)(\s|$)/.test(el.className);
+    if(topCard||rowBox){el.style.background='#fff';el.dataset.bx='1';return;} // big / container boxes stay WHITE; only the small boxes inside get a colour
     if((el.tagName==='SELECT'||el.tagName==='INPUT')&&el.closest('table'))return; // don't rainbow the timetable grid inputs
     const p=BOXPAL[_bxi++%BOXPAL.length];
     el.style.background=p[0]; el.style.borderColor=p[1]; el.dataset.bx='1';
