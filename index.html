@@ -97,6 +97,20 @@ body.sidenav-off .wrap{max-width:100%;}   /* hide sidebar → content uses the f
 .kpi[onclick]{cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;}
 .kpi[onclick]:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(37,99,235,.13);transform:translateY(-2px);}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
+/* light multi-colour boxes — every top-level card in a view gets a soft pastel (cards with their own inline background keep it) */
+#view>.card:nth-child(6n+1){background:#f2f7ff;border-color:#dbe7fb;}
+#view>.card:nth-child(6n+2){background:#f1fbf4;border-color:#d5efdd;}
+#view>.card:nth-child(6n+3){background:#fffaf1;border-color:#f4e7cb;}
+#view>.card:nth-child(6n+4){background:#fbf4ff;border-color:#ecd9f6;}
+#view>.card:nth-child(6n+5){background:#fff5f5;border-color:#f8dcdc;}
+#view>.card:nth-child(6n+6){background:#f0fbfc;border-color:#d0edf1;}
+.kpi:nth-child(6n+1){background:#eef4ff;border-color:#cdddf5;border-top-color:#2f5fd0;}
+.kpi:nth-child(6n+2){background:#ecfdf3;border-color:#c9eeda;border-top-color:#0e9f6e;}
+.kpi:nth-child(6n+3){background:#fff8ec;border-color:#f4e6c4;border-top-color:#c98a00;}
+.kpi:nth-child(6n+4){background:#f7f0ff;border-color:#e6d7f7;border-top-color:#7030a0;}
+.kpi:nth-child(6n+5){background:#fff1f2;border-color:#f8d7da;border-top-color:#dc4b4b;}
+.kpi:nth-child(6n+6){background:#ecfeff;border-color:#cbeef2;border-top-color:#0e8f9c;}
+@media print{#view>.card{background:#fff!important;}}
 .card h2{margin:0 0 4px;font-size:17px;color:var(--navy);} .card .desc{color:#414a63;font-size:14.5px;line-height:1.5;margin-bottom:14px;font-weight:500;}
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
 label{font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;}
