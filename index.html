@@ -2137,8 +2137,7 @@ function renderQuota(){ const box=document.getElementById('quotabox'); if(!box)r
   let sum=Object.values(q).reduce((a,b)=>a+(+b||0),0);
   box.innerHTML=`<div class="quotagrid">${actSubs().map(s=>`<label class="qcell" title="${s.name}"><span class="qname">${s.name}</span>
      <input type="number" min="0" value="${q[s.id]||0}" onchange="setQuota(${s.id},+this.value)"></label>`).join('')}</div>
-     <div class="qtotal" style="${sum>totalSlots?'color:#991b1b':''}">${t('total_assigned')}: ${t('weekly_slots',{sum,total:totalSlots})}</div>
-     ${sum>totalSlots?'<div class="errmsg">'+t('err_over_slots')+'</div>':''}`;
+     <div class="qtotal" style="${sum>totalSlots?'color:#991b1b':''}">${t('total_assigned')}: ${t('weekly_slots',{sum,total:totalSlots})}${sum>totalSlots?' <span style="font-weight:800">— '+t('err_over_slots')+'</span>':''}</div>`;
 }
 async function setQuota(subject_id,per_week){ await api('PUT','/api/quota',{class_id:curClass,subject_id,per_week}); toast(); await loadQuota(); }
 
