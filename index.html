@@ -195,10 +195,14 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:#eef2fb;padding:4px 8px;border-radius:12px;margin:2px;cursor:pointer;color:#333;} .chk input{margin:0;}
 .wdchk{border:1px solid #d4dcf0;font-weight:600;}
 .hoursCompact .wdchk{font-size:14px;padding:8px 15px;font-weight:700;}
-.wdchk:has(input:checked){background:var(--navy);color:#fff;font-weight:800;border-color:var(--navy);}
-.wdsat{border-color:#d9c9f2;}
-.hoursCompact .wdsat{background:#f3ecfd;color:#5a3ec8;}
-.wdsat:has(input:checked){background:var(--accent);color:#fff;border-color:var(--accent);}
+.wdchk:has(input:checked){font-weight:800;}
+.wd0:has(input:checked){background:#e0f2fe;color:#075985;border-color:#7dd3fc;}
+.wd1:has(input:checked){background:#dcfce7;color:#166534;border-color:#86efac;}
+.wd2:has(input:checked){background:#fef9c3;color:#854d0e;border-color:#fde047;}
+.wd3:has(input:checked){background:#ffedd5;color:#9a3412;border-color:#fdba74;}
+.wd4:has(input:checked){background:#fae8ff;color:#86198f;border-color:#f0abfc;}
+.wd5:has(input:checked){background:#ede9fe;color:#5b21b6;border-color:#c4b5fd;}
+.hoursCompact .wd5{background:#f6f3fe;color:#6d5bb5;}
 .wdgap{display:inline-block;width:20px;}
 .wdlbl{font-weight:700;color:#1F3864;margin-right:4px;}
 .slotbox{border:1px solid #d9e4f5;border-left:5px solid var(--green);background:#f6fbff;border-radius:10px;padding:10px 12px;margin-bottom:10px;}
@@ -1710,7 +1714,7 @@ function hoursTimingsCard(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());co
    <div class="row" style="margin-bottom:14px;align-items:flex-end;gap:12px;flex-wrap:wrap"><div class="desc" style="font-weight:700;color:#1F3864;flex:1 1 210px;min-width:170px;margin:0;align-self:center">${t('hours_desc')}</div><div style="width:200px;max-width:100%"><label>${t('lbl_school_name')}</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div>
      <div style="width:130px"><label>${t('lbl_session')}</label><input style="width:100%" value="${(config.academic_session||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_session')}" onchange="cfg('academic_session',this.value)"></div>
      ${(()=>{const cs=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};return `<div style="display:flex;align-items:flex-end;gap:12px"><div><label>${t('logo_word')}</label><br>${cs.logo?`<img src="${cs.logo}" style="height:44px;max-width:120px;border:1px solid #e2e8f0;border-radius:6px;vertical-align:middle;padding:2px">`:'<span class="small" style="color:#5c6580">'+t('none')+'</span>'}</div>${SCHOOL?`<div><button class="ghost" onclick="pickLogo(${SCHOOL})">${cs.logo?t('logo_change'):t('logo_upload')}</button>${cs.logo?` <button class="ghost red" onclick="removeLogo(${SCHOOL})">${t('logo_remove')}</button>`:''}</div>`:''}</div>`;})()}</div>
-   <div style="margin-bottom:16px;display:flex;align-items:center;flex-wrap:wrap;gap:4px"><span class="wdlbl">${t('lbl_working_days')}</span> ${DAYS.map((d,i)=>`${i===5?'<span class="wdgap"></span>':''}<label class="chk wdchk${i===5?' wdsat':''}"><input type="checkbox" ${wds.has(i)?'checked':''} onchange="toggleWD(${i},this.checked)">${DD()[i]}</label>`).join('')}</div>
+   <div style="margin-bottom:16px;display:flex;align-items:center;flex-wrap:wrap;gap:4px"><span class="wdlbl">${t('lbl_working_days')}</span> ${DAYS.map((d,i)=>`${i===5?'<span class="wdgap"></span>':''}<label class="chk wdchk wd${i}"><input type="checkbox" ${wds.has(i)?'checked':''} onchange="toggleWD(${i},this.checked)">${DD()[i]}</label>`).join('')}</div>
    <div class="row" style="margin-bottom:14px">
      <div><label>${t('lbl_wd_start')}</label><input type="time" value="${config.weekday_start}" onchange="cfg('weekday_start',this.value)"></div>
      <div><label>${t('lbl_wd_end')}</label><input type="time" value="${config.weekday_end}" onchange="cfg('weekday_end',this.value)"></div>
@@ -2061,8 +2065,8 @@ function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=
     slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}const cc=cell(c.id,di,pi);pi++;
       cells+=cc&&cc.subject_id?`<td><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}${cc.room_id?' · '+rName(cc.room_id):''}</div></td>`:`<td class="free">—</td>`;});
     return `<tr>${cells}</tr>`;}).join("");
-  return `<div class="card"><h2>${t('school_title')}</h2><div class="desc">${t('school_desc')}</div>${filterBar()}
-   <div class="row" style="margin-bottom:12px"><div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
+  return `<div class="card"><h2>${t('school_title')}</h2><div class="desc">${t('school_desc')}</div>
+   <div class="row" style="margin-bottom:12px;align-items:flex-end;gap:8px;flex-wrap:wrap">${filterSelectsHTML()}<div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <button class="ghost" onclick="printDoc(t('print_school_title')+' '+DD()[buildDay],'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="dl('/api/export/timetable.xlsx')">${t('excel_all')}</button></div>
    ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
