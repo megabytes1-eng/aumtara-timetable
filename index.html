@@ -1109,7 +1109,8 @@ function render(){
 }
 // Give every box on a page its own soft light colour (cards, KPI tiles, dropdowns & inputs). Boxes that set their own background keep it; timetable-grid cells are left alone.
 const BOXPAL=[['#eef4ff','#cdddf5'],['#eafaf0','#c7ead6'],['#fff7e8','#f3e4bf'],['#f6efff','#e4d4f5'],['#fff0f1','#f7d4d8'],['#eafcff','#c8ebf0'],['#f2fae2','#dbe9bd'],['#fdf0f8','#f4d2e4'],['#eef7ff','#cfe0f5'],['#fef6ec','#f2e0c2']];
-const BOXSEL='.card,.kpi,.qcell,.clsrow,.subrow,.rmrow,.sturow,.listrow,.mon,.note,select,input:not([type=checkbox]):not([type=radio]):not([type=file])';
+const BOXSEL='.card,.kpi,.qcell,.clsrow,.subrow,.rmrow,.sturow,.listrow,.mon,.note,select,input:not([type=checkbox]):not([type=radio]):not([type=file]),button';
+const IOBTN=/printDoc|printAll|printPlain|doImport|doHoursImport|fillTemplate|formatExcel|dl\(/;  // print / all-print / excel / import / upload / download buttons
 let _bxi=0;
 function paintBoxes(){
   const v=document.getElementById('view'); if(!v)return;
@@ -1120,7 +1121,15 @@ function paintBoxes(){
     const topCard=el.classList.contains('card')&&el.parentNode===v;
     if(topCard){
       if(el.classList.contains('htabbar')){el.style.background='#fff';}   // keep the sub-tab bar as a plain white bar
+      else if(el.classList.contains('obcard')){/* keep the Getting-started box visible with its own light frame */}
       else{el.style.background='transparent';el.style.border='none';el.style.padding='0';}  // REMOVE the big page-wrapper card → content goes edge-to-edge (full width, easier one-page layout)
+      el.dataset.bx='1';return;
+    }
+    if(el.tagName==='BUTTON'){                                            // colour the print / excel / import / export / upload / download buttons light; leave other buttons as-is
+      if(IOBTN.test(el.getAttribute('onclick')||'')){
+        const q=BOXPAL[_bxi++%BOXPAL.length];
+        el.style.background=q[0]; el.style.color='#33415c'; el.style.border='1px solid '+q[1];
+      }
       el.dataset.bx='1';return;
     }
     const rowBox=/(^|\s)(clsrow|subrow|rmrow|sturow|listrow)(\s|$)/.test(el.className);
