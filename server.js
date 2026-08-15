@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v5';
+const SW_JS = `const CACHE='aumtara-v6';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -135,6 +135,8 @@ app.post('/api/login', h(async (req,res)=>{
   const idf=String(b.login_id||'').trim();
   const u=await q1('SELECT * FROM tt_user WHERE (lower(login_id)=lower(?) OR lower(email)=lower(?) OR mobile=?) AND active=1 LIMIT 1',[idf,idf,idf]);
   if(!u || !verifyPw(b.password, u.password_hash)){ res.status(401).json({error:'invalid credentials'}); return; }
+  // a deactivated (inactive) school suspends all its users' logins — reactivate from the SaaS panel (platform owner not tied to a school, so unaffected)
+  if(u.school_id){ const sch=await q1('SELECT active FROM tt_school WHERE id=?',[u.school_id]); if(sch && +sch.active===0){ res.status(403).json({error:'This school account is inactive. Please contact the administrator.'}); return; } }
   const token=crypto.randomBytes(24).toString('hex');
   await run('INSERT INTO tt_session(token,user_id,created_at) VALUES(?,?,now()::text)',[token,u.id]);
   res.json({ token, user:{ id:u.id, name:u.name, role:u.role, login_id:u.login_id, school_id:u.school_id } });
@@ -323,7 +325,7 @@ app.post('/api/schools', h(async (req,res)=>{
 app.put('/api/schools/:id', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
   const b=req.body||{}, id=req.params.id;
-  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes'];   // last 6 = SaaS platform-owner fields
+  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes','email','mobile'];   // SaaS/profile fields incl. contact email + mobile
   const set=cols.filter(c=>b[c]!==undefined);
   if(set.length) await run(`UPDATE tt_school SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
   // keep this school's config row in sync for display (school_name/board/medium)

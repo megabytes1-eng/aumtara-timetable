@@ -275,6 +275,8 @@ async function init() {
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS modules_off TEXT`);   // CSV of tab keys disabled for this school
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS contact TEXT`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS notes TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS email TEXT`);    // school contact email (owner + school profile editable)
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS mobile TEXT`);   // school contact mobile
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();
