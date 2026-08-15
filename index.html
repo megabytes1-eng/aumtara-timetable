@@ -286,7 +286,7 @@ const I18N={
   builder_title:'Auto Set',builder_desc:'Subject + teacher + room per class/period. Saved instantly; teacher & room clashes highlighted.',
   th_class_period:'Class \\ Period',opt_free:'— free —',opt_teacher:'teacher…',opt_room:'room…',btn_autogen_all:'⚡ Auto-generate all',warn_teacher:'⚠ teacher:',warn_room:'⚠ room:',
   class_title:'Class Schedule',print_class_title:'Class Timetable —',
-  teacher_title:'Teacher Schedule & Workload',lbl_mark_absent:'Mark absent (day)',opt_none:'— none —',load_word:'Load',max_word:'max',absent:'absent',free:'free',print_teacher_title:'Teacher Timetable',
+  teacher_title:'Teacher Schedule & Workload',lbl_mark_absent:'Mark absent (day)',confirm_mark_absent:'Mark {name} as absent EVERY {day}? They will not be scheduled on {day} (including class-teacher first period). You can undo this by choosing “—”.',confirm_clear_absent:'Remove all absent days for {name}? They become available on every working day again.',opt_none:'— none —',load_word:'Load',max_word:'max',absent:'absent',free:'free',print_teacher_title:'Teacher Timetable',
   school_title:'Whole-School Timetable',school_desc:'All classes for one day, side by side — the master view.',excel_all:'⬇ Excel (all classes)',print_school_title:'Whole-School Timetable —',
   quota_title:'Weekly Quota',quota_desc:'How many periods per week each subject should get for a class. Auto-generate uses this. Leave 0 to let it fill automatically.',rules_title:'Subject rules',rules_desc:'Stop two subjects clashing — keep them off the same day, or stop one coming right after the other. Auto-generate follows these.',rule_not_same_day:'not same day as',rule_not_consec:'not back-to-back with',rule_scope_all:'All classes',rules_none:'No rules yet.',rule_need_two:'Pick two different subjects.',confirm_del_rule:'Delete this rule?',
   th_periods_week:'Periods / week',total_assigned:'Total assigned',weekly_slots:'{sum} / {total} weekly slots',err_over_slots:'Assigned more than available weekly slots — reduce some.',
@@ -2275,7 +2275,12 @@ function teacherView(){const slots0=slotsFor(firstWD());let load=0;
      <button class="ghost" onclick="printDoc(t('print_teacher_title'),'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="printAll('teacher')">🖨 ${t('print_all_teachers')}</button></div>
    ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
-async function setAbsent(t2,v){await api('POST','/api/timetable/absence',{teacher_id:t2,day:v===''?null:+v});toast();await loadAll();}
+async function setAbsent(t2,v){
+  const tn=(teachers.find(x=>x.id===t2)||{}).name||'';
+  // confirm before marking absent (or clearing) — a silent one-click was marking teachers unavailable for a whole weekday
+  if(v!==''){ if(!confirm(t('confirm_mark_absent',{name:tn,day:DD()[+v]}))){ render(); return; } }
+  else { if(!confirm(t('confirm_clear_absent',{name:tn}))){ render(); return; } }
+  await api('POST','/api/timetable/absence',{teacher_id:t2,day:v===''?null:+v});toast();await loadAll();}
 
 // ---------- SCHOOL-WIDE VIEW ----------
 function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slotsFor(di);
