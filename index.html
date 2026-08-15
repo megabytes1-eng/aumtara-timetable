@@ -1435,8 +1435,8 @@ async function ownerSaveSchool(id){const g=x=>document.getElementById(x);const g
   if(r&&r.error){ reset(); showErr(r.error); return; }
   try{SCHOOLS=await api('GET','/api/schools');}catch(e){} refreshModulesOff();
   try{const d=await api('GET','/api/owner/overview'); OWNER.schools=(d&&d.schools)||OWNER.schools;}catch(e){}   // refresh data without nuking the user's scroll position
-  if(btn){btn.disabled=false;btn.style.background='#16a34a';btn.innerHTML='✓ '+t('own_saved');setTimeout(reset,2500);}   // clear visible confirmation on the button
-  toast('✓ '+t('own_saved'));
+  if(btn){btn.disabled=false;btn.style.background='#16a34a';btn.innerHTML=t('own_saved');setTimeout(reset,2500);}   // clear visible confirmation on the button
+  toast(t('own_saved'));
 }
 // deactivate = soft-suspend a school (its users can't log in) — the safe alternative to deleting
 async function ownerToggleActive(id,val){toast(t('please_wait'));const r=await api('PUT','/api/schools/'+id,{active:val});if(r&&r.error){toast(r.error);return;}toast(val?t('own_activate'):t('own_deactivate'));try{SCHOOLS=await api('GET','/api/schools');}catch(e){}refreshModulesOff();await loadOwner();}
