@@ -768,8 +768,6 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     const ctClasses=classes.filter(c=> +c.ct_first_period===1 && c.class_teacher_id);
     if(ctClasses.length){
       const tsub={}; (await q('SELECT id,main_subject_id FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>{ tsub[t.id]=t.main_subject_id; });
-      const manualP1=new Set();   // don't override a manual locked cell already at P1
-      (await q('SELECT class_id,day_of_week,week_index FROM tt_timetable WHERE school_id=? AND period_index=0 AND COALESCE(locked,0)=1 AND COALESCE(ct_pin,0)=0',[sid])).forEach(r=>manualP1.add((r.week_index||0)+'_'+r.class_id+'_'+r.day_of_week));
       const usedAt={};   // 'wk_di_teacher' → a teacher can't take P1 in two classes at once
       for(const c of ctClasses){
         const tId=c.class_teacher_id; const subj=(tsub[tId]!=null && activeSet.has(tsub[tId]))?tsub[tId]:null;   // class teacher's main subject if active, else homeroom (no subject)
@@ -777,9 +775,9 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
           for(const di of dl0){
             if(!teachingSlots(di,sid).length) continue;                 // no P1 that day
             if(absent[tId]&&absent[tId].has(di)) continue;              // class teacher absent that day
-            if(manualP1.has(wk+'_'+c.id+'_'+di)) continue;             // keep an existing manual lock
             const key=wk+'_'+di+'_'+tId; if(usedAt[key]) continue; usedAt[key]=1;   // teacher already pinned elsewhere this slot
-            await run('DELETE FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=0 AND week_index=? AND COALESCE(locked,0)=0',[c.id,di,wk]);   // clear the old (non-locked) cell first — the pin must own this slot (ux_tt_cell is unique per class/day/period/week)
+            // P1=CT is compulsory → the pin OWNS this slot: remove whatever is there (old generated cell OR a manual lock), then place the class teacher
+            await run('DELETE FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=0 AND week_index=?',[c.id,di,wk]);
             await run('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index,locked,ct_pin) VALUES(?,?,0,?,?,NULL,?,?,1,1)',[c.id,di,subj,tId,sid,wk]);
             if(subj!=null){ const kk=wk+'_'+c.id; (ctPinPool[kk]=ctPinPool[kk]||{subj,n:0}).n++; }
           }
