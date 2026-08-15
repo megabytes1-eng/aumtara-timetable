@@ -1416,7 +1416,7 @@ function ownerRenderSchools(){
         <label class="chk"><input type="checkbox" id="os_pd_${s.id}" ${+s.paid!==0?'checked':''}> ${t('own_paid_flag')}</label></div>
       <div style="margin-top:8px"><b class="small">${t('own_modules')}:</b> ${mods}</div>
       <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
-        <button class="green" onclick="ownerSaveSchool(${s.id})">💾 ${t('own_save')}</button>
+        <button class="green" id="ossave_${s.id}" onclick="ownerSaveSchool(${s.id})">💾 ${t('own_save')}</button>
         ${activeOn
           ? `<button class="ghost" onclick="ownerToggleActive(${s.id},0)" style="color:#b3261e;border:1px solid #f3c4c0">⏸ ${t('own_deactivate')}</button>`
           : `<button class="green" onclick="ownerToggleActive(${s.id},1)">▶ ${t('own_activate')}</button>`}
@@ -1425,10 +1425,19 @@ function ownerRenderSchools(){
   box.innerHTML=stats+add+(cards||('<span class="small">'+t('none')+'</span>'));
 }
 async function ownerAddSchool(){const g=id=>document.getElementById(id);const name=(g('os_name').value||'').trim();if(!name){toast(t('schools_need'));return;}toast(t('please_wait'));const r=await api('POST','/api/schools',{name,board:g('os_board').value.trim(),medium:g('os_medium').value.trim()});if(r&&r.error){toast(r.error);return;}toast(t('schools_added'));try{SCHOOLS=await api('GET','/api/schools');}catch(e){}await loadOwner();}
-async function ownerSaveSchool(id){const g=x=>document.getElementById(x);
+async function ownerSaveSchool(id){const g=x=>document.getElementById(x);const gv=x=>{const el=g(x);return el?String(el.value||''):'';};
   const off=OWNER_MODULES.map(m=>m[0]).filter(k=>{const cb=document.querySelector('input[data-sch="'+id+'"][data-mod="'+k+'"]');return cb&&!cb.checked;}).join(',');
-  const patch={name:g('os_nm_'+id).value.trim(),board:g('os_bd_'+id).value.trim(),medium:g('os_md_'+id).value.trim(),email:g('os_em_'+id).value.trim(),mobile:g('os_mo_'+id).value.trim(),price:g('os_pr_'+id).value.trim(),valid_till:g('os_vt_'+id).value,contact:g('os_ct_'+id).value.trim(),paid:g('os_pd_'+id).checked?1:0,modules_off:off};   // active is toggled separately (Activate/Deactivate)
-  toast(t('please_wait'));const r=await api('PUT','/api/schools/'+id,patch);if(r&&r.error){toast(r.error);return;}toast(t('own_saved'));try{SCHOOLS=await api('GET','/api/schools');}catch(e){}refreshModulesOff();await loadOwner();}
+  const patch={name:gv('os_nm_'+id).trim(),board:gv('os_bd_'+id).trim(),medium:gv('os_md_'+id).trim(),email:gv('os_em_'+id).trim(),mobile:gv('os_mo_'+id).trim(),price:gv('os_pr_'+id).trim(),valid_till:gv('os_vt_'+id),contact:gv('os_ct_'+id).trim(),paid:(g('os_pd_'+id)&&g('os_pd_'+id).checked)?1:0,modules_off:off};   // active toggled separately
+  const btn=g('ossave_'+id); const reset=()=>{ if(btn){btn.disabled=false;btn.style.background='';btn.innerHTML='💾 '+t('own_save');} };
+  if(btn){btn.disabled=true;btn.innerHTML='⏳ …';}
+  let r; try{ r=await api('PUT','/api/schools/'+id,patch); }
+  catch(e){ reset(); showErr(t('save_failed')+' — '+((e&&e.message)||e)); return; }
+  if(r&&r.error){ reset(); showErr(r.error); return; }
+  try{SCHOOLS=await api('GET','/api/schools');}catch(e){} refreshModulesOff();
+  try{const d=await api('GET','/api/owner/overview'); OWNER.schools=(d&&d.schools)||OWNER.schools;}catch(e){}   // refresh data without nuking the user's scroll position
+  if(btn){btn.disabled=false;btn.style.background='#16a34a';btn.innerHTML='✓ '+t('own_saved');setTimeout(reset,2500);}   // clear visible confirmation on the button
+  toast('✓ '+t('own_saved'));
+}
 // deactivate = soft-suspend a school (its users can't log in) — the safe alternative to deleting
 async function ownerToggleActive(id,val){toast(t('please_wait'));const r=await api('PUT','/api/schools/'+id,{active:val});if(r&&r.error){toast(r.error);return;}toast(val?t('own_activate'):t('own_deactivate'));try{SCHOOLS=await api('GET','/api/schools');}catch(e){}refreshModulesOff();await loadOwner();}
 async function ownerDelSchool(id,name){if(!confirm(t('schools_confirm_del',{name})))return;toast(t('please_wait'));const r=await api('DELETE','/api/schools/'+id);if(r&&r.error){toast(r.error);return;}toast();try{SCHOOLS=await api('GET','/api/schools');}catch(e){}await loadOwner();}
