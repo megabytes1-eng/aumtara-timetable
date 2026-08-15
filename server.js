@@ -779,6 +779,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
             if(absent[tId]&&absent[tId].has(di)) continue;              // class teacher absent that day
             if(manualP1.has(wk+'_'+c.id+'_'+di)) continue;             // keep an existing manual lock
             const key=wk+'_'+di+'_'+tId; if(usedAt[key]) continue; usedAt[key]=1;   // teacher already pinned elsewhere this slot
+            await run('DELETE FROM tt_timetable WHERE class_id=? AND day_of_week=? AND period_index=0 AND week_index=? AND COALESCE(locked,0)=0',[c.id,di,wk]);   // clear the old (non-locked) cell first — the pin must own this slot (ux_tt_cell is unique per class/day/period/week)
             await run('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index,locked,ct_pin) VALUES(?,?,0,?,?,NULL,?,?,1,1)',[c.id,di,subj,tId,sid,wk]);
             if(subj!=null){ const kk=wk+'_'+c.id; (ctPinPool[kk]=ctPinPool[kk]||{subj,n:0}).n++; }
           }
