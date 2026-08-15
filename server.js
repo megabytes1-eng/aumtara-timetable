@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v8';
+const SW_JS = `const CACHE='aumtara-v9';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -505,7 +505,7 @@ function simpleCrud(route, tbl, cols){
   }));
   app.delete('/api/'+route+'/:id', h(async (req,res)=>{ await run(`DELETE FROM ${tbl} WHERE id=? AND school_id=?`, [req.params.id, req.sid]); res.json({ok:true}); }));
 }
-simpleCrud('classes','tt_class',['name','class_teacher_id','board','medium','standard','section']);
+simpleCrud('classes','tt_class',['name','class_teacher_id','board','medium','standard','section','ct_first_period']);
 simpleCrud('subjects','tt_subject',['name','active','double_period','medium']);
 simpleCrud('rooms','tt_room',['name','capacity']);
 
@@ -759,6 +759,33 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const tmap=await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
   const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
   const absent={}; (await q('SELECT * FROM tt_absence WHERE school_id=?',[sid])).forEach(a=>{(absent[a.teacher_id]=absent[a.teacher_id]||new Set()).add(a.day_of_week);});
+  // ---- CLASS-TEACHER FIRST-PERIOD: for each class with the flag ON + a class teacher, pin P1 (period 0) of every working day to that teacher (their main subject) as a locked cell ----
+  const ctPinPool={};   // 'wk_cid' -> {subj,n} : how many P1 pins used the class teacher's subject (subtract from that class's quota pool so totals stay correct)
+  {
+    const dl0=workingDaysArr(sid);
+    const cw0=rotMode(sid)?1:Math.max(1,Math.min(4,parseInt((getConfig(sid)||{}).cycle_weeks,10)||1));
+    await run('DELETE FROM tt_timetable WHERE school_id=? AND COALESCE(ct_pin,0)=1',[sid]);   // rebuild pins fresh each generate (unchecked classes → no pin)
+    const ctClasses=classes.filter(c=> +c.ct_first_period===1 && c.class_teacher_id);
+    if(ctClasses.length){
+      const tsub={}; (await q('SELECT id,main_subject_id FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>{ tsub[t.id]=t.main_subject_id; });
+      const manualP1=new Set();   // don't override a manual locked cell already at P1
+      (await q('SELECT class_id,day_of_week,week_index FROM tt_timetable WHERE school_id=? AND period_index=0 AND COALESCE(locked,0)=1 AND COALESCE(ct_pin,0)=0',[sid])).forEach(r=>manualP1.add((r.week_index||0)+'_'+r.class_id+'_'+r.day_of_week));
+      const usedAt={};   // 'wk_di_teacher' → a teacher can't take P1 in two classes at once
+      for(const c of ctClasses){
+        const tId=c.class_teacher_id; const subj=(tsub[tId]!=null && activeSet.has(tsub[tId]))?tsub[tId]:null;   // class teacher's main subject if active, else homeroom (no subject)
+        for(let wk=0; wk<cw0; wk++){
+          for(const di of dl0){
+            if(!teachingSlots(di,sid).length) continue;                 // no P1 that day
+            if(absent[tId]&&absent[tId].has(di)) continue;              // class teacher absent that day
+            if(manualP1.has(wk+'_'+c.id+'_'+di)) continue;             // keep an existing manual lock
+            const key=wk+'_'+di+'_'+tId; if(usedAt[key]) continue; usedAt[key]=1;   // teacher already pinned elsewhere this slot
+            await run('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index,locked,ct_pin) VALUES(?,?,0,?,?,NULL,?,?,1,1)',[c.id,di,subj,tId,sid,wk]);
+            if(subj!=null){ const kk=wk+'_'+c.id; (ctPinPool[kk]=ctPinPool[kk]||{subj,n:0}).n++; }
+          }
+        }
+      }
+    }
+  }
   // locked/pinned cells — preserved as-is; generator never schedules over them, avoids their teacher/room, and pre-counts their teacher load
   const lockedRows = await q('SELECT class_id,day_of_week,period_index,week_index,teacher_id,room_id FROM tt_timetable WHERE school_id=? AND COALESCE(locked,0)=1',[sid]);
   const lockSlot=new Set(); const lockUseAt={}; const lockLoadWk={}; const seenLoad=new Set();
@@ -849,7 +876,9 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const toInsert=[];
   for(let wk=0; wk<cycleWeeks; wk++){                       // generate each week of the cycle independently
     clearState();
-    classes.forEach(c=>{ remaining[c.id]=shuffleStable(poolFor(c.id,totalSlots), c.id + wk*1009).slice(); });   // vary shuffle per week so weeks differ
+    classes.forEach(c=>{ let pool=shuffleStable(poolFor(c.id,totalSlots), c.id + wk*1009).slice();   // vary shuffle per week so weeks differ
+      const pp=ctPinPool[wk+'_'+c.id]; if(pp){ let n=pp.n; for(let i=pool.length-1;i>=0 && n>0;i--){ if(pool[i]===pp.subj){ pool.splice(i,1); n--; } } }   // the class-teacher P1 pins already cover n of this subject → drop from pool so quota total is exact
+      remaining[c.id]=pool; });
     (lockLoadWk[wk]||[]).forEach(x=>{ load[x.t]=(load[x.t]||0)+1; dayCount[x.t+'_'+x.di]=(dayCount[x.t+'_'+x.di]||0)+1; });   // count locked teacher load up front
     const weekRows=[]; const carry={};
     dayList.forEach(di=>{

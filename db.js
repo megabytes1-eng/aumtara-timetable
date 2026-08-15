@@ -277,6 +277,9 @@ async function init() {
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS notes TEXT`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS email TEXT`);    // school contact email (owner + school profile editable)
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS mobile TEXT`);   // school contact mobile
+  // Class-teacher first-period rule: per-class flag + a marker on the auto-created P1 pin cells
+  await run(`ALTER TABLE tt_class ADD COLUMN IF NOT EXISTS ct_first_period INTEGER DEFAULT 0`);
+  await run(`ALTER TABLE tt_timetable ADD COLUMN IF NOT EXISTS ct_pin INTEGER DEFAULT 0`);
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();
