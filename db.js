@@ -263,6 +263,18 @@ async function init() {
   // school_id on every per-school data table + on users
   for (const tbl of ['tt_class','tt_subject','tt_teacher','tt_room','tt_quota','tt_chapter','tt_absence','tt_substitution','tt_diary','tt_timetable','tt_snapshot','tt_user'])
     await run(`ALTER TABLE ${tbl} ADD COLUMN IF NOT EXISTS school_id INTEGER`);
+  // ===================== SaaS PLATFORM-OWNER (super-admin) =====================
+  // one platform owner account manages all schools' pricing / modules / users
+  await run(`ALTER TABLE tt_user ADD COLUMN IF NOT EXISTS is_owner INTEGER DEFAULT 0`);
+  // mark the original seeded admin as the platform owner (only if none is set yet)
+  await run(`UPDATE tt_user SET is_owner=1 WHERE id=(SELECT MIN(id) FROM tt_user WHERE role='master') AND NOT EXISTS (SELECT 1 FROM tt_user WHERE is_owner=1)`);
+  // per-school SaaS fields: price + paid/unpaid + validity + disabled-modules CSV + contact/notes
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS price TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS paid INTEGER DEFAULT 1`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS valid_till TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS modules_off TEXT`);   // CSV of tab keys disabled for this school
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS contact TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS notes TEXT`);
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();

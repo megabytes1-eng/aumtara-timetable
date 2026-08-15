@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v4';
+const SW_JS = `const CACHE='aumtara-v5';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -127,7 +127,7 @@ async function currentUser(req){
   if(!tok) return null;
   const s = await q1('SELECT user_id FROM tt_session WHERE token=?',[tok]);
   if(!s) return null;
-  return await q1('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,school_id FROM tt_user WHERE id=? AND active=1',[s.user_id]);
+  return await q1('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,school_id,is_owner FROM tt_user WHERE id=? AND active=1',[s.user_id]);
 }
 // public: sign in — identifier can be login_id OR email OR mobile
 app.post('/api/login', h(async (req,res)=>{
@@ -323,7 +323,7 @@ app.post('/api/schools', h(async (req,res)=>{
 app.put('/api/schools/:id', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
   const b=req.body||{}, id=req.params.id;
-  const cols=['name','board','medium','active','logo'];
+  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes'];   // last 6 = SaaS platform-owner fields
   const set=cols.filter(c=>b[c]!==undefined);
   if(set.length) await run(`UPDATE tt_school SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
   // keep this school's config row in sync for display (school_name/board/medium)
@@ -397,6 +397,29 @@ app.delete('/api/users/:id', h(async (req,res)=>{
   await run('DELETE FROM tt_session WHERE user_id=?',[req.params.id]);
   await run('DELETE FROM tt_user WHERE id=?',[req.params.id]);
   res.json({ ok:true });
+}));
+
+// ===================== PLATFORM OWNER (SaaS super-admin) — cross-school stats & logs =====================
+function requireOwner(req,res){ if(!req.user||!req.user.is_owner){ res.status(403).json({error:'platform owner only'}); return false; } return true; }
+// per-school overview: schools + counts (users/teachers/classes) + 7-day activity + last-seen
+app.get('/api/owner/overview', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const schools=await q('SELECT * FROM tt_school ORDER BY id');
+  const mapN=(rows)=>{ const m={}; rows.forEach(r=>{ m[r.school_id]=r.n; }); return m; };
+  const users=mapN(await q('SELECT school_id, COUNT(*)::int n FROM tt_user GROUP BY school_id'));
+  const teachers=mapN(await q('SELECT school_id, COUNT(*)::int n FROM tt_teacher GROUP BY school_id'));
+  const classes=mapN(await q('SELECT school_id, COUNT(*)::int n FROM tt_class GROUP BY school_id'));
+  const ev7=mapN(await q("SELECT school_id, COUNT(*)::int n FROM tt_event WHERE ts > now() - interval '7 days' GROUP BY school_id"));
+  const last={}; (await q('SELECT school_id, MAX(ts) t FROM tt_event GROUP BY school_id')).forEach(r=>{ last[r.school_id]=r.t; });
+  res.json({ schools: schools.map(s=>({ ...s, users:users[s.id]||0, teachers:teachers[s.id]||0, classes:classes[s.id]||0, events7:ev7[s.id]||0, last_activity:last[s.id]||null })) });
+}));
+// cross-school activity log (recent events joined with user + school name)
+app.get('/api/owner/logs', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const lim=Math.min(500, Math.max(1, parseInt(req.query.limit,10)||150));
+  const sc=req.query.school_id?Number(req.query.school_id):null;
+  const rows= sc
+    ? await q(`SELECT e.id,e.school_id,e.name,e.path,e.ts,s.name school_name,u.login_id,u.name user_name FROM tt_event e LEFT JOIN tt_school s ON s.id=e.school_id LEFT JOIN tt_user u ON u.id=e.user_id WHERE e.school_id=? ORDER BY e.id DESC LIMIT ?`,[sc,lim])
+    : await q(`SELECT e.id,e.school_id,e.name,e.path,e.ts,s.name school_name,u.login_id,u.name user_name FROM tt_event e LEFT JOIN tt_school s ON s.id=e.school_id LEFT JOIN tt_user u ON u.id=e.user_id ORDER BY e.id DESC LIMIT ?`,[lim]);
+  res.json(rows);
 }));
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat'];
