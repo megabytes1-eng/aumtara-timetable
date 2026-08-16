@@ -326,6 +326,7 @@
     <div id="signupBox" style="display:none">
       <div class="pay-opt" style="border-color:var(--purple)">
         <h4>🔑 Create your login</h4>
+        <p class="mini" style="margin:0 0 8px">Access opens once we verify your payment — you’ll create your ID &amp; password now and sign in after activation.</p>
         <div class="field" style="margin-bottom:8px"><input id="su_school" placeholder="School name *"></div>
         <div class="field" style="margin-bottom:8px"><input id="su_name" placeholder="Your name *"></div>
         <div class="field" style="margin-bottom:8px"><input id="su_login" placeholder="Login ID (username) *" autocomplete="username"></div>
@@ -456,8 +457,19 @@
     if(!school||!login||!pw){ msg(m,'School, login ID and password are required.','err'); return; }
     if(pw.length<6){ msg(m,'Password must be at least 6 characters.','err'); return; }
     msg(m,'Creating your account…','ok');
-    api('POST','/api/signup',{school_name:school,name:name||login,username:login,password:pw,email:g('su_email'),mobile:g('su_mobile'),plan:CURPLAN}).then(function(r){
+    api('POST','/api/signup',{school_name:school,name:name||login,username:login,password:pw,email:g('su_email'),mobile:g('su_mobile'),plan:CURPLAN,pending:true}).then(function(r){
       if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not create account.','err'); return; }
+      if(r.data && r.data.pending){
+        // access stays locked until the owner verifies payment & activates the school
+        document.getElementById('signupBox').innerHTML =
+          '<div class="pay-opt" style="border-color:var(--ok);background:#f0fdf4">'
+          +'<h4>✅ Account created — please wait</h4>'
+          +'<p class="mini" style="margin:0 0 6px">Your login <b>'+esc(login)+'</b> is ready. Access will open <b>once we confirm your payment</b> — usually shortly.</p>'
+          +'<p class="mini" style="margin:0">You’ll be able to sign in from the top-right <b>Sign in</b> button after your school is activated. If it says “account inactive”, your payment is still being verified.</p>'
+          +'</div>';
+        return;
+      }
+      // fallback (non-pending): open the app signed in
       try{ localStorage.setItem('tt_token', r.data.token); if(r.data.user&&r.data.user.school_id!=null) localStorage.setItem('tt_school', String(r.data.user.school_id)); }catch(e){}
       msg(m,'✓ Account created! Opening your dashboard…','ok');
       setTimeout(function(){ location.href='/'; }, 800);

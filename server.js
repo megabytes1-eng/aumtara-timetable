@@ -159,11 +159,19 @@ app.post('/api/signup', h(async (req,res)=>{
   if(mobile && await q1('SELECT 1 FROM tt_user WHERE mobile=?',[mobile])){ res.status(400).json({error:'mobile already registered'}); return; }
   const board=String(b.board||'').trim()||null;
   const medium=String(b.medium||'').trim()||null;
-  // each signup creates its own school + config + admin account for it
-  const sch=await q1('INSERT INTO tt_school(name,board,medium,active,created_at) VALUES(?,?,?,1,now()::text) RETURNING id',[school,board,medium]);
+  // pending=true (paid signups from the landing page): create the school INACTIVE — no app access until the owner verifies payment & activates it from the SaaS panel.
+  const pending = b.pending===true || b.pending==='true' || b.pending===1;
+  const sch=await q1('INSERT INTO tt_school(name,board,medium,active,created_at) VALUES(?,?,?,?,now()::text) RETURNING id',[school,board,medium, pending?0:1]);
   await seedConfigForSchool(sch.id, school, board, medium);
   const row=await q1(`INSERT INTO tt_user(name,role,login_id,email,mobile,password_hash,active,created_at,school_id)
      VALUES(?,?,?,?,?,?,1,now()::text,?) RETURNING id`, [b.name||username,'admin',username,email,mobile,hashPw(password),sch.id]);
+  if(pending){
+    // leave the school inactive; log a pending-payment entry so the owner sees it in the Sales panel
+    try{ await run('INSERT INTO tt_enquiry(name,school,phone,email,plan,message,handled,ts) VALUES(?,?,?,?,?,?,0,now()::text)',
+      [b.name||username, school, mobile||null, email||null, String(b.plan||'').trim()||null, 'Paid signup — pending verification. Activate school #'+sch.id+' in the SaaS panel after confirming payment.']); }catch(e){}
+    res.json({ pending:true, login_id:username, school_id:sch.id });
+    return;
+  }
   const token=crypto.randomBytes(24).toString('hex');
   await run('INSERT INTO tt_session(token,user_id,created_at) VALUES(?,?,now()::text)',[token,row.id]);
   res.json({ token, user:{ id:row.id, name:b.name||username, role:'admin', login_id:username, school_id:sch.id } });
