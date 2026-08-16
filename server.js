@@ -174,6 +174,30 @@ app.post('/api/logout', h(async (req,res)=>{
   if(tok) await run('DELETE FROM tt_session WHERE token=?',[tok]);
   res.json({ ok:true });
 }));
+// public: buy / payment settings (only NON-secret values — a Razorpay *page link* URL, UPI id, WhatsApp no., contact email). Used by the landing-page Buy modal.
+app.get('/api/pay-settings', h(async (req,res)=>{
+  let s={}; try{ const raw=await getMeta('pay_settings'); s=raw?JSON.parse(raw):{}; }catch(_){ s={}; }
+  res.json({
+    gateway_url: s.gateway_url||'',
+    upi_id: s.upi_id||'',
+    whatsapp: s.whatsapp||'',
+    contact_email: s.contact_email||'',
+    payee_name: s.payee_name||'Aumtara Timetable',
+    enable_gateway: s.enable_gateway===0?0:1,
+    enable_upi: s.enable_upi===0?0:1,
+    enable_enquiry: s.enable_enquiry===0?0:1,
+    note: s.note||''
+  });
+}));
+// public: submit a buy enquiry (name + phone required); the owner sees these in the control panel
+app.post('/api/enquiry', h(async (req,res)=>{
+  const b=req.body||{};
+  const name=String(b.name||'').trim(), phone=String(b.phone||'').trim();
+  if(!name||!phone){ res.status(400).json({error:'name and phone are required'}); return; }
+  await run('INSERT INTO tt_enquiry(name,school,phone,plan,message,handled,ts) VALUES(?,?,?,?,?,0,now()::text)',
+    [name, String(b.school||'').trim()||null, phone, String(b.plan||'').trim()||null, String(b.message||'').trim()||null]);
+  res.json({ ok:true });
+}));
 // gate: every other /api route requires a valid session
 app.use('/api', (req,res,next)=>{
   currentUser(req).then(u=>{ if(!u){ res.status(401).json({error:'auth required'}); return; } req.user=u; next(); })
@@ -429,6 +453,31 @@ app.get('/api/owner/logs', h(async (req,res)=>{ if(!requireOwner(req,res)) retur
     ? await q(`SELECT e.id,e.school_id,e.name,e.path,e.ts,s.name school_name,u.login_id,u.name user_name FROM tt_event e LEFT JOIN tt_school s ON s.id=e.school_id LEFT JOIN tt_user u ON u.id=e.user_id WHERE e.school_id=? ORDER BY e.id DESC LIMIT ?`,[sc,lim])
     : await q(`SELECT e.id,e.school_id,e.name,e.path,e.ts,s.name school_name,u.login_id,u.name user_name FROM tt_event e LEFT JOIN tt_school s ON s.id=e.school_id LEFT JOIN tt_user u ON u.id=e.user_id ORDER BY e.id DESC LIMIT ?`,[lim]);
   res.json(rows);
+}));
+// owner-only: update buy / payment settings
+app.put('/api/pay-settings', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const b=req.body||{};
+  const s={
+    gateway_url:String(b.gateway_url||'').trim(),
+    upi_id:String(b.upi_id||'').trim(),
+    whatsapp:String(b.whatsapp||'').trim().replace(/[^\d+]/g,''),
+    contact_email:String(b.contact_email||'').trim(),
+    payee_name:String(b.payee_name||'').trim()||'Aumtara Timetable',
+    enable_gateway:b.enable_gateway?1:0,
+    enable_upi:b.enable_upi?1:0,
+    enable_enquiry:b.enable_enquiry?1:0,
+    note:String(b.note||'').trim()
+  };
+  await setMeta('pay_settings', JSON.stringify(s));
+  res.json({ ok:true, settings:s });
+}));
+// owner-only: list buy enquiries + mark handled
+app.get('/api/enquiries', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  res.json(await q('SELECT id,name,school,phone,plan,message,handled,ts FROM tt_enquiry ORDER BY id DESC LIMIT 200'));
+}));
+app.put('/api/enquiry/:id', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  await run('UPDATE tt_enquiry SET handled=? WHERE id=?',[req.body&&req.body.handled?1:0, Number(req.params.id)]);
+  res.json({ ok:true });
 }));
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat'];
