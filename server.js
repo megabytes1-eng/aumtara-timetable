@@ -31,11 +31,15 @@ async function sendToSubs(subs, payload){
 }
 
 const app = express();
+// CORS — lets the standalone launch/landing page (hosted on any domain) drive the API (login + owner control panel).
+// Tokens are bearer (not cookies), so a wildcard origin exposes nothing beyond what a token-holder can already do.
+app.use((req,res,next)=>{ res.header('Access-Control-Allow-Origin','*'); res.header('Access-Control-Allow-Headers','Authorization, Content-Type, X-School-Id'); res.header('Access-Control-Allow-Methods','GET, POST, PUT, DELETE, OPTIONS'); if(req.method==='OPTIONS') return res.sendStatus(204); next(); });
 app.use(express.json({ limit: '8mb' }));   // logos (base64 data-URLs) can exceed the 100kb default
 // Serve the single-page frontend. index.html lives next to server.js (flat layout
 // so the repo uploads cleanly to GitHub's web uploader, which can't preserve subfolders).
 // index.html is fully self-contained (inline CSS/JS), so no other static assets are needed.
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/launch', (_, res) => res.sendFile(path.join(__dirname, 'launch.html')));   // public marketing landing + dedicated owner control panel
 
 // ---------- PWA (installable web app: manifest + service worker + icons) ----------
 const MANIFEST = {

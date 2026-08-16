@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aumtara Timetable — Smart Timetable & School Management SaaS</title>
+<meta name="description" content="Clash-free timetables, DEO & Gujarat Patrak reports, smart substitute AI, and one owner dashboard to run every school.">
+<style>
+  :root{--navy:#1F3864;--purple:#5a3ec8;--ink:#141b2e;--muted:#5c6580;--line:#e6e9f5;--bg:#f7f8fc;--card:#fff;--ok:#16a34a;--red:#c0392b;--amber:#c98a1f}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+  .btn{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:10px;padding:12px 20px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;text-decoration:none}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:linear-gradient(135deg,#5a3ec8,#7c3aed);color:#fff;box-shadow:0 6px 18px rgba(90,62,200,.28)}
+  .btn-primary:hover{filter:brightness(1.06)}
+  .btn-ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--purple);color:var(--purple)}
+  .btn-lg{padding:15px 26px;font-size:16px}
+  .btn-sm{padding:7px 12px;font-size:13px;border-radius:8px}
+  /* nav */
+  nav{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.86);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;gap:16px;height:64px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;color:var(--navy)}
+  .logo .mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#1F3864,#5a3ec8);color:#fff;display:grid;place-items:center;font-size:18px}
+  .nav-links{display:flex;gap:22px;margin-left:14px;font-size:14.5px;font-weight:600;color:var(--muted)}
+  .nav-links a:hover{color:var(--purple)}
+  .nav-cta{margin-left:auto;display:flex;gap:10px;align-items:center}
+  @media(max-width:820px){.nav-links{display:none}}
+  /* hero */
+  .hero{position:relative;overflow:hidden;padding:70px 0 40px;background:radial-gradient(1200px 500px at 80% -10%,#efeafc 0,transparent 60%),radial-gradient(900px 500px at 0% 0%,#e8f0ff 0,transparent 55%)}
+  .badge{display:inline-flex;gap:7px;align-items:center;background:#efeafc;color:var(--purple);font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px;margin-bottom:16px}
+  h1{font-size:clamp(30px,5vw,50px);line-height:1.08;margin:0 0 16px;letter-spacing:-.5px;color:var(--navy)}
+  h1 .g{background:linear-gradient(135deg,#5a3ec8,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{font-size:18px;color:var(--muted);max-width:620px;margin:0 0 26px}
+  .hero-cta{display:flex;gap:12px;flex-wrap:wrap}
+  .hero-note{margin-top:14px;font-size:13px;color:var(--muted)}
+  .stats{display:flex;gap:34px;flex-wrap:wrap;margin-top:40px;padding-top:26px;border-top:1px solid var(--line)}
+  .stat b{display:block;font-size:26px;color:var(--navy)}
+  .stat span{font-size:13px;color:var(--muted)}
+  /* sections */
+  section{padding:56px 0}
+  .eyebrow{text-align:center;color:var(--purple);font-weight:800;letter-spacing:.6px;font-size:13px;text-transform:uppercase}
+  h2{font-size:clamp(24px,3.4vw,34px);text-align:center;color:var(--navy);margin:8px 0 8px;letter-spacing:-.3px}
+  .sub{text-align:center;color:var(--muted);max-width:640px;margin:0 auto 34px;font-size:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .feat .ic{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;font-size:22px;background:#f2f0fd;margin-bottom:12px}
+  .feat h3{margin:0 0 6px;font-size:16.5px;color:var(--navy)}
+  .feat p{margin:0;font-size:14px;color:var(--muted)}
+  /* control band */
+  .band{background:linear-gradient(135deg,#1F3864,#3b2a7a);color:#fff;border-radius:20px;padding:38px;display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:center}
+  @media(max-width:800px){.band{grid-template-columns:1fr;padding:26px}}
+  .band h2{text-align:left;color:#fff;margin-top:0}
+  .band .sub{text-align:left;color:#cdd4ee;margin:0 0 18px}
+  .band ul{list-style:none;padding:0;margin:0 0 20px;display:grid;gap:9px}
+  .band li{display:flex;gap:9px;font-size:15px;color:#eef1fb}
+  .band li b{color:#a9f0c9}
+  .mock{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:16px}
+  .mock .row{display:flex;justify-content:space-between;align-items:center;padding:9px 11px;border-radius:9px;background:rgba(255,255,255,.06);margin-bottom:8px;font-size:13.5px}
+  .mock .pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+  .pill.paid{background:#173d2a;color:#7ff0b4}.pill.due{background:#4a1f22;color:#ffb4b4}.pill.on{background:#1e3a5f;color:#9cc6ff}
+  /* pricing */
+  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;max-width:960px;margin:0 auto}
+  .plan{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:26px;display:flex;flex-direction:column}
+  .plan.hot{border-color:var(--purple);box-shadow:0 12px 30px rgba(90,62,200,.15);position:relative}
+  .plan.hot .tag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--purple);color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px}
+  .plan h3{margin:0 0 4px;color:var(--navy);font-size:19px}
+  .plan .price{font-size:34px;font-weight:800;color:var(--navy);margin:6px 0}
+  .plan .price span{font-size:14px;font-weight:600;color:var(--muted)}
+  .plan .desc{font-size:13.5px;color:var(--muted);margin-bottom:14px}
+  .plan ul{list-style:none;padding:0;margin:0 0 20px;display:grid;gap:9px;font-size:14px}
+  .plan ul li:before{content:"✓";color:var(--ok);font-weight:800;margin-right:8px}
+  .plan .btn{margin-top:auto;justify-content:center}
+  .price-note{text-align:center;color:var(--muted);font-size:13px;margin-top:16px}
+  /* faq */
+  .faq{max-width:760px;margin:0 auto;display:grid;gap:10px}
+  details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 18px}
+  summary{cursor:pointer;font-weight:700;color:var(--navy);padding:14px 0;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary:after{content:"+";float:right;color:var(--purple);font-size:20px}
+  details[open] summary:after{content:"–"}
+  details p{margin:0 0 14px;color:var(--muted);font-size:14.5px}
+  /* cta */
+  .cta-band{background:linear-gradient(135deg,#5a3ec8,#7c3aed);border-radius:20px;padding:44px;text-align:center;color:#fff}
+  .cta-band h2{color:#fff}
+  .cta-band .sub{color:#e7e2fb}
+  /* footer */
+  footer{border-top:1px solid var(--line);padding:34px 0;color:var(--muted);font-size:14px}
+  footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+  /* ===== OWNER CONTROL PANEL (separate, clean) ===== */
+  #panel{display:none;min-height:100vh;background:#eef1f8}
+  .p-head{background:linear-gradient(135deg,#1F3864,#3b2a7a);color:#fff;padding:14px 0}
+  .p-head .wrap{display:flex;align-items:center;gap:14px}
+  .p-head .logo{color:#fff}.p-head .mark{background:rgba(255,255,255,.16)}
+  .p-head .who{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .kpi b{display:block;font-size:26px;color:var(--navy)}.kpi span{font-size:12.5px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);font-size:13.5px}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  input,select{font-family:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;outline:none;background:#fff}
+  input:focus,select:focus{border-color:var(--purple)}
+  .field{display:flex;flex-direction:column;gap:4px}.field label{font-size:12px;color:var(--muted);font-weight:600}
+  .toggle{cursor:pointer;font-weight:700;font-size:12px;padding:4px 10px;border-radius:999px;border:none}
+  .t-paid{background:#dcfce7;color:#166534}.t-due{background:#fee2e2;color:#991b1b}
+  .t-on{background:#dbeafe;color:#1e40af}.t-off{background:#f1f5f9;color:#64748b}
+  .msg{padding:10px 12px;border-radius:9px;font-size:13.5px;margin-top:10px;display:none}
+  .msg.err{background:#fef2f2;color:#991b1b;display:block}.msg.ok{background:#f0fdf4;color:#166534;display:block}
+  .login-box{max-width:380px;margin:8vh auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px}
+  .login-box h2{text-align:left;font-size:22px;margin:0 0 4px}
+  .login-box .sub{text-align:left;margin:0 0 18px}
+  .del{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px}
+  .backlink{color:#cdd4ee;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- ================= SITE ================= -->
+<div id="site">
+  <nav><div class="wrap">
+    <div class="logo"><span class="mark">🕘</span> Aumtara Timetable</div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#control">Control Panel</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost btn-sm" href="#" onclick="return openPanel()">🔐 Owner Login</a>
+      <a class="btn btn-primary btn-sm" href="#" id="cta_signin">Sign in</a>
+    </div>
+  </div></nav>
+
+  <header class="hero"><div class="wrap">
+    <span class="badge">🚀 Now launching · School Timetable SaaS</span>
+    <h1>Clash-free timetables.<br><span class="g">DEO-ready reports.</span> One dashboard for every school.</h1>
+    <p class="lead">Aumtara Timetable builds a conflict-free schedule in one click, generates Gujarat Patrak & DEO inspection reports automatically, finds the smartest substitute when a teacher is absent — and lets you run many schools from a single owner control panel.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary btn-lg" href="#" id="cta_start">Start free — create your school</a>
+      <a class="btn btn-ghost btn-lg" href="#" onclick="return openPanel()">Owner Control Panel →</a>
+    </div>
+    <div class="hero-note">✓ Runs on any phone or PC · installs as an app · works offline · 12 languages</div>
+    <div class="stats">
+      <div class="stat"><b>1-click</b><span>Auto timetable generation</span></div>
+      <div class="stat"><b>11+</b><span>DEO / Gujarat Patrak formats</span></div>
+      <div class="stat"><b>4-tier</b><span>Smart substitute matching</span></div>
+      <div class="stat"><b>∞</b><span>Multi-school from one login</span></div>
+    </div>
+  </div></header>
+
+  <section id="features"><div class="wrap">
+    <div class="eyebrow">Everything a school needs</div>
+    <h2>One app, the whole timetable workflow</h2>
+    <p class="sub">From setup to inspection-ready reports — built for CBSE, GSEB and State-board schools.</p>
+    <div class="grid">
+      <div class="feat"><div class="ic">⚡</div><h3>Auto timetable generator</h3><p>Clash-free schedules honouring quota, teacher load, rooms, availability and rules — generated in one click, editable by hand.</p></div>
+      <div class="feat"><div class="ic">🏛</div><h3>DEO & Gujarat Patrak reports</h3><p>Patrak A/B/K (Primary / Secondary / Higher-Sec) plus Format 1–5 inspection registers — Print/PDF & Excel, auto-filled.</p></div>
+      <div class="feat"><div class="ic">🔄</div><h3>Smart substitute finder</h3><p>When a teacher is absent, free teachers are ranked by subject match — same subject → secondary → backup → general — with a best-match hint.</p></div>
+      <div class="feat"><div class="ic">👩‍🏫</div><h3>Multi-subject teachers</h3><p>Each teacher can teach 2–3 subjects in priority order; auto-generate fills their 1st subject first. Staffing-gap panel flags risky subjects.</p></div>
+      <div class="feat"><div class="ic">🔔</div><h3>Push notifications</h3><p>Free announcements straight to any installed device — no SMS cost, no phone number needed.</p></div>
+      <div class="feat"><div class="ic">🏫</div><h3>Multi-school control</h3><p>Add schools, set pricing, switch modules on/off, mark paid/unpaid, suspend or activate — from one owner dashboard.</p></div>
+      <div class="feat"><div class="ic">📓</div><h3>Teacher diary & bell timings</h3><p>Daily/monthly teaching register, chapters, and a printable Daily Bell Timings notice auto-built from your hours.</p></div>
+      <div class="feat"><div class="ic">📥</div><h3>Import / Export Excel</h3><p>Bulk-load classes, subjects, teachers and rooms from a template; export any report to Excel.</p></div>
+      <div class="feat"><div class="ic">🌐</div><h3>12 languages · PWA</h3><p>English, ગુજરાતી, हिन्दी and 9 more. Installs to the home screen and works offline for viewing.</p></div>
+    </div>
+  </div></section>
+
+  <section id="control"><div class="wrap">
+    <div class="band">
+      <div>
+        <div class="eyebrow" style="text-align:left;color:#c9b8ff">Owner Control Panel</div>
+        <h2>Run every school from one screen</h2>
+        <p class="sub">A dedicated platform-owner dashboard — separate and clean, kept out of the day-to-day school app so nothing gets mixed up.</p>
+        <ul>
+          <li><b>➕</b> Add / remove schools with contact & board details</li>
+          <li><b>💳</b> Set a price and mark each school Paid / Unpaid</li>
+          <li><b>🟢</b> Activate or suspend a school (suspends its logins)</li>
+          <li><b>🧩</b> Turn modules on/off per school</li>
+          <li><b>📊</b> Live counts (users, teachers, classes) + 7-day activity</li>
+          <li><b>🧾</b> Cross-school activity log</li>
+        </ul>
+        <a class="btn btn-primary" href="#" onclick="return openPanel()">🔐 Open Owner Control Panel</a>
+      </div>
+      <div class="mock" aria-hidden="true">
+        <div class="row"><span>🏫 R. N. Naik High School</span><span class="pill paid">PAID</span></div>
+        <div class="row"><span>🏫 Apex International</span><span class="pill on">ACTIVE</span></div>
+        <div class="row"><span>🏫 Auro Vidyalaya</span><span class="pill due">DUE</span></div>
+        <div class="row" style="background:transparent;justify-content:space-between;font-size:12px;color:#b9c2e6;margin-top:10px"><span>Schools 12 · Users 84</span><span>7-day activity ▲</span></div>
+      </div>
+    </div>
+  </div></section>
+
+  <section id="pricing" style="background:#fff"><div class="wrap">
+    <div class="eyebrow">Simple pricing</div>
+    <h2>Pick a plan per school</h2>
+    <p class="sub">Sample plans below — final rates are yours to set. Start free and add schools as you grow.</p>
+    <div class="plans">
+      <div class="plan">
+        <h3>Starter</h3>
+        <div class="price">Free<span> / trial</span></div>
+        <div class="desc">1 school · try everything</div>
+        <ul><li>Full timetable + auto-generate</li><li>All reports & exports</li><li>Push notifications</li><li>Up to a few teachers</li></ul>
+        <a class="btn btn-ghost" href="#" id="cta_free">Start free</a>
+      </div>
+      <div class="plan hot">
+        <span class="tag">Most popular</span>
+        <h3>School</h3>
+        <div class="price">₹999<span> / school / yr</span></div>
+        <div class="desc">One full school, unlimited teachers</div>
+        <ul><li>Everything in Starter</li><li>DEO & Gujarat Patrak reports</li><li>Smart substitute engine</li><li>Priority support</li></ul>
+        <a class="btn btn-primary" href="#" id="cta_school">Get started</a>
+      </div>
+      <div class="plan">
+        <h3>Group / SaaS</h3>
+        <div class="price">Custom</div>
+        <div class="desc">Many schools · owner control panel</div>
+        <ul><li>Multi-school dashboard</li><li>Per-school pricing & modules</li><li>Activity logs</li><li>Onboarding help</li></ul>
+        <a class="btn btn-ghost" href="#" id="cta_contact">Contact us</a>
+      </div>
+    </div>
+    <div class="price-note">₹ figures are placeholders — tell me your real rates and I'll set them.</div>
+  </div></section>
+
+  <section id="faq"><div class="wrap">
+    <div class="eyebrow">Questions</div>
+    <h2>Frequently asked</h2>
+    <div class="faq">
+      <details><summary>Do I need to install anything?</summary><p>No. It runs in any browser and installs as an app (PWA) on phones and laptops. Once installed it works offline for viewing.</p></details>
+      <details><summary>Can it make Gujarat DEO / Patrak reports?</summary><p>Yes — Patrak A/B/K for Primary, Secondary and Higher-Secondary, plus five inspection registers, in Gujarati and English, ready to print or download as Excel.</p></details>
+      <details><summary>How does the substitute finder work?</summary><p>When a teacher is absent, it lists free teachers ranked by subject match — same subject first, then secondary, then backup, then anyone available — so you assign the best cover in seconds.</p></details>
+      <details><summary>Can I run more than one school?</summary><p>Yes. The owner control panel lets you add unlimited schools, set each one's price, mark paid/unpaid, activate/suspend, and see activity — all from one login.</p></details>
+      <details><summary>Which languages are supported?</summary><p>Twelve, including English, ગુજરાતી and हिन्दी.</p></details>
+    </div>
+  </div></section>
+
+  <section><div class="wrap">
+    <div class="cta-band">
+      <h2>Ready to launch your school online?</h2>
+      <p class="sub">Create your school account free — the first timetable takes minutes.</p>
+      <a class="btn btn-ghost btn-lg" href="#" id="cta_bottom" style="background:#fff;color:#5a3ec8">Start free →</a>
+    </div>
+  </div></section>
+
+  <footer><div class="wrap">
+    <div class="logo"><span class="mark">🕘</span> Aumtara Timetable</div>
+    <div>Contact: <a href="mailto:mannmehta2502@gmail.com" style="color:var(--purple);font-weight:600">mannmehta2502@gmail.com</a></div>
+    <div>© <span id="yr"></span> Aumtara · School Timetable SaaS</div>
+  </div></footer>
+</div>
+
+<!-- ================= OWNER CONTROL PANEL ================= -->
+<div id="panel">
+  <div class="p-head"><div class="wrap">
+    <div class="logo"><span class="mark">🔐</span> Aumtara — Owner Control</div>
+    <div class="who">
+      <span class="backlink" onclick="closePanel()">← Back to site</span>
+      <span id="whoami" style="display:none"></span>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn" style="display:none" onclick="ownerLogout()">Logout</button>
+    </div>
+  </div></div>
+
+  <!-- login -->
+  <div id="loginView"><div class="login-box">
+    <h2>Owner sign in</h2>
+    <p class="sub">Platform-owner login only. This manages all schools, pricing and access.</p>
+    <div class="field" style="margin-bottom:12px"><label>Login ID / email / mobile</label><input id="oLogin" autocomplete="username"></div>
+    <div class="field" style="margin-bottom:16px"><label>Password</label><input id="oPass" type="password" autocomplete="current-password"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="ownerLogin()">Sign in</button>
+    <div id="loginMsg" class="msg"></div>
+  </div></div>
+
+  <!-- dashboard -->
+  <div id="dashView" style="display:none"><div class="wrap" style="padding:22px 20px">
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card">
+      <b style="color:var(--navy)">➕ Add a school</b>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:10px">
+        <div class="field"><label>School name *</label><input id="ns_name"></div>
+        <div class="field"><label>Board</label><input id="ns_board" placeholder="GSEB / CBSE"></div>
+        <div class="field"><label>Medium</label><input id="ns_medium" placeholder="Gujarati / English"></div>
+        <div class="field"><label>Mobile</label><input id="ns_mobile"></div>
+        <div class="field"><label>Email</label><input id="ns_email" type="email"></div>
+        <div class="field" style="justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="addSchool()">Add school</button></div>
+      </div>
+      <div id="addMsg" class="msg"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b style="color:var(--navy)">🏫 Schools</b>
+        <button class="btn btn-ghost btn-sm" onclick="loadOwner()">↻ Refresh</button>
+      </div>
+      <div style="overflow:auto"><table id="schoolTbl"><thead><tr>
+        <th>School</th><th>Board · Medium</th><th>Users / Tch / Cls</th><th>Price</th><th>Payment</th><th>Status</th><th>7-day</th><th></th>
+      </tr></thead><tbody id="schoolBody"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <b style="color:var(--navy)">🧾 Recent activity</b>
+      <div style="overflow:auto;max-height:340px;margin-top:8px"><table><thead><tr><th>When</th><th>School</th><th>User</th><th>Action</th></tr></thead><tbody id="logBody"></tbody></table></div>
+    </div>
+  </div></div>
+</div>
+
+<script>
+  var APP = "https://aumtara-timetable.onrender.com";   // live Aumtara backend
+  var TOKEN = null, SCHOOLS = [];
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  // route all sign-up / sign-in CTAs to the app
+  ['cta_signin','cta_start','cta_free','cta_school','cta_bottom'].forEach(function(id){var e=document.getElementById(id);if(e)e.href=APP;});
+  document.getElementById('cta_contact').href='mailto:mannmehta2502@gmail.com?subject=Aumtara%20Timetable%20SaaS';
+
+  function openPanel(){ document.getElementById('site').style.display='none'; document.getElementById('panel').style.display='block'; window.scrollTo(0,0); if(!TOKEN){document.getElementById('oLogin').focus();} return false; }
+  function closePanel(){ document.getElementById('panel').style.display='none'; document.getElementById('site').style.display='block'; return false; }
+
+  function api(method, pathq, body){
+    var h={'Content-Type':'application/json'}; if(TOKEN) h['Authorization']='Bearer '+TOKEN;
+    return fetch(APP+pathq,{method:method,headers:h,body:body?JSON.stringify(body):undefined}).then(function(r){
+      return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,status:r.status,data:j}; });
+    });
+  }
+  function msg(el,text,kind){ el.className='msg '+(kind||'ok'); el.textContent=text; }
+
+  function ownerLogin(){
+    var id=document.getElementById('oLogin').value.trim(), pw=document.getElementById('oPass').value;
+    var m=document.getElementById('loginMsg');
+    if(!id||!pw){ msg(m,'Enter login and password.','err'); return; }
+    msg(m,'Signing in…','ok');
+    api('POST','/api/login',{login_id:id,password:pw}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Invalid credentials.','err'); return; }
+      TOKEN=r.data.token;
+      // confirm this login is the platform owner
+      return api('GET','/api/owner/overview').then(function(o){
+        if(o.status===403){ TOKEN=null; msg(m,'This login is not the platform owner. Use the owner account.','err'); return; }
+        if(!o.ok){ TOKEN=null; msg(m,'Could not load control panel.','err'); return; }
+        document.getElementById('loginView').style.display='none';
+        document.getElementById('dashView').style.display='block';
+        var w=document.getElementById('whoami'); w.style.display='inline'; w.textContent='👤 '+(r.data.user&&r.data.user.login_id||'owner');
+        document.getElementById('logoutBtn').style.display='inline-flex';
+        renderOwner(o.data);
+      });
+    }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
+  }
+  function ownerLogout(){ TOKEN=null; SCHOOLS=[]; document.getElementById('dashView').style.display='none'; document.getElementById('loginView').style.display='block'; document.getElementById('whoami').style.display='none'; document.getElementById('logoutBtn').style.display='none'; document.getElementById('oPass').value=''; }
+
+  function loadOwner(){ api('GET','/api/owner/overview').then(function(o){ if(o.ok) renderOwner(o.data); }); api('GET','/api/owner/logs?limit=60').then(function(o){ if(o.ok) renderLogs(o.data); }); }
+  function renderOwner(d){
+    SCHOOLS = d.schools||[];
+    var paid=SCHOOLS.filter(function(s){return +s.paid!==0;}).length;
+    var users=SCHOOLS.reduce(function(a,s){return a+(s.users||0);},0);
+    var act=SCHOOLS.filter(function(s){return (s.events7||0)>0;}).length;
+    var K=[['Schools',SCHOOLS.length],['Paid',paid],['Unpaid',SCHOOLS.length-paid],['Total users',users],['Active (7d)',act]];
+    document.getElementById('kpis').innerHTML=K.map(function(k){return '<div class="kpi"><b>'+k[1]+'</b><span>'+k[0]+'</span></div>';}).join('');
+    document.getElementById('schoolBody').innerHTML=SCHOOLS.map(function(s){ var esc=function(x){return String(x==null?'':x).replace(/</g,'&lt;');};
+      var paidP = +s.paid!==0 ? '<button class="toggle t-paid" onclick="setPaid('+s.id+',0)">✓ Paid</button>' : '<button class="toggle t-due" onclick="setPaid('+s.id+',1)">● Unpaid</button>';
+      var actP  = +s.active!==0 ? '<button class="toggle t-on" onclick="setActive('+s.id+',0)">🟢 Active</button>' : '<button class="toggle t-off" onclick="setActive('+s.id+',1)">⏸ Suspended</button>';
+      return '<tr><td><b>'+esc(s.name)+'</b></td><td>'+esc([s.board,s.medium].filter(Boolean).join(' · ')||'—')+'</td>'+
+        '<td>'+(s.users||0)+' / '+(s.teachers||0)+' / '+(s.classes||0)+'</td>'+
+        '<td><input style="width:78px" value="'+esc(s.price==null?'':s.price)+'" onchange="setPrice('+s.id+',this.value)"></td>'+
+        '<td>'+paidP+'</td><td>'+actP+'</td><td>'+(s.events7||0)+'</td>'+
+        '<td><button class="del" title="Delete school" onclick="delSchool('+s.id+',\''+esc(s.name).replace(/\x27/g,"")+'\')">🗑</button></td></tr>';
+    }).join('') || '<tr><td colspan="8" style="color:var(--muted)">No schools yet — add one above.</td></tr>';
+    api('GET','/api/owner/logs?limit=60').then(function(o){ if(o.ok) renderLogs(o.data); });
+  }
+  function renderLogs(rows){
+    document.getElementById('logBody').innerHTML=(rows||[]).slice(0,60).map(function(e){ var esc=function(x){return String(x==null?'':x).replace(/</g,'&lt;');};
+      var when=(e.ts||'').replace('T',' ').slice(0,16);
+      return '<tr><td>'+when+'</td><td>'+esc(e.school_name||'—')+'</td><td>'+esc(e.user_name||e.login_id||'—')+'</td><td>'+esc(e.name||'')+'</td></tr>';
+    }).join('') || '<tr><td colspan="4" style="color:var(--muted)">No activity yet.</td></tr>';
+  }
+
+  function setPrice(id,v){ api('PUT','/api/schools/'+id,{price:v||null}); }
+  function setPaid(id,v){ api('PUT','/api/schools/'+id,{paid:v}).then(loadOwner); }
+  function setActive(id,v){ api('PUT','/api/schools/'+id,{active:v}).then(loadOwner); }
+  function delSchool(id,name){ if(!confirm('Delete "'+name+'" and all its data? This cannot be undone.')) return; api('DELETE','/api/schools/'+id,null).then(loadOwner); }
+  function addSchool(){
+    var g=function(x){return document.getElementById(x).value.trim();};
+    var m=document.getElementById('addMsg'), name=g('ns_name');
+    if(!name){ msg(m,'School name is required.','err'); return; }
+    msg(m,'Adding…','ok');
+    api('POST','/api/schools',{name:name,board:g('ns_board'),medium:g('ns_medium'),mobile:g('ns_mobile'),email:g('ns_email')}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not add school.','err'); return; }
+      msg(m,'✓ Added.','ok'); ['ns_name','ns_board','ns_medium','ns_mobile','ns_email'].forEach(function(x){document.getElementById(x).value='';});
+      loadOwner();
+    });
+  }
+  // deep-link: /launch#owner opens the panel
+  if(location.hash==='#owner'||location.hash==='#control-panel'){ openPanel(); }
+</script>
+</body>
+</html>
