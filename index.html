@@ -1759,14 +1759,13 @@ function _deoDocOpen(titleMain,titleSub,innerHTML,warnGen){
    'table{border-collapse:collapse;width:100%;margin-top:6px}th,td{border:1px solid #888;padding:4px 6px;font-size:11px;text-align:center;vertical-align:middle}th{background:#1F3864;color:#fff}.lft{text-align:left}.grp{background:#eef2ff;font-weight:700}.tot{background:#f6f7fb;font-weight:700}'+
    '.warn{color:#c0392b;font-weight:600;margin:6px 0;text-align:center}.note{font-size:11px;color:#333;margin:10px 2px}'+
    '.sig{display:flex;justify-content:space-between;margin-top:38px;font-size:12px;text-align:center}.sig .box{width:44%}.sig .line{border-top:1px solid #333;margin-top:30px;padding-top:3px}.cap{font-size:10px;color:#666}</style>';
-  const officer=H.officer_name?(' — '+esc(H.officer_name)):'';
   const html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(H.school_name||titleMain)+'</title>'+css+'</head><body><div class="wrap">'+
     '<div class="mast"><div class="sch">'+esc(H.school_name||'')+'</div>'+
       (subMeta?'<div class="sub2">'+subMeta+'</div>':'')+'</div>'+
     '<div class="title">'+titleMain+'</div>'+(titleSub?'<div class="tsub">'+titleSub+'</div>':'')+warn+
     innerHTML+
     '<div class="sig"><div class="box"><div class="line">'+esc(t('deo_sign_principal'))+'</div><div class="cap">'+esc(t('deo_seal_school'))+'</div></div>'+
-      '<div class="box"><div class="line">'+esc(t('deo_sign_deo'))+officer+'</div><div class="cap">'+esc(t('deo_seal_gov'))+'</div></div></div>'+
+      '<div class="box"><div class="line">'+esc(t('deo_sign_deo'))+'</div><div class="cap">'+esc(t('deo_seal_gov'))+'</div></div></div>'+
     '</div></body></html>';
   const w=window.open('','_blank'); if(!w){ toast(t('bell_popup')); return; }
   w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>{try{w.print();}catch(e){}},400);

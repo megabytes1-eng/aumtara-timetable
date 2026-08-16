@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v16';
+const SW_JS = `const CACHE='aumtara-v17';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -2236,7 +2236,7 @@ function _deoXlTable(ws, startRow, headers, rows, widths){
   return r;
 }
 function _deoSig(ws, r, officer){ r+=2; ws.getCell('A'+r).value='__________________________'; ws.getCell('E'+r).value='__________________________'; r++;
-  ws.getCell('A'+r).value='Signature of School Principal'; ws.getCell('E'+r).value='Signature of District Education Officer (DEO)'+(officer?(' — '+officer):''); r++;
+  ws.getCell('A'+r).value='Signature of School Principal'; ws.getCell('E'+r).value='Signature of District Education Officer (DEO)'; r++;
   ws.getCell('A'+r).value='Institutional Stamp & Seal'; ws.getCell('E'+r).value='Government Department Verification Seal'; return r; }
 function _secLabel(key){ return key==='hsec'?'Higher Secondary Section':(key==='pri'?'Primary Section':'Secondary Section'); }
 function buildDeoSheet(wb, d, fmt){
