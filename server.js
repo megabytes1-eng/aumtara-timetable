@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v10';
+const SW_JS = `const CACHE='aumtara-v11';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -2060,6 +2060,45 @@ function parseHoursSheet(ws){
     short_break_after: breakRows.length?[...new Set(breakRows.map(afterCount))].sort((a,b)=>a-b).join(','):'',
     short_break_minutes: breakRows.length?Math.max(1,breakRows[0].e-breakRows[0].s):0 };
 }
+// Printable/exportable "Daily Bell Timings" notice — period start/end times computed from Academic Hours (weekday + Saturday)
+app.get('/api/export/bell-timings.xlsx', h(async (req,res)=>{
+  const sid=req.sid; const cfg=getConfig(sid)||{};
+  const school=(await q1('SELECT name,board,medium FROM tt_school WHERE id=?',[sid]))||{};
+  const clip=(s,n)=>String(s==null?'':s).slice(0,n);
+  const title=clip(req.query.title,80)||'DAILY BELL TIMINGS';
+  const wef=clip(req.query.wef,20), issue=clip(req.query.issue,20), sign=clip(req.query.sign,60)||'Principal', notes=clip(req.query.notes,1200);
+  const mins=(a,b)=>{ try{ const x=a.split(':').map(Number),y=b.split(':').map(Number); return (y[0]*60+y[1])-(x[0]*60+x[1]); }catch(e){ return ''; } };
+  const wb=new ExcelJS.Workbook(); wb.creator='Aumtara';
+  const ws=wb.addWorksheet('Bell Timings'); ws.columns=[{width:24},{width:14},{width:12},{width:12}];
+  let r=1; const bd={bottom:{style:'thin'},top:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
+  const merge=(txt,font,center)=>{ const c=ws.getCell('A'+r); c.value=txt; if(font)c.font=font; c.alignment={horizontal:center?'center':'left'}; ws.mergeCells('A'+r+':D'+r); r++; };
+  merge(cfg.school_name||school.name||'', {bold:true,size:14,color:{argb:'FF1F3864'}});
+  if(school.board||school.medium) merge([school.board,school.medium].filter(Boolean).join(' · '), {size:10,color:{argb:'FF666666'}});
+  merge(title, {bold:true,size:12}, true);
+  if(wef) merge('With effect from: '+wef, {size:11});
+  r++;
+  const addTable=(dayIdx,label)=>{
+    const slots=slotsForDay(dayIdx,sid); if(!slots.length)return;
+    merge(label, {bold:true,color:{argb:'FF1F3864'}});
+    const hr=ws.getRow(r); hr.values=['Period / Event','Duration','From','To'];
+    hr.eachCell(c=>{ c.font={bold:true,color:{argb:'FFFFFFFF'}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}}; c.alignment={horizontal:'center'}; c.border=bd; }); r++;
+    slots.forEach(s=>{ const nm=s.is_break?(s.kind==='lunch'?'Lunch':'Break'):('Period '+(s.index+1)); const row=ws.getRow(r);
+      row.values=[nm, mins(s.start,s.end)+' min', s.start, s.end];
+      row.eachCell(c=>{ c.border=bd; c.alignment={horizontal:'center'}; }); row.getCell(1).alignment={horizontal:'left'};
+      if(s.is_break) row.eachCell(c=>{ c.font={italic:true,color:{argb:'FF666666'}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF3F4F6'}}; });
+      r++; });
+    r++;
+  };
+  const wdFirst=workingDaysArr(sid).find(d=>d!==5);
+  if(wdFirst!=null) addTable(wdFirst,'Weekdays');
+  if(workingDaysArr(sid).includes(5)) addTable(5,'Saturday');
+  if(notes){ merge('Notes:', {bold:true}); notes.split('\n').filter(x=>x.trim()).forEach(n=>merge('• '+n.trim())); r++; }
+  merge('Date of issue: '+(issue||''));
+  merge('Signature: '+sign);
+  res.setHeader('Content-Disposition','attachment; filename=bell-timings.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
 app.get('/api/export/hours-template.xlsx', h(async (_,res)=>{
   const wb=new ExcelJS.Workbook();
   const mk=(name,rows)=>{ const w=wb.addWorksheet(name); w.addRow(['Label','Start','End']); styleHeader(w.getRow(1));
