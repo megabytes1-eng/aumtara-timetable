@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v19';
+const SW_JS = `const CACHE='aumtara-v20';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -325,7 +325,7 @@ app.post('/api/schools', h(async (req,res)=>{
 app.put('/api/schools/:id', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
   const b=req.body||{}, id=req.params.id;
-  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes','email','mobile','udise','district','deo_reg_code','deo_inspection_ref','deo_officer_name','deo_max_load'];   // SaaS/profile + DEO header fields
+  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes','email','mobile','udise','district','deo_reg_code','deo_inspection_ref','deo_officer_name','deo_max_load','address','school_code'];   // SaaS/profile + DEO header fields
   const set=cols.filter(c=>b[c]!==undefined);
   if(set.length) await run(`UPDATE tt_school SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
   // keep this school's config row in sync for display (school_name/board/medium)
@@ -2140,7 +2140,7 @@ async function deoPack(sid){
   const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
   const cells=await q('SELECT class_id,subject_id,teacher_id,room_id,day_of_week,period_index FROM tt_timetable WHERE school_id=? AND week_index=0',[sid]);
   const tchById={}; teachers.forEach(t=>tchById[t.id]=t);
-  const header={ school_name:cfg.school_name||sch.name||'', board:sch.board||'', medium:sch.medium||'', udise:sch.udise||'', district:sch.district||'', session:cfg.academic_session||'', reg_code:sch.deo_reg_code||'', inspection_ref:sch.deo_inspection_ref||'', officer_name:sch.deo_officer_name||'' };
+  const header={ school_name:cfg.school_name||sch.name||'', address:sch.address||'', school_code:sch.school_code||'', board:sch.board||'', medium:sch.medium||'', udise:sch.udise||'', district:sch.district||'', email:sch.email||'', mobile:sch.mobile||'', session:cfg.academic_session||'', reg_code:sch.deo_reg_code||'', inspection_ref:sch.deo_inspection_ref||'', officer_name:sch.deo_officer_name||'' };
   const generated=cells.some(c=>c.subject_id);
 
   const secClasses={pri:[],sec:[],hsec:[]};
@@ -2223,8 +2223,11 @@ function _deoXlHead(ws, d, lastCol, title, subtitle){
   let r=1; const merge=(txt,font,center)=>{ const c=ws.getCell('A'+r); c.value=txt; if(font)c.font=font; c.alignment={horizontal:center?'center':'left'}; ws.mergeCells('A'+r+':'+lastCol+r); r++; };
   const H=d.header;
   merge(H.school_name||'', {bold:true,size:14,color:{argb:'FF1F3864'}}, true);
-  const meta=[H.udise&&('UDISE: '+H.udise),H.district&&('Dist/Taluka: '+H.district),H.board,H.medium,H.session&&('A.Y. '+H.session)].filter(Boolean).join('   ·   ');
+  if(H.address) merge(H.address, {size:9,color:{argb:'FF555555'}}, true);
+  const meta=[H.school_code&&('Code: '+H.school_code),H.udise&&('UDISE: '+H.udise),H.district&&('Dist/Taluka: '+H.district),H.board,H.medium,H.session&&('A.Y. '+H.session)].filter(Boolean).join('   ·   ');
   if(meta) merge(meta, {size:9,color:{argb:'FF555555'}}, true);
+  const contact=[H.mobile&&('Mob: '+H.mobile),H.email&&('Email: '+H.email)].filter(Boolean).join('   ·   ');
+  if(contact) merge(contact, {size:9,color:{argb:'FF555555'}}, true);
   merge(title, {bold:true,size:12}, true); if(subtitle) merge(subtitle,{size:10,color:{argb:'FF444444'}},true);
   r++; return r;
 }

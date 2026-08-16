@@ -290,6 +290,8 @@ async function init() {
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS deo_inspection_ref TEXT`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS deo_officer_name TEXT`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS deo_max_load INTEGER`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS address TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS school_code TEXT`);
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();
