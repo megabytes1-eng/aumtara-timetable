@@ -1539,9 +1539,9 @@ async function loadSchools(){try{SCH_LIST=await api('GET','/api/schools');}catch
 function schoolsView(){return `<div class="card"><h2>${t('schools_title')}</h2><div class="desc">${t('schools_desc')}</div><div id="schoolsbox">…</div></div>
    <div class="card"><h2>${t('schools_add')}</h2>
      <div class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end">
-       <div><label>${t('su_school')}</label><input id="ns_name" style="width:190px"></div>
-       <div><label>${t('su_board')}</label><select id="ns_board"><option value="">—</option>${BOARDS.map(b=>`<option value="${b}">${b}</option>`).join('')}</select></div>
-       <div><label>${t('su_medium')}</label><select id="ns_medium"><option value="">—</option>${MEDIUMS.map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div>
+       <div style="flex:1 1 260px;min-width:220px"><label>${t('su_school')}</label><input id="ns_name" style="width:100%"></div>
+       <div><label>${t('su_board')}</label><select id="ns_board" style="width:120px"><option value="">—</option>${BOARDS.map(b=>`<option value="${b}">${b}</option>`).join('')}</select></div>
+       <div><label>${t('su_medium')}</label><select id="ns_medium" style="width:120px"><option value="">—</option>${MEDIUMS.map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div>
        <div style="flex:1 1 240px;min-width:200px"><label>${t('deo_address')}</label><input id="ns_address" style="width:100%" placeholder="${t('deo_address_ph')}"></div>
        <div><label>${t('deo_school_code')}</label><input id="ns_code" style="width:120px"></div>
        <div><label>${t('lbl_mobile')}</label><input id="ns_mobile" style="width:130px"></div>
