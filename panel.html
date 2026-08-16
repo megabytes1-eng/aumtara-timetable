@@ -48,6 +48,11 @@
   .g-indigo{background:linear-gradient(135deg,#5a3ec8,#7c3aed)}
   .g-violet{background:linear-gradient(135deg,#7c3aed,#a855f7)}
   .g-slate{background:linear-gradient(135deg,#475569,#64748b)}
+  .g-red{background:linear-gradient(135deg,#dc2626,#ef4444)}
+  .g-orange{background:linear-gradient(135deg,#ea580c,#fb923c)}
+  .ex-red{color:#c0392b;font-weight:700}.ex-amber{color:#b45309;font-weight:700}.ex-ok{color:#16a34a}
+  .renew-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .renew-item .rn{font-weight:700;color:var(--navy);min-width:180px}
   /* method chips */
   .methods{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 4px}
   .method{position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px 12px 18px;min-width:130px;overflow:hidden;box-shadow:0 3px 10px rgba(20,27,46,.05)}
@@ -132,6 +137,10 @@
       </div>
       <div class="methods" id="methodBreak"></div>
       <hr>
+      <h3 class="head">🔔 Renewals due</h3>
+      <p class="sub">Schools expiring within 30 days or already expired. Click Renew to add one year.</p>
+      <div id="renewals"></div>
+      <hr>
       <h3 class="head">Recent payments</h3>
       <div style="overflow:auto"><table><thead><tr><th>When</th><th>School</th><th>Amount</th><th>Method</th><th>Note</th></tr></thead><tbody id="recentPay"></tbody></table></div>
     </div>
@@ -142,7 +151,7 @@
       <p class="sub">Paid signups arrive <b>Suspended</b> — confirm the payment reached you, then press <b>Activate</b>. Click <b>Open</b> to sign into any school and inspect its setup for support.</p>
       <div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button></div>
       <div style="overflow:auto"><table><thead><tr>
-        <th>School</th><th>Board · Medium</th><th>U / T / C</th><th>Price ₹</th><th>Payment</th><th>Status</th><th>Actions</th>
+        <th>School</th><th>Board · Medium</th><th>U / T / C</th><th>Price ₹</th><th>Payment</th><th>Status</th><th>Expiry / valid till</th><th>Actions</th>
       </tr></thead><tbody id="schoolBody"></tbody></table></div>
       <hr>
       <h3 class="head">Add a school manually</h3>
@@ -166,7 +175,7 @@
         <div class="field"><label>Amount ₹ *</label><input id="pm_amount" type="number" min="0" step="1"></div>
         <div class="field"><label>Method</label><select id="pm_method"><option value="upi">UPI</option><option value="online">Online (card / netbanking)</option><option value="card">Card</option><option value="cash">Cash</option><option value="other">Other</option></select></div>
         <div class="field"><label>Note</label><input id="pm_note" placeholder="txn id / reference"></div>
-        <div class="field" style="justify-content:flex-end"><label class="mini" style="margin-bottom:8px"><input type="checkbox" id="pm_markpaid" checked style="width:auto;margin-right:6px">Mark school Paid</label><button class="btn btn-primary btn-sm" onclick="recordPay()">Record payment</button></div>
+        <div class="field" style="justify-content:flex-end"><label class="mini" style="margin-bottom:6px"><input type="checkbox" id="pm_markpaid" checked style="width:auto;margin-right:6px">Mark school Paid</label><label class="mini" style="margin-bottom:8px"><input type="checkbox" id="pm_renew" checked style="width:auto;margin-right:6px">Renew +1 year</label><button class="btn btn-primary btn-sm" onclick="recordPay()">Record payment</button></div>
       </div>
       <div id="pmMsg" class="msg"></div>
       <hr>
@@ -264,28 +273,52 @@
     var pend=SCHOOLS.filter(function(s){return +s.active===0;}).length;
     var paid=SCHOOLS.filter(function(s){return +s.paid!==0;}).length;
     var users=SCHOOLS.reduce(function(a,s){return a+(s.users||0);},0);
-    document.getElementById('kpis').innerHTML=[['🏫','Schools',SCHOOLS.length,'g-purple'],['🟢','Active',SCHOOLS.length-pend,'g-green'],['⏳','Pending',pend,'g-amber'],['💰','Paid',paid,'g-blue'],['⚠️','Unpaid',SCHOOLS.length-paid,'g-pink'],['👥','Total users',users,'g-teal']]
+    var soon=0, expd=0;
+    SCHOOLS.forEach(function(s){ var e=expiryInfo(s.valid_till); if(e.days==null) return; if(e.days<0) expd++; else if(e.days<=30) soon++; });
+    document.getElementById('kpis').innerHTML=[['🏫','Schools',SCHOOLS.length,'g-purple'],['🟢','Active',SCHOOLS.length-pend,'g-green'],['⏳','Pending',pend,'g-amber'],['💰','Paid',paid,'g-blue'],['⚠️','Unpaid',SCHOOLS.length-paid,'g-pink'],['👥','Total users',users,'g-teal'],['📆','Expiring ≤30d',soon,'g-orange'],['⛔','Expired',expd,'g-red']]
       .map(function(k){return '<div class="kpi '+k[3]+'"><div class="ic">'+k[0]+'</div><b>'+k[2]+'</b><span>'+k[1]+'</span></div>';}).join('');
     document.getElementById('schoolBody').innerHTML=SCHOOLS.map(function(s){
       var paidP=+s.paid!==0?'<button class="toggle t-paid" onclick="setField('+s.id+',\'paid\',0,\'Marked unpaid\')">✓ Paid</button>':'<button class="toggle t-due" onclick="setField('+s.id+',\'paid\',1,\'Marked paid\')">● Unpaid</button>';
       var actP=+s.active!==0?'<button class="toggle t-on" onclick="setField('+s.id+',\'active\',0,\'Suspended\')">🟢 Active</button>':'<button class="toggle t-off" onclick="setField('+s.id+',\'active\',1,\'Activated\')">▶ Activate</button>';
-      var nm=esc(String(s.name)).replace(/\x27/g,'');
+      var nm=esc(String(s.name)).replace(/\x27/g,''); var ei=expiryInfo(s.valid_till);
       return '<tr'+(+s.active===0?' class="pending"':'')+'><td><b>'+esc(s.name)+'</b>'+(+s.active===0?'<span class="badge">pending</span>':'')+'</td>'+
         '<td>'+esc([s.board,s.medium].filter(Boolean).join(' · ')||'—')+'</td>'+
         '<td>'+(s.users||0)+' / '+(s.teachers||0)+' / '+(s.classes||0)+'</td>'+
         '<td><input style="width:74px" value="'+esc(s.price==null?'':s.price)+'" onchange="setPrice('+s.id+',this.value)"></td>'+
         '<td>'+paidP+'</td><td>'+actP+'</td>'+
-        '<td><div class="rowact"><button class="link" onclick="openSchool('+s.id+',\''+nm+'\')">Open</button>'+
+        '<td><input type="date" style="width:150px" value="'+esc(s.valid_till||'')+'" onchange="setExpiry('+s.id+',this.value)"><div class="mini '+ei.cls+'">'+ei.label+'</div></td>'+
+        '<td><div class="rowact"><button class="link" onclick="renew('+s.id+')">Renew +1yr</button>'+
+        '<button class="link" onclick="openSchool('+s.id+',\''+nm+'\')">Open</button>'+
         '<button class="link" onclick="payFor('+s.id+')">Record ₹</button>'+
         '<button class="link" onclick="resetPw('+s.id+',\''+nm+'\')">Reset pw</button>'+
         '<button class="del" title="Delete" onclick="delSchool('+s.id+',\''+nm+'\')">🗑</button></div></td></tr>';
-    }).join('') || '<tr><td colspan="7" class="mini">No schools yet.</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="mini">No schools yet.</td></tr>';
+    renderRenewals();
     // fill payment-form school dropdown
     var sel=document.getElementById('pm_school');
     if(sel) sel.innerHTML=SCHOOLS.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+'</option>';}).join('');
   }
   function setPrice(id,v){ api('PUT','/api/schools/'+id,{price:v||null}).then(function(r){ toast(r.ok?'Price saved':'Could not save'); }); }
   function setField(id,f,v,label){ var o={}; o[f]=v; api('PUT','/api/schools/'+id,o).then(function(r){ if(r.ok){ toast('✓ '+label); loadAll(); } else { toast('Could not update'); } }); }
+  // ---------- EXPIRY / RENEWALS ----------
+  function expiryInfo(v){ if(!v) return {days:null,label:'no date',cls:''}; var t=new Date(); t.setHours(0,0,0,0); var d=new Date(v); if(isNaN(d)) return {days:null,label:'',cls:''}; var days=Math.ceil((d-t)/86400000);
+    if(days<0) return {days:days,label:'expired '+(-days)+'d ago',cls:'ex-red'};
+    if(days<=30) return {days:days,label:days+' days left',cls:'ex-amber'};
+    return {days:days,label:days+' days left',cls:'ex-ok'}; }
+  function addYear(fromStr){ var t=new Date(); t.setHours(0,0,0,0); var d=fromStr?new Date(fromStr):null; if(!d||isNaN(d)||d<t) d=new Date(t); d.setDate(d.getDate()+365);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function setExpiry(id,v){ api('PUT','/api/schools/'+id,{valid_till:v||null}).then(function(r){ if(r.ok){ toast('✓ Expiry saved'); loadAll(); } else toast('Could not save'); }); }
+  function renew(id){ var s=SCHOOLS.filter(function(x){return x.id===id;})[0]; var nt=addYear(s&&s.valid_till);
+    api('PUT','/api/schools/'+id,{valid_till:nt}).then(function(r){ if(r.ok){ toast('✓ Renewed to '+nt); loadAll(); } else toast('Could not renew'); }); }
+  function renderRenewals(){
+    var el=document.getElementById('renewals'); if(!el) return;
+    var due=SCHOOLS.map(function(s){ return {s:s,e:expiryInfo(s.valid_till)}; }).filter(function(x){ return x.e.days!=null && x.e.days<=30; })
+      .sort(function(a,b){ return a.e.days-b.e.days; });
+    el.innerHTML=due.map(function(x){ return '<div class="renew-item"><span class="rn">'+esc(x.s.name)+'</span>'+
+      '<span class="mini '+x.e.cls+'">'+(x.s.valid_till||'')+' · '+x.e.label+'</span>'+
+      '<button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="renew('+x.s.id+')">Renew +1 year</button></div>'; }).join('')
+      || '<p class="mini">✓ No renewals due — all active schools have 30+ days left (or no expiry set).</p>';
+  }
   function openSchool(id,name){
     if(!confirm('Open "'+name+'" in the school app (as owner) to inspect/fix its setup?')) return;
     try{ localStorage.setItem('tt_token',TOKEN); localStorage.setItem('tt_school',String(id)); }catch(e){}
@@ -330,7 +363,8 @@
     api('POST','/api/owner/payment',{school_id:sid,amount:amt,method:g('pm_method'),note:g('pm_note'),mark_paid:document.getElementById('pm_markpaid').checked}).then(function(r){
       if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not record.','err'); return; }
       msg(m,'✓ Payment recorded.','ok'); document.getElementById('pm_amount').value=''; document.getElementById('pm_note').value='';
-      loadPayments(); loadAll();
+      if(document.getElementById('pm_renew').checked){ var s=SCHOOLS.filter(function(x){return String(x.id)===String(sid);})[0]; api('PUT','/api/schools/'+sid,{valid_till:addYear(s&&s.valid_till)}).then(function(){ loadPayments(); loadAll(); }); }
+      else { loadPayments(); loadAll(); }
     });
   }
 
