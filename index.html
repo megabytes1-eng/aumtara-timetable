@@ -1759,7 +1759,7 @@ function _deoDocOpen(titleMain,titleSub,innerHTML,warnGen){
    'table{border-collapse:collapse;width:100%;margin-top:6px}th,td{border:1px solid #888;padding:4px 6px;font-size:11px;text-align:center;vertical-align:middle}th{background:#1F3864;color:#fff}.lft{text-align:left}.grp{background:#eef2ff;font-weight:700}.tot{background:#f6f7fb;font-weight:700}'+
    '.warn{color:#c0392b;font-weight:600;margin:6px 0;text-align:center}.note{font-size:11px;color:#333;margin:10px 2px}'+
    '.sig{display:flex;justify-content:space-between;margin-top:38px;font-size:12px;text-align:center}.sig .box{width:44%}.sig .line{border-top:1px solid #333;margin-top:30px;padding-top:3px}.cap{font-size:10px;color:#666}</style>';
-  const html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(H.school_name||titleMain)+'</title>'+css+'</head><body><div class="wrap">'+
+  const html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(titleMain)+'</title>'+css+'</head><body><div class="wrap">'+
     '<div class="mast"><div class="sch">'+esc(H.school_name||'')+'</div>'+
       (subMeta?'<div class="sub2">'+subMeta+'</div>':'')+'</div>'+
     '<div class="title">'+titleMain+'</div>'+(titleSub?'<div class="tsub">'+titleSub+'</div>':'')+warn+
@@ -1799,7 +1799,7 @@ function deoPrintFormat(n){ if(!DEOPACK){toast(t('please_wait'));return;} const 
   const tbl=(head,body)=>'<table>'+head+body+'</table>';
   if(n===1){ const head='<tr><th>#</th><th class="lft">'+esc(t('u_name'))+'</th><th class="lft">'+esc(t('ph_designation'))+'</th><th>'+esc(t('deo_total_wk'))+'</th><th>'+esc(t('deo_maxload'))+'</th><th>'+esc(t('deo_capacity'))+'</th><th>'+esc(t('deo_status'))+'</th></tr>';
     const body=(D.format1||[]).map(w=>'<tr><td>'+w.sr+'</td><td class="lft">'+esc(w.name)+'</td><td class="lft">'+esc(w.designation)+'</td><td>'+w.total+'</td><td>'+w.max+'</td><td>'+w.pct+'%</td><td>'+stc(w.status)+'</td></tr>').join('');
-    _deoDocOpen(t('deo_f1'),t('deo_maxload')+': '+D.maxLoad+' '+t('deo_per_week'),tbl(head,body),true); return; }
+    _deoDocOpen(t('deo_f1'),'',tbl(head,body),true); return; }
   if(n===2){ const head='<tr><th>#</th><th class="lft">'+esc(t('class_'))+'</th><th class="lft">'+esc(t('deo_subject'))+'</th><th class="lft">'+esc(t('deo_faculty'))+'</th><th>'+esc(t('deo_mandated'))+'</th><th>'+esc(t('deo_scheduled'))+'</th><th>'+esc(t('deo_compliance'))+'</th></tr>';
     const body=(D.format2||[]).map(w=>'<tr><td>'+w.sr+'</td><td class="lft">'+esc(w.cls)+'</td><td class="lft">'+esc(w.subject)+'</td><td class="lft">'+esc(w.teacher)+'</td><td>'+w.mandated+'</td><td>'+w.scheduled+'</td><td>'+w.pct+'% '+stc(w.status)+'</td></tr>').join('');
     _deoDocOpen(t('deo_f2'),'',tbl(head,body),true); return; }

@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v18';
+const SW_JS = `const CACHE='aumtara-v19';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -2267,7 +2267,7 @@ function buildDeoSheet(wb, d, fmt){
     const end=_deoXlTable(ws,start,headers,rows,[26,...subs.map(()=>9)]);
     let r=end+1; ws.getCell('A'+r).value='આથી પ્રમાણપત્ર આપવામાં આવે છે કે ઉપર્યુક્ત પત્રકમાં દર્શાવ્યા મુજબનો કાર્યભાર શાળાના સમયપત્રકમાં દર્શાવેલ છે.'; ws.mergeCells('A'+r+':'+String.fromCharCode(66+subs.length)+r); r++;
     _deoSig(ws,r,d.header.officer_name); return; }
-  if(fmt==='format1'){ const ws=wb.addWorksheet('Format 1'); const start=_deoXlHead(ws,d,'G','FORMAT 1 — TEACHER WEEKLY WORKLOAD & DUTY SUMMARY','DEO Mandated Max: '+d.maxLoad+' periods/week');
+  if(fmt==='format1'){ const ws=wb.addWorksheet('Format 1'); const start=_deoXlHead(ws,d,'G','FORMAT 1 — TEACHER WEEKLY WORKLOAD & DUTY SUMMARY','');
     const rows=d.format1.map(w=>[w.sr,w.name,w.designation,w.total,w.max,w.pct+'%',_deoStatusText(w.status)]);
     const end=_deoXlTable(ws,start,['S.No','Faculty Name','Designation / Cadre','Total Weekly Load','DEO Max','Capacity %','DEO Status'],rows,[6,26,20,14,10,11,16]); _deoSig(ws,end,d.header.officer_name); return; }
   if(fmt==='format2'){ const ws=wb.addWorksheet('Format 2'); const start=_deoXlHead(ws,d,'G','FORMAT 2 — CLASS SUBJECT PERIOD ALLOCATION & CURRICULUM COVERAGE','');
