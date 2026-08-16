@@ -32,16 +32,27 @@
   h3.head{font-size:16px;color:var(--navy);margin:0 0 4px}
   .sub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
   hr{border:none;border-top:1px solid var(--line);margin:28px 0}
-  /* kpi row (flat, no boxes) */
-  .kpis{display:flex;flex-wrap:wrap;gap:0}
-  .kpi{padding:6px 26px 6px 0;margin-right:26px;border-right:1px solid var(--line)}
-  .kpi:last-child{border-right:none}
-  .kpi b{display:block;font-size:28px;color:var(--navy);line-height:1.1}
-  .kpi span{font-size:12.5px;color:var(--muted)}
-  .kpi.money b{color:var(--purple)}
+  /* colorful KPI tiles */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .kpi{border:none;border-radius:16px;padding:16px 18px;color:#fff;box-shadow:0 8px 20px rgba(90,62,200,.13);position:relative;overflow:hidden}
+  .kpi:after{content:'';position:absolute;right:-18px;top:-18px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.13)}
+  .kpi .ic{font-size:20px;opacity:.95}
+  .kpi b{display:block;font-size:28px;font-weight:800;color:#fff;line-height:1.15;margin-top:4px;position:relative}
+  .kpi span{font-size:12.5px;color:rgba(255,255,255,.92);font-weight:600}
+  .g-purple{background:linear-gradient(135deg,#6d5efc,#8b7bff)}
+  .g-green{background:linear-gradient(135deg,#16a34a,#22c55e)}
+  .g-amber{background:linear-gradient(135deg,#f59e0b,#fbbf24)}
+  .g-blue{background:linear-gradient(135deg,#2563eb,#3b82f6)}
+  .g-pink{background:linear-gradient(135deg,#e11d48,#fb7185)}
+  .g-teal{background:linear-gradient(135deg,#0d9488,#14b8a6)}
+  .g-indigo{background:linear-gradient(135deg,#5a3ec8,#7c3aed)}
+  .g-violet{background:linear-gradient(135deg,#7c3aed,#a855f7)}
+  .g-slate{background:linear-gradient(135deg,#475569,#64748b)}
   /* method chips */
-  .methods{display:flex;flex-wrap:wrap;gap:22px;margin:6px 0 4px}
-  .method b{display:block;font-size:20px;color:var(--navy)}
+  .methods{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 4px}
+  .method{position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px 12px 18px;min-width:130px;overflow:hidden;box-shadow:0 3px 10px rgba(20,27,46,.05)}
+  .method:before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--mc,#64748b)}
+  .method b{display:block;font-size:19px;color:var(--navy);font-weight:800}
   .method span{font-size:12px;color:var(--muted);text-transform:capitalize}
   /* tables */
   table{width:100%;border-collapse:collapse}
@@ -114,10 +125,10 @@
       <div class="kpis" id="kpis" style="margin-bottom:26px"></div>
       <h3 class="head">Sales &amp; payments received</h3>
       <p class="sub">Total money you've recorded, and the split by how it was paid.</p>
-      <div class="kpis" style="margin-bottom:16px">
-        <div class="kpi money"><b id="k_total">₹0</b><span>Total received</span></div>
-        <div class="kpi money"><b id="k_month">₹0</b><span>This month</span></div>
-        <div class="kpi"><b id="k_count">0</b><span>Payments logged</span></div>
+      <div class="kpis" style="margin-bottom:18px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+        <div class="kpi g-indigo"><div class="ic">💵</div><b id="k_total">₹0</b><span>Total received</span></div>
+        <div class="kpi g-violet"><div class="ic">📅</div><b id="k_month">₹0</b><span>This month</span></div>
+        <div class="kpi g-slate"><div class="ic">🧾</div><b id="k_count">0</b><span>Payments logged</span></div>
       </div>
       <div class="methods" id="methodBreak"></div>
       <hr>
@@ -253,8 +264,8 @@
     var pend=SCHOOLS.filter(function(s){return +s.active===0;}).length;
     var paid=SCHOOLS.filter(function(s){return +s.paid!==0;}).length;
     var users=SCHOOLS.reduce(function(a,s){return a+(s.users||0);},0);
-    document.getElementById('kpis').innerHTML=[['Schools',SCHOOLS.length],['Active',SCHOOLS.length-pend],['Pending',pend],['Paid',paid],['Unpaid',SCHOOLS.length-paid],['Total users',users]]
-      .map(function(k){return '<div class="kpi"><b>'+k[1]+'</b><span>'+k[0]+'</span></div>';}).join('');
+    document.getElementById('kpis').innerHTML=[['🏫','Schools',SCHOOLS.length,'g-purple'],['🟢','Active',SCHOOLS.length-pend,'g-green'],['⏳','Pending',pend,'g-amber'],['💰','Paid',paid,'g-blue'],['⚠️','Unpaid',SCHOOLS.length-paid,'g-pink'],['👥','Total users',users,'g-teal']]
+      .map(function(k){return '<div class="kpi '+k[3]+'"><div class="ic">'+k[0]+'</div><b>'+k[2]+'</b><span>'+k[1]+'</span></div>';}).join('');
     document.getElementById('schoolBody').innerHTML=SCHOOLS.map(function(s){
       var paidP=+s.paid!==0?'<button class="toggle t-paid" onclick="setField('+s.id+',\'paid\',0,\'Marked unpaid\')">✓ Paid</button>':'<button class="toggle t-due" onclick="setField('+s.id+',\'paid\',1,\'Marked paid\')">● Unpaid</button>';
       var actP=+s.active!==0?'<button class="toggle t-on" onclick="setField('+s.id+',\'active\',0,\'Suspended\')">🟢 Active</button>':'<button class="toggle t-off" onclick="setField('+s.id+',\'active\',1,\'Activated\')">▶ Activate</button>';
@@ -303,7 +314,8 @@
     document.getElementById('k_total').textContent=rup(d.total);
     document.getElementById('k_month').textContent=rup(d.month);
     document.getElementById('k_count').textContent=d.count||0;
-    document.getElementById('methodBreak').innerHTML=(d.byMethod||[]).map(function(x){return '<div class="method"><b>'+rup(x.total)+'</b><span>'+esc(x.method)+' · '+x.n+'</span></div>';}).join('') || '<span class="mini">No payments recorded yet.</span>';
+    var mc={upi:'#16a34a',online:'#2563eb',card:'#7c3aed',cash:'#f59e0b',cheque:'#0d9488',other:'#64748b'};
+    document.getElementById('methodBreak').innerHTML=(d.byMethod||[]).map(function(x){var c=mc[(x.method||'').toLowerCase()]||'#64748b';return '<div class="method" style="--mc:'+c+'"><b>'+rup(x.total)+'</b><span>'+esc(x.method)+' · '+x.n+' pmt</span></div>';}).join('') || '<span class="mini">No payments recorded yet.</span>';
     var rowsHtml=(d.payments||[]).map(function(p){ var when=(p.ts||'').replace('T',' ').slice(0,16);
       return '<tr><td>'+when+'</td><td>'+esc(p.school_name||'—')+'</td><td><b>'+rup(p.amount)+'</b></td><td style="text-transform:capitalize">'+esc(p.method||'—')+'</td><td>'+esc(p.note||'')+'</td></tr>'; });
     document.getElementById('ledger').innerHTML=rowsHtml.join('') || '<tr><td colspan="5" class="mini">No payments yet.</td></tr>';
