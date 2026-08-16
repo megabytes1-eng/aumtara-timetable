@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aumtara Timetable — Smart Timetable & School Management SaaS</title>
-<meta name="description" content="Clash-free timetables, DEO & Gujarat Patrak reports, smart substitute AI, and one owner dashboard to run every school.">
+<title>Aumtara Timetable — Smart Timetable & School Management Software</title>
+<meta name="description" content="Clash-free timetables, inspection & Patrak reports, smart substitute finder, multi-subject teachers, push notifications and Excel import/export — the complete school timetable software.">
 <style>
   :root{--navy:#1F3864;--purple:#5a3ec8;--ink:#141b2e;--muted:#5c6580;--line:#e6e9f5;--bg:#f7f8fc;--card:#fff;--ok:#16a34a;--red:#c0392b;--amber:#c98a1f}
   *{box-sizing:border-box}
@@ -50,6 +50,12 @@
   .feat .ic{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;font-size:22px;background:#f2f0fd;margin-bottom:12px}
   .feat h3{margin:0 0 6px;font-size:16.5px;color:var(--navy)}
   .feat p{margin:0;font-size:14px;color:var(--muted)}
+  /* detail cards */
+  .dcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .dcard h3{margin:0 0 12px;font-size:16.5px;color:var(--navy);display:flex;gap:8px;align-items:center}
+  .dcard ul{list-style:none;padding:0;margin:0;display:grid;gap:8px;font-size:13.5px;color:var(--muted)}
+  .dcard li{display:flex;gap:8px;align-items:flex-start}
+  .dcard li:before{content:"›";color:var(--purple);font-weight:800}
   /* control band */
   .band{background:linear-gradient(135deg,#1F3864,#3b2a7a);color:#fff;border-radius:20px;padding:38px;display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:center}
   @media(max-width:800px){.band{grid-template-columns:1fr;padding:26px}}
@@ -126,72 +132,105 @@
     <div class="logo"><span class="mark">🕘</span> Aumtara Timetable</div>
     <div class="nav-links">
       <a href="#features">Features</a>
-      <a href="#control">Control Panel</a>
+      <a href="#details">What's inside</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
     </div>
     <div class="nav-cta">
-      <a class="btn btn-ghost btn-sm" href="#" onclick="return openPanel()">🔐 Owner Login</a>
       <a class="btn btn-primary btn-sm" href="#" id="cta_signin">Sign in</a>
     </div>
   </div></nav>
 
   <header class="hero"><div class="wrap">
-    <span class="badge">🚀 Now launching · School Timetable SaaS</span>
-    <h1>Clash-free timetables.<br><span class="g">DEO-ready reports.</span> One dashboard for every school.</h1>
-    <p class="lead">Aumtara Timetable builds a conflict-free schedule in one click, generates Gujarat Patrak & DEO inspection reports automatically, finds the smartest substitute when a teacher is absent — and lets you run many schools from a single owner control panel.</p>
+    <span class="badge">🚀 Now launching · School Timetable Software</span>
+    <h1>Clash-free timetables.<br><span class="g">Inspection-ready reports.</span> Everything a school needs.</h1>
+    <p class="lead">Aumtara Timetable builds a conflict-free schedule in one click, generates inspection & Patrak reports automatically, finds the smartest substitute when a teacher is absent, and handles multi-subject teachers, push notifications, diaries and Excel import/export — all in one app.</p>
     <div class="hero-cta">
       <a class="btn btn-primary btn-lg" href="#" id="cta_start">Start free — create your school</a>
-      <a class="btn btn-ghost btn-lg" href="#" onclick="return openPanel()">Owner Control Panel →</a>
+      <a class="btn btn-ghost btn-lg" href="#details">See all features →</a>
     </div>
     <div class="hero-note">✓ Runs on any phone or PC · installs as an app · works offline · 12 languages</div>
     <div class="stats">
       <div class="stat"><b>1-click</b><span>Auto timetable generation</span></div>
-      <div class="stat"><b>11+</b><span>DEO / Gujarat Patrak formats</span></div>
+      <div class="stat"><b>11+</b><span>Inspection / Patrak formats</span></div>
       <div class="stat"><b>4-tier</b><span>Smart substitute matching</span></div>
-      <div class="stat"><b>∞</b><span>Multi-school from one login</span></div>
+      <div class="stat"><b>12</b><span>Languages · installs as an app</span></div>
     </div>
   </div></header>
 
   <section id="features"><div class="wrap">
     <div class="eyebrow">Everything a school needs</div>
     <h2>One app, the whole timetable workflow</h2>
-    <p class="sub">From setup to inspection-ready reports — built for CBSE, GSEB and State-board schools.</p>
+    <p class="sub">From setup to inspection-ready reports — built for CBSE, State-board and grant-in-aid schools.</p>
     <div class="grid">
       <div class="feat"><div class="ic">⚡</div><h3>Auto timetable generator</h3><p>Clash-free schedules honouring quota, teacher load, rooms, availability and rules — generated in one click, editable by hand.</p></div>
-      <div class="feat"><div class="ic">🏛</div><h3>DEO & Gujarat Patrak reports</h3><p>Patrak A/B/K (Primary / Secondary / Higher-Sec) plus Format 1–5 inspection registers — Print/PDF & Excel, auto-filled.</p></div>
+      <div class="feat"><div class="ic">🏛</div><h3>Inspection & Patrak reports</h3><p>Patrak A/B/K (Primary / Secondary / Higher-Sec) plus Format 1–5 inspection registers — Print/PDF & Excel, auto-filled with your school details.</p></div>
       <div class="feat"><div class="ic">🔄</div><h3>Smart substitute finder</h3><p>When a teacher is absent, free teachers are ranked by subject match — same subject → secondary → backup → general — with a best-match hint.</p></div>
       <div class="feat"><div class="ic">👩‍🏫</div><h3>Multi-subject teachers</h3><p>Each teacher can teach 2–3 subjects in priority order; auto-generate fills their 1st subject first. Staffing-gap panel flags risky subjects.</p></div>
       <div class="feat"><div class="ic">🔔</div><h3>Push notifications</h3><p>Free announcements straight to any installed device — no SMS cost, no phone number needed.</p></div>
-      <div class="feat"><div class="ic">🏫</div><h3>Multi-school control</h3><p>Add schools, set pricing, switch modules on/off, mark paid/unpaid, suspend or activate — from one owner dashboard.</p></div>
+      <div class="feat"><div class="ic">🔑</div><h3>Teacher logins & roles</h3><p>Give any teacher a login in one click with the right role — teacher, supervisor, principal or admin — so the whole staff can use the app.</p></div>
       <div class="feat"><div class="ic">📓</div><h3>Teacher diary & bell timings</h3><p>Daily/monthly teaching register, chapters, and a printable Daily Bell Timings notice auto-built from your hours.</p></div>
       <div class="feat"><div class="ic">📥</div><h3>Import / Export Excel</h3><p>Bulk-load classes, subjects, teachers and rooms from a template; export any report to Excel.</p></div>
       <div class="feat"><div class="ic">🌐</div><h3>12 languages · PWA</h3><p>English, ગુજરાતી, हिन्दी and 9 more. Installs to the home screen and works offline for viewing.</p></div>
     </div>
   </div></section>
 
-  <section id="control"><div class="wrap">
-    <div class="band">
-      <div>
-        <div class="eyebrow" style="text-align:left;color:#c9b8ff">Owner Control Panel</div>
-        <h2>Run every school from one screen</h2>
-        <p class="sub">A dedicated platform-owner dashboard — separate and clean, kept out of the day-to-day school app so nothing gets mixed up.</p>
-        <ul>
-          <li><b>➕</b> Add / remove schools with contact & board details</li>
-          <li><b>💳</b> Set a price and mark each school Paid / Unpaid</li>
-          <li><b>🟢</b> Activate or suspend a school (suspends its logins)</li>
-          <li><b>🧩</b> Turn modules on/off per school</li>
-          <li><b>📊</b> Live counts (users, teachers, classes) + 7-day activity</li>
-          <li><b>🧾</b> Cross-school activity log</li>
-        </ul>
-        <a class="btn btn-primary" href="#" onclick="return openPanel()">🔐 Open Owner Control Panel</a>
-      </div>
-      <div class="mock" aria-hidden="true">
-        <div class="row"><span>🏫 R. N. Naik High School</span><span class="pill paid">PAID</span></div>
-        <div class="row"><span>🏫 Apex International</span><span class="pill on">ACTIVE</span></div>
-        <div class="row"><span>🏫 Auro Vidyalaya</span><span class="pill due">DUE</span></div>
-        <div class="row" style="background:transparent;justify-content:space-between;font-size:12px;color:#b9c2e6;margin-top:10px"><span>Schools 12 · Users 84</span><span>7-day activity ▲</span></div>
-      </div>
+  <section id="details" style="background:#fff"><div class="wrap">
+    <div class="eyebrow">What's inside</div>
+    <h2>The complete feature list</h2>
+    <p class="sub">Every module that ships with Aumtara Timetable — from the scheduling engine to inspection reports, all built in.</p>
+    <div class="grid">
+
+      <div class="dcard"><h3>⚡ Timetable engine</h3><ul>
+        <li>1-click auto-generate (greedy + optimizer)</li>
+        <li>Respects weekly quota, teacher load & room limits</li>
+        <li>Teacher availability & custom rules</li>
+        <li>Class-teacher pinned to Period 1</li>
+        <li>Multi-week (Week A / B) support</li>
+        <li>Live clash detection + manual editing</li>
+      </ul></div>
+
+      <div class="dcard"><h3>🏛 Inspection & Patrak reports</h3><ul>
+        <li>Patrak A / B / K — Primary, Secondary & Higher-Sec</li>
+        <li>Format 1–5 inspection registers</li>
+        <li>Teacher workload & class-allocation registers</li>
+        <li>Auto-filled masthead: address, code, UDISE, district</li>
+        <li>Print / PDF & one-click Excel export</li>
+        <li>Available in Gujarati and English</li>
+      </ul></div>
+
+      <div class="dcard"><h3>🔄 Substitution & proxy</h3><ul>
+        <li>Date-wise absence & substitution board</li>
+        <li>4-tier smart match: primary → secondary → backup → general</li>
+        <li>Best-match hint for every free period</li>
+        <li>Recurring teacher-absence handling</li>
+        <li>Balances proxy load across staff</li>
+      </ul></div>
+
+      <div class="dcard"><h3>👩‍🏫 Teachers & staffing</h3><ul>
+        <li>Multi-subject teachers in priority order (1st / 2nd / 3rd)</li>
+        <li>Subject staffing-coverage & gap panel</li>
+        <li>Qualification, designation & sanctioned load</li>
+        <li>Bulk import teachers from Excel</li>
+        <li>1-click "Give login" with role pulldown</li>
+      </ul></div>
+
+      <div class="dcard"><h3>🔔 Daily operations</h3><ul>
+        <li>Free web-push notifications to installed devices</li>
+        <li>Teacher diary — daily / monthly register & chapters</li>
+        <li>Printable Daily Bell-Timings notice</li>
+        <li>Live "class right now" view</li>
+        <li>Students module</li>
+      </ul></div>
+
+      <div class="dcard"><h3>🌐 Platform & data</h3><ul>
+        <li>Import / export everything via Excel templates</li>
+        <li>12 languages incl. ગુજરાતી & हिन्दी</li>
+        <li>Installs as an app (PWA), works offline for viewing</li>
+        <li>Runs on any phone, tablet or PC</li>
+        <li>Manage more than one school from one login</li>
+      </ul></div>
+
     </div>
   </div></section>
 
@@ -212,14 +251,14 @@
         <h3>Advance</h3>
         <div class="price">₹499<span> / school / yr</span></div>
         <div class="desc">Everything schools need day to day</div>
-        <ul><li>Everything in Basic</li><li>DEO & Gujarat Patrak reports</li><li>Smart 4-tier substitute engine</li><li>Push notifications</li></ul>
+        <ul><li>Everything in Basic</li><li>Inspection & Patrak reports</li><li>Smart 4-tier substitute engine</li><li>Push notifications</li></ul>
         <a class="btn btn-primary" href="#" id="cta_school">Choose Advance</a>
       </div>
       <div class="plan">
         <h3>Full Package</h3>
         <div class="price">₹699<span> / school / yr</span></div>
-        <div class="desc">Everything + multi-school control</div>
-        <ul><li>Everything in Advance</li><li>Owner control panel · many schools</li><li>Per-school pricing & activity logs</li><li>Priority support & onboarding</li></ul>
+        <div class="desc">Everything + extras</div>
+        <ul><li>Everything in Advance</li><li>Teacher diary & bell timings</li><li>Import / export & students module</li><li>Priority support & onboarding</li></ul>
         <a class="btn btn-primary" href="#" id="cta_contact">Choose Full</a>
       </div>
     </div>
@@ -230,9 +269,9 @@
     <h2>Frequently asked</h2>
     <div class="faq">
       <details><summary>Do I need to install anything?</summary><p>No. It runs in any browser and installs as an app (PWA) on phones and laptops. Once installed it works offline for viewing.</p></details>
-      <details><summary>Can it make Gujarat DEO / Patrak reports?</summary><p>Yes — Patrak A/B/K for Primary, Secondary and Higher-Secondary, plus five inspection registers, in Gujarati and English, ready to print or download as Excel.</p></details>
+      <details><summary>Can it make inspection / Patrak reports?</summary><p>Yes — Patrak A/B/K for Primary, Secondary and Higher-Secondary, plus five inspection registers, in Gujarati and English, ready to print or download as Excel.</p></details>
       <details><summary>How does the substitute finder work?</summary><p>When a teacher is absent, it lists free teachers ranked by subject match — same subject first, then secondary, then backup, then anyone available — so you assign the best cover in seconds.</p></details>
-      <details><summary>Can I run more than one school?</summary><p>Yes. The owner control panel lets you add unlimited schools, set each one's price, mark paid/unpaid, activate/suspend, and see activity — all from one login.</p></details>
+      <details><summary>Can I run more than one school?</summary><p>Yes. You can manage multiple schools from a single login and switch between them, each with its own timetable, teachers and reports.</p></details>
       <details><summary>Which languages are supported?</summary><p>Twelve, including English, ગુજરાતી and हिन्दी.</p></details>
     </div>
   </div></section>
@@ -252,145 +291,12 @@
   </div></footer>
 </div>
 
-<!-- ================= OWNER CONTROL PANEL ================= -->
-<div id="panel">
-  <div class="p-head"><div class="wrap">
-    <div class="logo"><span class="mark">🔐</span> Aumtara — Owner Control</div>
-    <div class="who">
-      <span class="backlink" onclick="closePanel()">← Back to site</span>
-      <span id="whoami" style="display:none"></span>
-      <button class="btn btn-ghost btn-sm" id="logoutBtn" style="display:none" onclick="ownerLogout()">Logout</button>
-    </div>
-  </div></div>
-
-  <!-- login -->
-  <div id="loginView"><div class="login-box">
-    <h2>Owner sign in</h2>
-    <p class="sub">Platform-owner login only. This manages all schools, pricing and access.</p>
-    <div class="field" style="margin-bottom:12px"><label>Login ID / email / mobile</label><input id="oLogin" autocomplete="username"></div>
-    <div class="field" style="margin-bottom:16px"><label>Password</label><input id="oPass" type="password" autocomplete="current-password"></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="ownerLogin()">Sign in</button>
-    <div id="loginMsg" class="msg"></div>
-  </div></div>
-
-  <!-- dashboard -->
-  <div id="dashView" style="display:none"><div class="wrap" style="padding:22px 20px">
-    <div class="kpis" id="kpis"></div>
-
-    <div class="card">
-      <b style="color:var(--navy)">➕ Add a school</b>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:10px">
-        <div class="field"><label>School name *</label><input id="ns_name"></div>
-        <div class="field"><label>Board</label><input id="ns_board" placeholder="GSEB / CBSE"></div>
-        <div class="field"><label>Medium</label><input id="ns_medium" placeholder="Gujarati / English"></div>
-        <div class="field"><label>Mobile</label><input id="ns_mobile"></div>
-        <div class="field"><label>Email</label><input id="ns_email" type="email"></div>
-        <div class="field" style="justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="addSchool()">Add school</button></div>
-      </div>
-      <div id="addMsg" class="msg"></div>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <b style="color:var(--navy)">🏫 Schools</b>
-        <button class="btn btn-ghost btn-sm" onclick="loadOwner()">↻ Refresh</button>
-      </div>
-      <div style="overflow:auto"><table id="schoolTbl"><thead><tr>
-        <th>School</th><th>Board · Medium</th><th>Users / Tch / Cls</th><th>Price</th><th>Payment</th><th>Status</th><th>7-day</th><th></th>
-      </tr></thead><tbody id="schoolBody"></tbody></table></div>
-    </div>
-
-    <div class="card">
-      <b style="color:var(--navy)">🧾 Recent activity</b>
-      <div style="overflow:auto;max-height:340px;margin-top:8px"><table><thead><tr><th>When</th><th>School</th><th>User</th><th>Action</th></tr></thead><tbody id="logBody"></tbody></table></div>
-    </div>
-  </div></div>
-</div>
-
 <script>
-  var APP = "https://aumtara-timetable.onrender.com";   // live Aumtara backend
-  var TOKEN = null, SCHOOLS = [];
+  var APP = "https://aumtara-timetable.onrender.com";   // live Aumtara app
   document.getElementById('yr').textContent = new Date().getFullYear();
   // route all sign-up / sign-in CTAs to the app
   ['cta_signin','cta_start','cta_free','cta_school','cta_bottom'].forEach(function(id){var e=document.getElementById(id);if(e)e.href=APP;});
-  document.getElementById('cta_contact').href='mailto:mannmehta2502@gmail.com?subject=Aumtara%20Timetable%20SaaS';
-
-  function openPanel(){ document.getElementById('site').style.display='none'; document.getElementById('panel').style.display='block'; window.scrollTo(0,0); if(!TOKEN){document.getElementById('oLogin').focus();} return false; }
-  function closePanel(){ document.getElementById('panel').style.display='none'; document.getElementById('site').style.display='block'; return false; }
-
-  function api(method, pathq, body){
-    var h={'Content-Type':'application/json'}; if(TOKEN) h['Authorization']='Bearer '+TOKEN;
-    return fetch(APP+pathq,{method:method,headers:h,body:body?JSON.stringify(body):undefined}).then(function(r){
-      return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,status:r.status,data:j}; });
-    });
-  }
-  function msg(el,text,kind){ el.className='msg '+(kind||'ok'); el.textContent=text; }
-
-  function ownerLogin(){
-    var id=document.getElementById('oLogin').value.trim(), pw=document.getElementById('oPass').value;
-    var m=document.getElementById('loginMsg');
-    if(!id||!pw){ msg(m,'Enter login and password.','err'); return; }
-    msg(m,'Signing in…','ok');
-    api('POST','/api/login',{login_id:id,password:pw}).then(function(r){
-      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Invalid credentials.','err'); return; }
-      TOKEN=r.data.token;
-      // confirm this login is the platform owner
-      return api('GET','/api/owner/overview').then(function(o){
-        if(o.status===403){ TOKEN=null; msg(m,'This login is not the platform owner. Use the owner account.','err'); return; }
-        if(!o.ok){ TOKEN=null; msg(m,'Could not load control panel.','err'); return; }
-        document.getElementById('loginView').style.display='none';
-        document.getElementById('dashView').style.display='block';
-        var w=document.getElementById('whoami'); w.style.display='inline'; w.textContent='👤 '+(r.data.user&&r.data.user.login_id||'owner');
-        document.getElementById('logoutBtn').style.display='inline-flex';
-        renderOwner(o.data);
-      });
-    }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
-  }
-  function ownerLogout(){ TOKEN=null; SCHOOLS=[]; document.getElementById('dashView').style.display='none'; document.getElementById('loginView').style.display='block'; document.getElementById('whoami').style.display='none'; document.getElementById('logoutBtn').style.display='none'; document.getElementById('oPass').value=''; }
-
-  function loadOwner(){ api('GET','/api/owner/overview').then(function(o){ if(o.ok) renderOwner(o.data); }); api('GET','/api/owner/logs?limit=60').then(function(o){ if(o.ok) renderLogs(o.data); }); }
-  function renderOwner(d){
-    SCHOOLS = d.schools||[];
-    var paid=SCHOOLS.filter(function(s){return +s.paid!==0;}).length;
-    var users=SCHOOLS.reduce(function(a,s){return a+(s.users||0);},0);
-    var act=SCHOOLS.filter(function(s){return (s.events7||0)>0;}).length;
-    var K=[['Schools',SCHOOLS.length],['Paid',paid],['Unpaid',SCHOOLS.length-paid],['Total users',users],['Active (7d)',act]];
-    document.getElementById('kpis').innerHTML=K.map(function(k){return '<div class="kpi"><b>'+k[1]+'</b><span>'+k[0]+'</span></div>';}).join('');
-    document.getElementById('schoolBody').innerHTML=SCHOOLS.map(function(s){ var esc=function(x){return String(x==null?'':x).replace(/</g,'&lt;');};
-      var paidP = +s.paid!==0 ? '<button class="toggle t-paid" onclick="setPaid('+s.id+',0)">✓ Paid</button>' : '<button class="toggle t-due" onclick="setPaid('+s.id+',1)">● Unpaid</button>';
-      var actP  = +s.active!==0 ? '<button class="toggle t-on" onclick="setActive('+s.id+',0)">🟢 Active</button>' : '<button class="toggle t-off" onclick="setActive('+s.id+',1)">⏸ Suspended</button>';
-      return '<tr><td><b>'+esc(s.name)+'</b></td><td>'+esc([s.board,s.medium].filter(Boolean).join(' · ')||'—')+'</td>'+
-        '<td>'+(s.users||0)+' / '+(s.teachers||0)+' / '+(s.classes||0)+'</td>'+
-        '<td><input style="width:78px" value="'+esc(s.price==null?'':s.price)+'" onchange="setPrice('+s.id+',this.value)"></td>'+
-        '<td>'+paidP+'</td><td>'+actP+'</td><td>'+(s.events7||0)+'</td>'+
-        '<td><button class="del" title="Delete school" onclick="delSchool('+s.id+',\''+esc(s.name).replace(/\x27/g,"")+'\')">🗑</button></td></tr>';
-    }).join('') || '<tr><td colspan="8" style="color:var(--muted)">No schools yet — add one above.</td></tr>';
-    api('GET','/api/owner/logs?limit=60').then(function(o){ if(o.ok) renderLogs(o.data); });
-  }
-  function renderLogs(rows){
-    document.getElementById('logBody').innerHTML=(rows||[]).slice(0,60).map(function(e){ var esc=function(x){return String(x==null?'':x).replace(/</g,'&lt;');};
-      var when=(e.ts||'').replace('T',' ').slice(0,16);
-      return '<tr><td>'+when+'</td><td>'+esc(e.school_name||'—')+'</td><td>'+esc(e.user_name||e.login_id||'—')+'</td><td>'+esc(e.name||'')+'</td></tr>';
-    }).join('') || '<tr><td colspan="4" style="color:var(--muted)">No activity yet.</td></tr>';
-  }
-
-  function setPrice(id,v){ api('PUT','/api/schools/'+id,{price:v||null}); }
-  function setPaid(id,v){ api('PUT','/api/schools/'+id,{paid:v}).then(loadOwner); }
-  function setActive(id,v){ api('PUT','/api/schools/'+id,{active:v}).then(loadOwner); }
-  function delSchool(id,name){ if(!confirm('Delete "'+name+'" and all its data? This cannot be undone.')) return; api('DELETE','/api/schools/'+id,null).then(loadOwner); }
-  function addSchool(){
-    var g=function(x){return document.getElementById(x).value.trim();};
-    var m=document.getElementById('addMsg'), name=g('ns_name');
-    if(!name){ msg(m,'School name is required.','err'); return; }
-    msg(m,'Adding…','ok');
-    api('POST','/api/schools',{name:name,board:g('ns_board'),medium:g('ns_medium'),mobile:g('ns_mobile'),email:g('ns_email')}).then(function(r){
-      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not add school.','err'); return; }
-      msg(m,'✓ Added.','ok'); ['ns_name','ns_board','ns_medium','ns_mobile','ns_email'].forEach(function(x){document.getElementById(x).value='';});
-      loadOwner();
-    });
-  }
-  // deep-link: /launch#owner opens the panel
-  if(location.hash==='#owner'||location.hash==='#control-panel'){ openPanel(); }
+  var cc=document.getElementById('cta_contact'); if(cc) cc.href='mailto:mannmehta2502@gmail.com?subject=Aumtara%20Timetable';
 </script>
 </body>
 </html>
