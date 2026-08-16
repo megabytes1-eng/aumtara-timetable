@@ -280,6 +280,11 @@ async function init() {
   // Class-teacher first-period rule: per-class flag + a marker on the auto-created P1 pin cells
   await run(`ALTER TABLE tt_class ADD COLUMN IF NOT EXISTS ct_first_period INTEGER DEFAULT 0`);
   await run(`ALTER TABLE tt_timetable ADD COLUMN IF NOT EXISTS ct_pin INTEGER DEFAULT 0`);
+  // DEO / govt reports: teacher designation + sanctioned load; school UDISE code + district/taluka (report headers)
+  await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS designation TEXT`);
+  await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS sanctioned_load INTEGER`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS udise TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS district TEXT`);
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();

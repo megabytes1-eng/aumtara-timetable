@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v11';
+const SW_JS = `const CACHE='aumtara-v12';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -325,7 +325,7 @@ app.post('/api/schools', h(async (req,res)=>{
 app.put('/api/schools/:id', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
   const b=req.body||{}, id=req.params.id;
-  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes','email','mobile'];   // SaaS/profile fields incl. contact email + mobile
+  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes','email','mobile','udise','district'];   // SaaS/profile + DEO header fields
   const set=cols.filter(c=>b[c]!==undefined);
   if(set.length) await run(`UPDATE tt_school SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
   // keep this school's config row in sync for display (school_name/board/medium)
@@ -571,6 +571,8 @@ app.put('/api/teachers/:id', h(async (req,res)=>{
   if(b.max_per_day!==undefined) await run('UPDATE tt_teacher SET max_per_day=? WHERE id=? AND school_id=?',[b.max_per_day||null, req.params.id, sid]);
   if(b.max_consecutive!==undefined) await run('UPDATE tt_teacher SET max_consecutive=? WHERE id=? AND school_id=?',[b.max_consecutive||null, req.params.id, sid]);
   if(b.can_substitute!==undefined) await run('UPDATE tt_teacher SET can_substitute=? WHERE id=? AND school_id=?',[b.can_substitute?1:0, req.params.id, sid]);
+  if(b.designation!==undefined) await run('UPDATE tt_teacher SET designation=? WHERE id=? AND school_id=?',[b.designation||null, req.params.id, sid]);
+  if(b.sanctioned_load!==undefined) await run('UPDATE tt_teacher SET sanctioned_load=? WHERE id=? AND school_id=?',[b.sanctioned_load||null, req.params.id, sid]);
   if(b.subjects!==undefined){ const subs=new Set(b.subjects); if(b.main_subject_id)subs.add(+b.main_subject_id); await setSubjects(+req.params.id, [...subs]); }
   res.json({ok:true});
 }));
@@ -2060,6 +2062,66 @@ function parseHoursSheet(ws){
     short_break_after: breakRows.length?[...new Set(breakRows.map(afterCount))].sort((a,b)=>a-b).join(','):'',
     short_break_minutes: breakRows.length?Math.max(1,breakRows[0].e-breakRows[0].s):0 };
 }
+// ---------- DEO / GOVT REPORTS: teacher workload statement + teacher requirement (staff pattern) ----------
+async function deoData(sid){
+  const cfg=getConfig(sid)||{};
+  const sch=(await q1('SELECT name,board,medium,udise,district FROM tt_school WHERE id=?',[sid]))||{};
+  const teachers=await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY name,id',[sid]);
+  const subjById={}; (await q('SELECT id,name FROM tt_subject WHERE school_id=?',[sid])).forEach(s=>subjById[s.id]=s.name);
+  const clsById={}; (await q('SELECT id,name FROM tt_class WHERE school_id=?',[sid])).forEach(c=>clsById[c.id]=c);
+  const cells=await q('SELECT class_id,subject_id,teacher_id FROM tt_timetable WHERE school_id=? AND week_index=0 AND subject_id IS NOT NULL',[sid]);
+  const tsub={}; (await q('SELECT ts.teacher_id,ts.subject_id FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid])).forEach(r=>{ (tsub[r.subject_id]=tsub[r.subject_id]||new Set()).add(r.teacher_id); });
+  teachers.forEach(t=>{ if(t.main_subject_id){ (tsub[t.main_subject_id]=tsub[t.main_subject_id]||new Set()).add(t.id); } });
+  const workload=teachers.map((t,i)=>{
+    const tc=cells.filter(c=>c.teacher_id===t.id); const total=tc.length;
+    const bySub={}; tc.forEach(c=>{ bySub[c.subject_id]=(bySub[c.subject_id]||0)+1; });
+    const subjects=Object.keys(bySub).map(s=>subjById[s]||('#'+s)).join(', ');
+    const subjDist=Object.keys(bySub).map(s=>(subjById[s]||('#'+s))+': '+bySub[s]).join(', ');
+    const required=(t.sanctioned_load||t.max_load)||null;
+    const diff=required!=null?(total-required):null;
+    return { sr:i+1, name:t.name||'', designation:t.designation||'', qualification:t.qualification||'', main:subjById[t.main_subject_id]||'', subjects, subjDist, total, required, diff };
+  });
+  const loads=teachers.map(t=>t.sanctioned_load||t.max_load).filter(x=>x>0);
+  const NORM=loads.length?(function(){const f={};loads.forEach(x=>f[x]=(f[x]||0)+1);return +Object.keys(f).sort((a,b)=>f[b]-f[a])[0];})():30;
+  const subjTotals={}; cells.forEach(c=>{ subjTotals[c.subject_id]=(subjTotals[c.subject_id]||0)+1; });
+  const requirement=Object.keys(subjById).map(s=>{ const total=subjTotals[s]||0; const available=tsub[s]?tsub[s].size:0; const required=total>0?Math.ceil(total/NORM):0; return { subject:subjById[s], total, norm:NORM, required, available, gap:required-available }; }).filter(x=>x.total>0||x.available>0).sort((a,b)=>b.total-a.total);
+  return { school:{ name:cfg.school_name||sch.name||'', board:sch.board||'', medium:sch.medium||'', udise:sch.udise||'', district:sch.district||'', session:cfg.academic_session||'' }, norm:NORM, generated: cells.length>0, workload, requirement };
+}
+app.get('/api/reports/deo', h(async (req,res)=>{ res.json(await deoData(req.sid)); }));
+const _XB={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
+app.get('/api/export/teacher-workload.xlsx', h(async (req,res)=>{
+  const d=await deoData(req.sid); const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const ws=wb.addWorksheet('Teacher Workload');
+  ws.columns=[{width:5},{width:22},{width:16},{width:16},{width:14},{width:26},{width:30},{width:9},{width:9},{width:15}];
+  let r=1; const H=(txt,f)=>{const c=ws.getCell('A'+r);c.value=txt;if(f)c.font=f;ws.mergeCells('A'+r+':J'+r);r++;};
+  H(d.school.name,{bold:true,size:14,color:{argb:'FF1F3864'}});
+  H('TEACHER WORKLOAD STATEMENT'+(d.school.session?(' — '+d.school.session):''),{bold:true,size:12});
+  H([d.school.udise&&('UDISE: '+d.school.udise),d.school.district&&('Dist/Taluka: '+d.school.district),d.school.board,d.school.medium].filter(Boolean).join('   ·   '),{size:10,color:{argb:'FF555555'}});
+  r++;
+  const hr=ws.getRow(r); hr.values=['Sr','Teacher Name','Designation','Qualification','Main Subject','Subjects taught','Subject-wise periods/week','Total/wk','Reqd','Surplus(+)/Deficit(−)'];
+  hr.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};c.alignment={horizontal:'center',wrapText:true,vertical:'middle'};c.border=_XB;}); r++;
+  d.workload.forEach(w=>{ const row=ws.getRow(r); row.values=[w.sr,w.name,w.designation,w.qualification,w.main,w.subjects,w.subjDist,w.total,(w.required==null?'':w.required),(w.diff==null?'':(w.diff>0?'+'+w.diff:''+w.diff))];
+    row.eachCell(c=>{c.border=_XB;c.alignment={vertical:'top',wrapText:true};}); r++; });
+  r+=2; ws.getCell('A'+r).value='Date of issue: ______________'; ws.getCell('H'+r).value='Signature (Head Master)';
+  res.setHeader('Content-Disposition','attachment; filename=teacher-workload.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+app.get('/api/export/teacher-requirement.xlsx', h(async (req,res)=>{
+  const d=await deoData(req.sid); const wb=new ExcelJS.Workbook(); wb.creator='Aumtara'; const ws=wb.addWorksheet('Teacher Requirement');
+  ws.columns=[{width:5},{width:26},{width:16},{width:18},{width:16},{width:16},{width:18}];
+  let r=1; const H=(txt,f)=>{const c=ws.getCell('A'+r);c.value=txt;if(f)c.font=f;ws.mergeCells('A'+r+':G'+r);r++;};
+  H(d.school.name,{bold:true,size:14,color:{argb:'FF1F3864'}});
+  H('TEACHER REQUIREMENT — STAFF PATTERN'+(d.school.session?(' — '+d.school.session):''),{bold:true,size:12});
+  H('Norm used: '+d.norm+' periods per teacher per week'+(d.generated?'':'   (⚠ timetable not generated — totals may be 0)'),{size:10,color:{argb:'FF555555'}});
+  r++;
+  const hr=ws.getRow(r); hr.values=['Sr','Subject','Total periods/week','Periods/teacher (norm)','Teachers required','Teachers available','Shortfall(+)/Surplus(−)'];
+  hr.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};c.alignment={horizontal:'center',wrapText:true,vertical:'middle'};c.border=_XB;}); r++;
+  d.requirement.forEach((x,i)=>{ const row=ws.getRow(r); row.values=[i+1,x.subject,x.total,x.norm,x.required,x.available,(x.gap>0?'+'+x.gap:''+x.gap)];
+    row.eachCell(c=>{c.border=_XB;c.alignment={horizontal:'center'};}); row.getCell(2).alignment={horizontal:'left'}; r++; });
+  res.setHeader('Content-Disposition','attachment; filename=teacher-requirement.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
 // Printable/exportable "Daily Bell Timings" notice — period start/end times computed from Academic Hours (weekday + Saturday)
 app.get('/api/export/bell-timings.xlsx', h(async (req,res)=>{
   const sid=req.sid; const cfg=getConfig(sid)||{};

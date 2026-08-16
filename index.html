@@ -284,6 +284,13 @@ const I18N={
   hours_title:'Academic Hours',tag_config:'Configuration',hours_desc:'Period slots are generated from this and saved to the database.',
   lbl_school_name:'School name (shown on diary & reports)',lbl_wd_start:'Weekday start',lbl_wd_end:'Weekday end',lbl_sat_end:'Saturday end',lbl_sat_start:'Saturday start',lbl_period_min:'Period (min)',lbl_break_after:'Break after period',lbl_break_min:'Break (min)',
   weekdays:'Weekdays',saturdays:'Saturdays',periods_word:'periods',weekday_slots:'Weekday slots:',saturday_slots:'Saturday slots:',sat_timings_title:'Saturday timings (separate)',sat_timings_hint:'Blank = same as weekday',terms_title:'Academic Terms',lbl_num_periods:'Periods (count)',hint_num_periods:'auto',autofill_title:'Auto-fill hours from Excel',autofill_desc:'Upload a schedule Excel (Label, Start, End) and the app detects start, end, periods, durations, lunch and breaks.',autofill_template:'Download template',autofill_btn:'Upload & auto-fill',autofill_ok:'Hours filled ✓ — {p} weekday periods detected.',step8_t:'Academic terms & saved windows',step8_d:'Create Academic Terms (name, type, start/end dates) and activate one. Save the current timetable as a version — each version is a window that stores its timetable, hours and term together, so you can keep a separate draft per term and restore any of them later.',step9_t:'Faster hours setup',step9_d:'Saturday can be fully separate from weekdays (its own periods, length, lunch and breaks). Type an exact number of periods instead of relying on the end time, or use the ⚡ Auto-fill button to build all hours from a schedule Excel.',step10_t:'Leave and date-based cover',step10_d:'A teacher can apply for leave from the Teacher tab; an admin approves it in Substitution and the covered periods appear as pending proxies. You can also set cover for a chosen date range directly. Approved cover shows in Live Class on those dates.',step11_t:'Find your way around',step11_d:'The left sidebar groups the menu — Master, Timetable and Daily. Click a group heading to fold or unfold it, use the menu button at top-left to hide or show the whole sidebar, and note that Save Timetable sits under Timetable.',help_feat4_t:'Auto-fill from Excel',help_feat4_d:'Build School Hours automatically from a schedule Excel — no manual typing.',all_terms:'All terms',dsub_title:'Date-based cover',leave_title:'Teacher leave',leave_desc:'Record a leave and approve it — the periods to cover appear in the date-based cover below.',leave_teacher:'Teacher',leave_reason:'Reason',leave_reason_ph:'e.g. sick leave',leave_apply:'Apply',leave_none:'No leave applications yet.',leave_dates:'Dates',leave_status:'Status',leave_type_label:'Type',leave_type_any:'Any',leave_types_title:'Leave types',leave_types_desc:'Add the types teachers pick when applying.',leave_type_ph:'e.g. Sick, Casual',leave_types_none:'No types yet.',confirm_del_leave_type:'Delete this leave type?',leave_pending:'Pending',leave_approved:'Approved',leave_rejected:'Rejected',leave_approve:'Approve',leave_reject:'Reject',leave_need:'Select both dates first.',leave_approved_toast:'Approved — {n} periods to cover.',confirm_del_leave:'Delete this leave application?',leave_my_title:'My leave',leave_my_desc:'Apply for leave. An admin will approve it and arrange cover.',dsub_desc:'Pick an absent teacher and a date range, then cover each period.',dsub_teacher:'Absent teacher',dsub_from:'From date',dsub_to:'To date',dsub_today:'Today',dsub_tom:'Tomorrow',dsub_7:'7 days',dsub_fetch:'Fetch periods',dsub_need:'Pick a teacher and both dates first.',dsub_none:'No periods to cover in this range.',dsub_free:'Free',dsub_date:'Date',dsub_summary:'Total {t} · assigned {a} · free {f} · pending {p}',dsub_weekday:'Or cover a recurring weekday',hours_word:'hours',terms_desc:'Create sessions/terms with dates. The active one is used across the app.',lbl_term_name:'Session name',ph_term_name:'e.g. 2026-27 Regular',lbl_term_type:'Type',lbl_term_start:'Start date',lbl_term_end:'End date',term_active:'Active',btn_add_term:'Add term',btn_activate:'Activate',terms_none:'No terms yet',term_type_morning:'Morning Session',term_type_regular:'Regular Term',term_type_custom:'Custom Period',err_term_name:'Enter a session name',brk:'Break',bell_title:'Bell Timings',bell_desc:'Print a “Daily Bell Timings” notice — auto-filled from your Academic Hours (period times, breaks, lunch), for weekdays and Saturday.',bell_notice_title:'Notice title',bell_default_title:'DAILY BELL TIMINGS',bell_subtitle:'Subtitle (optional)',bell_wef:'With effect from',bell_issue:'Date of issue',bell_sign:'Signature (designation)',bell_default_sign:'Principal',bell_show_logo:'Show school logo',bell_notes:'Notice board notes',bell_notes_ph:'One note per line…',bell_preview:'Preview',bell_popup:'Please allow pop-ups to print the notice.',bell_col_period:'Period / Event',bell_col_dur:'Duration',bell_col_from:'From',bell_col_to:'To',bell_period:'Period',bell_min:'min',
+  ph_designation:'Designation',ph_sanctioned:'Sanctioned load',ph_sanctioned_hint:'DEO-sanctioned weekly periods for this post. Used in DEO Workload as “Required”. Blank = falls back to Weekly load.',
+  lbl_udise:'UDISE / DISE code',lbl_udise_hint:'School UDISE / DISE code — printed on DEO reports.',lbl_district:'District / Taluka',ph_district:'e.g. Rajkot / Gondal',
+  rep_deo:'DEO Reports',rep_deo_d:'District Education Officer (DEO) format staff reports — teacher workload and requirement, ready to print or export.',rep_deo_note:'Auto-built from your teachers, subjects and the generated timetable (Week A). Fill Designation & Sanctioned load per teacher, and UDISE / District in Academic Hours, for a complete statement.',
+  rep_deo_workload:'Teacher Workload Statement',rep_deo_workload_d:'Per-teacher periods per week, subject-wise split, and surplus/deficit against sanctioned load.',
+  rep_deo_requirement:'Teacher Requirement (Staff Pattern)',rep_deo_requirement_d:'Subject-wise periods, teachers required at the norm vs teachers available, and shortfall.',
+  deo_subjects_taught:'Subjects taught',deo_subjwise:'Subject-wise periods/week',deo_total_wk:'Total/wk',deo_reqd:'Reqd',deo_surplus_deficit:'Surplus(+)/Deficit(−)',
+  deo_subject:'Subject',deo_total_pw:'Total periods/week',deo_norm:'Periods/teacher (norm)',deo_teach_reqd:'Teachers required',deo_teach_avail:'Teachers available',deo_shortfall:'Shortfall(+)/Surplus(−)',deo_per_week:'periods/teacher/week',deo_not_generated:'Timetable not generated yet — totals may show 0. Generate the timetable first for accurate figures.',
   lbl_working_days:'Working days',lunch_word:'Lunch',lbl_lunch_after:'Lunch after period',lbl_lunch_min:'Lunch (min)',lbl_short_after:'Short breaks after periods',lbl_short_min:'Short break (min)',hint_short_after:'comma-separated, e.g. 2,6 (blank = none)',lbl_custom_dur:'Custom period durations (min)',ph_custom_dur:'e.g. 35,35,40 — blank = same for all',lbl_breaks:'Breaks & Lunch',
   builder_title:'Auto Set',builder_desc:'Subject + teacher + room per class/period. Saved instantly; teacher & room clashes highlighted.',
   th_class_period:'Class \\ Period',opt_free:'— free —',opt_teacher:'teacher…',opt_room:'room…',btn_autogen_all:'⚡ Auto-generate all',warn_teacher:'⚠ teacher:',warn_room:'⚠ room:',
@@ -1589,7 +1596,7 @@ function reportsView(){const cur=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))|
      <h2 style="font-size:24px;margin:0">📊 ${t('reports_title')}</h2>
      <div class="desc" style="font-size:15px">${t('reports_hub_desc')}</div>
      <div class="small" style="color:#5c6580">${(cur.name||'')} ${cur.board?'· '+cur.board:''}</div></div>`;
-  const bar=subTabBar([['timetable','📅 '+t('rep_timetable')],['analysis','📈 '+t('rep_analysis')],['diary','📔 '+t('rep_diary')],['custom','✎ '+t('rep_custom')]],repTab,'setRepTab');
+  const bar=subTabBar([['timetable','📅 '+t('rep_timetable')],['analysis','📈 '+t('rep_analysis')],['deo','🏛 '+t('rep_deo')],['diary','📔 '+t('rep_diary')],['custom','✎ '+t('rep_custom')]],repTab,'setRepTab');
   const secTimetable=`<div class="card"><h2>📅 ${t('rep_timetable')}</h2><div class="desc">${t('rep_timetable_d')}</div>
      <div class="row" style="gap:10px;flex-wrap:wrap">
        <button class="green" onclick="dl('/api/export/timetable.xlsx')">🏫 ${t('rep_classwise')}</button>
@@ -1604,6 +1611,20 @@ function reportsView(){const cur=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))|
        <button class="green" onclick="dl('/api/export/room-utilization.xlsx')">🚪 ${t('rep_roomutil')}</button>
        <button class="green" onclick="dl('/api/export/teacher-free.xlsx')">🟢 ${t('rep_teacherfree')}</button>
        <button class="green" onclick="dl('/api/export/period-load.xlsx')">🔥 ${t('rep_periodload')}</button></div></div>`;
+  const secDeo=`<div class="card"><h2>🏛 ${t('rep_deo')}</h2><div class="desc">${t('rep_deo_d')}</div>
+     <div class="small" style="color:#57608a;margin-bottom:12px">${t('rep_deo_note')}</div>
+     <div style="border:1px solid #e5e7fb;border-radius:10px;padding:12px 14px;margin-bottom:12px;background:#fbfcff">
+       <div style="font-weight:800;color:#1F3864">👩‍🏫 ${t('rep_deo_workload')}</div>
+       <div class="small" style="color:#5c6580;margin:3px 0 9px">${t('rep_deo_workload_d')}</div>
+       <div class="row" style="gap:10px;flex-wrap:wrap">
+         <button class="green" onclick="deoPrint('workload')">🖨 ${t('print_pdf')}</button>
+         <button class="ghost" onclick="dl('/api/export/teacher-workload.xlsx')">⬇ ${t('excel')}</button></div></div>
+     <div style="border:1px solid #e5e7fb;border-radius:10px;padding:12px 14px;background:#fbfcff">
+       <div style="font-weight:800;color:#1F3864">📋 ${t('rep_deo_requirement')}</div>
+       <div class="small" style="color:#5c6580;margin:3px 0 9px">${t('rep_deo_requirement_d')}</div>
+       <div class="row" style="gap:10px;flex-wrap:wrap">
+         <button class="green" onclick="deoPrint('requirement')">🖨 ${t('print_pdf')}</button>
+         <button class="ghost" onclick="dl('/api/export/teacher-requirement.xlsx')">⬇ ${t('excel')}</button></div></div></div>`;
   const secDiary=`<div class="card"><h2>📔 ${t('rep_diary')}</h2><div class="desc">${t('rep_diary_d')}</div>
      <div class="row" style="gap:10px;flex-wrap:wrap">
        <button class="ghost" onclick="setTab('diary')">${t('rep_open_diary')} →</button>
@@ -1615,8 +1636,40 @@ function reportsView(){const cur=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))|
      <div class="row" style="align-items:flex-end;gap:10px"><div style="flex:1;min-width:220px"><label>${t('fmt_title_ph')}</label><input id="fmt_title" placeholder="${(cur.name||'')}" style="width:100%"></div>
        <button class="green" onclick="formatExcel()">⬆ ${t('fmt_upload')}</button></div>
      <div class="small" style="margin-top:8px;color:#5c6580">${t('fmt_desc')}</div></div>`;
-  const body=repTab==='analysis'?secAnalysis:repTab==='diary'?secDiary:repTab==='custom'?secCustom:secTimetable;
+  const body=repTab==='analysis'?secAnalysis:repTab==='deo'?secDeo:repTab==='diary'?secDiary:repTab==='custom'?secCustom:secTimetable;
   return head+bar+body;}
+async function deoPrint(which){
+  toast(t('please_wait'));
+  let d; try{ d=await api('GET','/api/reports/deo'); }catch(e){ toast(t('report_failed')); return; }
+  if(!d||d.error){ toast((d&&d.error)||t('report_failed')); return; }
+  const esc=s=>String(s==null?'':s).replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]));
+  const S=d.school||{};
+  const meta=[S.udise&&('UDISE: '+esc(S.udise)),S.district&&('Dist/Taluka: '+esc(S.district)),S.board&&esc(S.board),S.medium&&esc(S.medium)].filter(Boolean).join('   ·   ');
+  const num=n=>(n==null||n==='')?'':n;
+  const diff=v=>v==null?'':(v>0?'<span style="color:#1a7f37">+'+v+'</span>':(v<0?'<span style="color:#c0392b">'+v+'</span>':'0'));
+  let title,cols,rows;
+  if(which==='workload'){
+    title=t('rep_deo_workload');
+    cols=['Sr',t('u_name'),t('ph_designation'),t('ph_qualification'),t('opt_main_subject'),t('deo_subjects_taught'),t('deo_subjwise'),t('deo_total_wk'),t('deo_reqd'),t('deo_surplus_deficit')];
+    rows=(d.workload||[]).map(w=>[w.sr,esc(w.name),esc(w.designation),esc(w.qualification),esc(w.main),esc(w.subjects),esc(w.subjDist),w.total,num(w.required),diff(w.diff)]);
+  }else{
+    title=t('rep_deo_requirement');
+    cols=['Sr',t('deo_subject'),t('deo_total_pw'),t('deo_norm'),t('deo_teach_reqd'),t('deo_teach_avail'),t('deo_shortfall')];
+    rows=(d.requirement||[]).map((x,i)=>[i+1,esc(x.subject),x.total,x.norm,x.required,x.available,diff(x.gap)]);
+  }
+  const warn=(!d.generated)?`<div style="color:#c0392b;font-weight:600;margin:6px 0">⚠ ${esc(t('deo_not_generated'))}</div>`:'';
+  const th='<tr>'+cols.map((c,i)=>`<th class="${(which==='workload'&&i>=1&&i<=6)||(which==='requirement'&&i===1)?'lft':''}">${esc(c)}</th>`).join('')+'</tr>';
+  const tb=rows.map(r=>'<tr>'+r.map((c,i)=>`<td class="${(which==='workload'&&i>=1&&i<=6)||(which==='requirement'&&i===1)?'lft':''}">${c}</td>`).join('')+'</tr>').join('');
+  const normLine=which==='requirement'?`<div class="small">${esc(t('deo_norm'))}: ${d.norm} ${esc(t('deo_per_week'))}</div>`:'';
+  const css='<style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:26px}.wrap{max-width:1000px;margin:0 auto}h1{font-size:20px;color:#1F3864;margin:0}.sub{font-size:15px;font-weight:700;margin:6px 0 2px}.meta{font-size:12px;color:#555;margin-bottom:10px}table{border-collapse:collapse;width:100%;margin-top:8px}th,td{border:1px solid #888;padding:5px 7px;font-size:12px;text-align:center;vertical-align:top}th{background:#1F3864;color:#fff}.lft{text-align:left}.small{font-size:12px;color:#555}.sig{display:flex;justify-content:space-between;margin-top:34px;font-size:13px}</style>';
+  const html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title>'+css+'</head><body><div class="wrap">'+
+    '<h1>'+esc(S.name||'')+'</h1><div class="sub">'+esc(title)+(S.session?(' — '+esc(S.session)):'')+'</div><div class="meta">'+meta+'</div>'+normLine+warn+
+    '<table><thead>'+th+'</thead><tbody>'+tb+'</tbody></table>'+
+    '<div class="sig"><div>'+esc(t('bell_issue'))+': ______________</div><div>'+esc(t('bell_default_sign'))+'</div></div>'+
+    '</div></body></html>';
+  const w=window.open('','_blank'); if(!w){ toast(t('bell_popup')); return; }
+  w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>{try{w.print();}catch(e){}},350);
+}
 function pickAndPost(url, filename, extra){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls';
   inp.style.cssText='position:fixed;left:-9999px;top:0;opacity:0'; document.body.appendChild(inp);
@@ -1825,8 +1878,10 @@ function mTeachersView(){
       <div class="row" style="gap:6px 7px;align-items:center;flex-wrap:wrap">
         <label class="nf">${t('u_name')}<input class="tname" style="font-size:14px" value="${sesc(t2.name)}" onchange="updTeacher(${t2.id},{name:this.value})"></label>
         <label class="nf">${t('ph_qualification')}<input style="width:96px" value="${(t2.qualification||'').replace(/"/g,'&quot;')}" onchange="updTeacher(${t2.id},{qualification:this.value})"></label>
+        <label class="nf">${t('ph_designation')}<input style="width:96px" value="${(t2.designation||'').replace(/"/g,'&quot;')}" onchange="updTeacher(${t2.id},{designation:this.value})"></label>
         <label class="nf">${t('opt_main_subject')}<select style="max-width:104px" onchange="updTeacher(${t2.id},{main_subject_id:this.value?+this.value:null})"><option value="">—</option>${subjects.map(s=>`<option value="${s.id}" ${t2.main_subject_id===s.id?'selected':''}>${sesc(s.name)}</option>`).join('')}</select></label>
         <label class="nf">${t('ph_weekly_load')}<input type="number" min="0" style="width:56px" value="${t2.max_load||''}" onchange="updTeacher(${t2.id},{max_load:+this.value||null})"></label>
+        <label class="nf" title="${t('ph_sanctioned_hint')}">${t('ph_sanctioned')}<input type="number" min="0" style="width:60px" value="${t2.sanctioned_load||''}" onchange="updTeacher(${t2.id},{sanctioned_load:+this.value||null})"></label>
         <label class="nf">${t('ph_max_per_day')}<input type="number" min="0" style="width:72px" value="${t2.max_per_day||''}" onchange="updTeacher(${t2.id},{max_per_day:+this.value||null})"></label>
         <label class="nf">${t('ph_max_consec')}<input type="number" min="0" style="width:60px" value="${t2.max_consecutive||''}" onchange="updTeacher(${t2.id},{max_consecutive:+this.value||null})"></label>
         <label class="chk" title="${t('can_sub_hint')}"><input type="checkbox" ${(+t2.can_substitute!==0)?'checked':''} onchange="updTeacher(${t2.id},{can_substitute:this.checked?1:0})">${t('can_substitute')}</label>
@@ -1851,8 +1906,10 @@ function addTeacherForm(){
     <div class="row" style="gap:10px;align-items:flex-end;flex-wrap:wrap">
       <label class="nf" style="font-size:11px;color:#1F2B57">${t('u_name')} *<input id="na_name" style="width:200px;font-size:14px" placeholder="${t('ph_new_teacher')}"></label>
       <label class="nf" style="font-size:11px;color:#1F2B57">${t('ph_qualification')}<input id="na_qual" style="width:150px" placeholder="${t('ph_qualification')}"></label>
+      <label class="nf" style="font-size:11px;color:#1F2B57">${t('ph_designation')}<input id="na_desig" style="width:150px" placeholder="${t('ph_designation')}"></label>
       <label class="nf" style="font-size:11px;color:#1F2B57">${t('opt_main_subject')}<select id="na_main" style="max-width:160px"><option value="">—</option>${subjects.map(s=>`<option value="${s.id}">${sesc(s.name)}</option>`).join('')}</select></label>
       <label class="nf" style="font-size:11px;color:#1F2B57">${t('ph_weekly_load')}<input id="na_load" type="number" min="0" style="width:100px"></label>
+      <label class="nf" style="font-size:11px;color:#1F2B57" title="${t('ph_sanctioned_hint')}">${t('ph_sanctioned')}<input id="na_sanc" type="number" min="0" style="width:110px"></label>
       <label class="nf" style="font-size:11px;color:#1F2B57">${t('ph_max_per_day')}<input id="na_perday" type="number" min="0" style="width:110px"></label>
       <label class="nf" style="font-size:11px;color:#1F2B57">${t('ph_max_consec')}<input id="na_consec" type="number" min="0" style="width:110px"></label>
       <label class="chk" title="${t('can_sub_hint')}" style="align-self:center;font-size:12px"><input type="checkbox" id="na_cansub" checked>${t('can_substitute')}</label>
@@ -1885,8 +1942,10 @@ async function saveNewTeacher(){
   const perday=+document.getElementById('na_perday').value||null;
   const consec=+document.getElementById('na_consec').value||null;
   const cansub=document.getElementById('na_cansub').checked?1:0;
-  if(res.id&&(perday!==null||consec!==null||cansub!==1)){
-    await api('PUT','/api/teachers/'+res.id,{max_per_day:perday,max_consecutive:consec,can_substitute:cansub});
+  const desig=(document.getElementById('na_desig').value||'').trim()||null;
+  const sanc=+document.getElementById('na_sanc').value||null;
+  if(res.id&&(perday!==null||consec!==null||cansub!==1||desig!==null||sanc!==null)){
+    await api('PUT','/api/teachers/'+res.id,{max_per_day:perday,max_consecutive:consec,can_substitute:cansub,designation:desig,sanctioned_load:sanc});
   }
   addTch=false;
   toast('✓ '+name+' — '+t('saved'));
@@ -1993,7 +2052,7 @@ let dTab='diary';function setDTab(x){dTab=x;render();window.scrollTo({top:0,beha
 function hoursTimingsCard(){const wd=slotsFor(WD().find(d=>d!==5)??firstWD());const wds=new Set(WD());return `<div class="card hoursCompact">
    <div class="row" style="margin-bottom:14px;align-items:flex-end;gap:12px;flex-wrap:wrap"><div class="desc" style="font-weight:700;color:#1F3864;flex:1 1 210px;min-width:170px;margin:0;align-self:center">${t('hours_desc')}</div><div style="width:200px;max-width:100%"><label>${t('lbl_school_name')}</label><input style="width:100%" value="${(config.school_name||'').replace(/"/g,'&quot;')}" onchange="cfg('school_name',this.value)"></div>
      <div style="width:130px"><label>${t('lbl_session')}</label><input style="width:100%" value="${(config.academic_session||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_session')}" onchange="cfg('academic_session',this.value)"></div>
-     ${(ME&&['admin','master'].includes(ME.role))?(()=>{const cs=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};return `<div style="width:180px"><label>${t('lbl_email')}</label><input style="width:100%" type="email" value="${(cs.email||'').replace(/"/g,'&quot;')}" onchange="updSchool(SCHOOL,{email:this.value})"></div><div style="width:130px"><label>${t('lbl_mobile')}</label><input style="width:100%" value="${(cs.mobile||'').replace(/"/g,'&quot;')}" onchange="updSchool(SCHOOL,{mobile:this.value})"></div>`;})():''}
+     ${(ME&&['admin','master'].includes(ME.role))?(()=>{const cs=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};return `<div style="width:180px"><label>${t('lbl_email')}</label><input style="width:100%" type="email" value="${(cs.email||'').replace(/"/g,'&quot;')}" onchange="updSchool(SCHOOL,{email:this.value})"></div><div style="width:130px"><label>${t('lbl_mobile')}</label><input style="width:100%" value="${(cs.mobile||'').replace(/"/g,'&quot;')}" onchange="updSchool(SCHOOL,{mobile:this.value})"></div><div style="width:150px"><label title="${t('lbl_udise_hint')}">${t('lbl_udise')}</label><input style="width:100%" value="${(cs.udise||'').replace(/"/g,'&quot;')}" onchange="updSchool(SCHOOL,{udise:this.value})"></div><div style="width:170px"><label>${t('lbl_district')}</label><input style="width:100%" value="${(cs.district||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_district')}" onchange="updSchool(SCHOOL,{district:this.value})"></div>`;})():''}
      ${(()=>{const cs=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{};return `<div style="display:flex;align-items:flex-end;gap:12px"><div><label>${t('logo_word')}</label><br>${cs.logo?`<img src="${cs.logo}" style="height:44px;max-width:120px;border:1px solid #e2e8f0;border-radius:6px;vertical-align:middle;padding:2px">`:'<span class="small" style="color:#5c6580">'+t('none')+'</span>'}</div>${SCHOOL?`<div><button class="ghost" onclick="pickLogo(${SCHOOL})">${cs.logo?t('logo_change'):t('logo_upload')}</button>${cs.logo?` <button class="ghost red" onclick="removeLogo(${SCHOOL})">${t('logo_remove')}</button>`:''}</div>`:''}</div>`;})()}</div>
    <div style="margin-bottom:16px;display:flex;align-items:center;flex-wrap:wrap;gap:4px"><span class="wdlbl">${t('lbl_working_days')}</span> ${DAYS.map((d,i)=>`${i===5?'<span class="wdgap"></span>':''}<label class="chk wdchk wd${i}"><input type="checkbox" ${wds.has(i)?'checked':''} onchange="toggleWD(${i},this.checked)">${DD()[i]}</label>`).join('')}</div>
    <div class="row" style="margin-bottom:14px">
