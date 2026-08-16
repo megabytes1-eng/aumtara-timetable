@@ -164,7 +164,7 @@
     <h1>Clash-free timetables.<br><span class="g">Inspection-ready reports.</span> Everything a school needs.</h1>
     <p class="lead">Aumtara Timetable builds a conflict-free schedule in one click, generates inspection & Patrak reports automatically, finds the smartest substitute when a teacher is absent, and handles multi-subject teachers, push notifications, diaries and Excel import/export — all in one app.</p>
     <div class="hero-cta">
-      <a class="btn btn-primary btn-lg" href="#" id="cta_start">Start free — create your school</a>
+      <a class="btn btn-primary btn-lg" href="#" onclick="return openDemo()">🎬 Book a Free Demo</a>
       <a class="btn btn-ghost btn-lg" href="#details">See all features →</a>
     </div>
     <div class="hero-note">✓ Runs on any phone or PC · installs as an app · works offline · 12 languages</div>
@@ -297,8 +297,8 @@
   <section><div class="wrap">
     <div class="cta-band">
       <h2>Ready to launch your school online?</h2>
-      <p class="sub">Create your school account free — the first timetable takes minutes.</p>
-      <a class="btn btn-ghost btn-lg" href="#" id="cta_bottom" style="background:#fff;color:#5a3ec8">Start free →</a>
+      <p class="sub">Book a free guided demo — we set it up and train your staff, so your school starts the right way.</p>
+      <a class="btn btn-ghost btn-lg" href="#" onclick="return openDemo()" style="background:#fff;color:#5a3ec8">🎬 Free Demo →</a>
     </div>
   </div></section>
 
@@ -318,7 +318,7 @@
     <div id="payOpts"></div>
     <div id="enqBox">
       <div class="pay-opt">
-        <h4>✉️ Request a callback</h4>
+        <h4 id="enqH">✉️ Request a callback</h4>
         <div class="field" style="margin-bottom:8px"><input id="eq_name" placeholder="Your name *"></div>
         <div class="field" style="margin-bottom:8px"><input id="eq_school" placeholder="School name"></div>
         <div class="field" style="margin-bottom:8px"><input id="eq_phone" placeholder="Phone / WhatsApp *"></div>
@@ -382,8 +382,8 @@
   var APP = "https://aumtara-timetable.onrender.com";   // live Aumtara app
   var PAY = null, TOKEN = null, CURPLAN='', CURAMT=0;
   document.getElementById('yr').textContent = new Date().getFullYear();
-  // sign-in / start CTAs open the app
-  ['cta_signin','cta_start','cta_bottom'].forEach(function(id){var e=document.getElementById(id);if(e)e.href=APP;});
+  // only existing/trained users sign in to the app; new schools go through a demo first
+  var si=document.getElementById('cta_signin'); if(si) si.href=APP;
 
   function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function api(method, pathq, body){
@@ -404,6 +404,18 @@
     return false;
   }
   function closeBuy(){ document.getElementById('buyModal').classList.remove('open'); return false; }
+  // Free Demo: open the same modal but as a demo request — only the enquiry form, no payment options
+  function openDemo(){
+    CURPLAN='Free Demo'; CURAMT=0;
+    document.getElementById('buyTitle').textContent='Book a Free Demo';
+    document.getElementById('buyAmt').textContent='Leave your details — we’ll set up a guided demo & training for your school.';
+    document.getElementById('payOpts').innerHTML='';
+    document.getElementById('enqBox').style.display='block';
+    var eh=document.getElementById('enqH'); if(eh) eh.textContent='🎬 Book your free demo';
+    var m=document.getElementById('eqMsg'); if(m){ m.className='msg'; m.textContent=''; }
+    document.getElementById('buyModal').classList.add('open');
+    return false;
+  }
   function renderBuy(){
     var p=PAY||{}, out='';
     if(p.note){ out+='<p class="mini" style="margin:0 0 12px">'+esc(p.note)+'</p>'; }
@@ -429,6 +441,7 @@
     }
     document.getElementById('payOpts').innerHTML = out || '<p class="mini" style="margin-bottom:8px">Fill the form below and we’ll set you up.</p>';
     document.getElementById('enqBox').style.display=(p.enable_enquiry===0)?'none':'block';
+    var eh=document.getElementById('enqH'); if(eh) eh.textContent='✉️ Request a callback';
     // build the UPI QR + deep link now that the box exists
     if(p.enable_upi!==0 && p.upi_id){
       var uri='upi://pay?pa='+encodeURIComponent(p.upi_id)+'&pn='+encodeURIComponent(p.payee_name||'Aumtara')+'&am='+CURAMT+'&cu=INR&tn='+encodeURIComponent('Aumtara '+CURPLAN);
