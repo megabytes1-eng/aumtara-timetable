@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v17';
+const SW_JS = `const CACHE='aumtara-v18';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -2267,19 +2267,19 @@ function buildDeoSheet(wb, d, fmt){
     const end=_deoXlTable(ws,start,headers,rows,[26,...subs.map(()=>9)]);
     let r=end+1; ws.getCell('A'+r).value='આથી પ્રમાણપત્ર આપવામાં આવે છે કે ઉપર્યુક્ત પત્રકમાં દર્શાવ્યા મુજબનો કાર્યભાર શાળાના સમયપત્રકમાં દર્શાવેલ છે.'; ws.mergeCells('A'+r+':'+String.fromCharCode(66+subs.length)+r); r++;
     _deoSig(ws,r,d.header.officer_name); return; }
-  if(fmt==='format1'){ const ws=wb.addWorksheet('DEO Format 1'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 1 — TEACHER WEEKLY WORKLOAD & DUTY SUMMARY','DEO Mandated Max: '+d.maxLoad+' periods/week');
+  if(fmt==='format1'){ const ws=wb.addWorksheet('Format 1'); const start=_deoXlHead(ws,d,'G','FORMAT 1 — TEACHER WEEKLY WORKLOAD & DUTY SUMMARY','DEO Mandated Max: '+d.maxLoad+' periods/week');
     const rows=d.format1.map(w=>[w.sr,w.name,w.designation,w.total,w.max,w.pct+'%',_deoStatusText(w.status)]);
     const end=_deoXlTable(ws,start,['S.No','Faculty Name','Designation / Cadre','Total Weekly Load','DEO Max','Capacity %','DEO Status'],rows,[6,26,20,14,10,11,16]); _deoSig(ws,end,d.header.officer_name); return; }
-  if(fmt==='format2'){ const ws=wb.addWorksheet('DEO Format 2'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 2 — CLASS SUBJECT PERIOD ALLOCATION & CURRICULUM COVERAGE','');
+  if(fmt==='format2'){ const ws=wb.addWorksheet('Format 2'); const start=_deoXlHead(ws,d,'G','FORMAT 2 — CLASS SUBJECT PERIOD ALLOCATION & CURRICULUM COVERAGE','');
     const rows=d.format2.map(w=>[w.sr,w.cls,w.subject,w.teacher,w.mandated+' p/wk',w.scheduled+' p/wk',w.pct+'% '+_deoStatusText(w.status)]);
     const end=_deoXlTable(ws,start,['S.No','Class & Section','Subject','Assigned Faculty','Mandated','Scheduled','Compliance'],rows,[6,18,22,24,11,11,20]); _deoSig(ws,end,d.header.officer_name); return; }
-  if(fmt==='format3'){ const ws=wb.addWorksheet('DEO Format 3'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 3 — ROOM & LAB INFRASTRUCTURE UTILIZATION AUDIT','');
+  if(fmt==='format3'){ const ws=wb.addWorksheet('Format 3'); const start=_deoXlHead(ws,d,'G','FORMAT 3 — ROOM & LAB INFRASTRUCTURE UTILIZATION AUDIT','');
     const rows=d.format3.map(w=>[w.sr,w.room,w.capacity!==''?(w.capacity+' seats'):'—',w.used+' / '+w.slots+' slots',w.pct+'%',_deoStatusText(w.status)]);
     const end=_deoXlTable(ws,start,['S.No','Room / Name','Seating Capacity','Occupied Periods/Wk','Occupancy %','DEO Audit Status'],rows,[6,24,16,20,13,18]); _deoSig(ws,end,d.header.officer_name); return; }
-  if(fmt==='format4'){ const ws=wb.addWorksheet('DEO Format 4'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 4 — BELL SCHEDULE & INSTRUCTIONAL MINUTES','');
+  if(fmt==='format4'){ const ws=wb.addWorksheet('Format 4'); const start=_deoXlHead(ws,d,'G','FORMAT 4 — BELL SCHEDULE & INSTRUCTIONAL MINUTES','');
     const rows=d.format4.map((w,i)=>[i+1,_deoStatusText(w.shift),w.board,w.timings,w.periods+' periods',w.duration+' min',w.dailyMin+' min ('+(w.dailyMin/60).toFixed(1)+' hrs)']);
     const end=_deoXlTable(ws,start,['S.No','Shift / Day','Board Affiliation','Timings','Periods/Day','Period Duration','Daily Instructional Time'],rows,[6,16,20,16,13,14,22]); _deoSig(ws,end,d.header.officer_name); return; }
-  if(fmt==='format5'){ const ws=wb.addWorksheet('DEO Format 5'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 5 — FACULTY ABSENCE & SUBSTITUTE DUTY REGISTER','');
+  if(fmt==='format5'){ const ws=wb.addWorksheet('Format 5'); const start=_deoXlHead(ws,d,'G','FORMAT 5 — FACULTY ABSENCE & SUBSTITUTE DUTY REGISTER','');
     const rows=d.format5.map(w=>[w.sr,w.id+'  '+w.date,w.absent,(w.cls?(w.cls+' '):'')+w.period,w.sub,_deoStatusText(w.status)]);
     const end=_deoXlTable(ws,start,['S.No','Absence ID & Date','Absent Faculty','Class / Period','Substitute Faculty','Duty Status'],rows,[6,20,22,16,22,14]); _deoSig(ws,end,d.header.officer_name); return; }
 }
