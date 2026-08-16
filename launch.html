@@ -486,10 +486,9 @@
       out+='<div class="pay-opt"><h4>💳 Pay online</h4><p class="mini" style="margin:0 0 8px">Card · UPI · Net-banking via secure payment page.</p>'+
            '<a class="btn btn-primary btn-sm" target="_blank" rel="noopener" href="'+esc(p.gateway_url)+'">Pay ₹'+CURAMT+' online →</a></div>';
     }
-    document.getElementById('payOpts').innerHTML = out || '<p class="mini" style="margin-bottom:8px">Fill the form below and we’ll set you up.</p>';
-    document.getElementById('enqBox').style.display=(p.enable_enquiry===0)?'none':'block';
-    var eh=document.getElementById('enqH'); if(eh) eh.textContent='✉️ Or request a callback';
-    // buy = show the "payment done → create account" step; hide the signup form until clicked
+    document.getElementById('payOpts').innerHTML = out || '<p class="mini" style="margin-bottom:8px">Payment details are being set up. Please use “Book a Free Demo” or contact us to complete your purchase.</p>';
+    // BUY = payment options only; no enquiry/callback form. Account signup opens after payment.
+    document.getElementById('enqBox').style.display='none';
     document.getElementById('paidCta').style.display='block';
     document.getElementById('signupBox').style.display='none';
     var sm=document.getElementById('suMsg'); if(sm){ sm.className='msg'; sm.textContent=''; }
