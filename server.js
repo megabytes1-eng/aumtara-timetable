@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v15';
+const SW_JS = `const CACHE='aumtara-v16';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -2225,8 +2225,6 @@ function _deoXlHead(ws, d, lastCol, title, subtitle){
   merge(H.school_name||'', {bold:true,size:14,color:{argb:'FF1F3864'}}, true);
   const meta=[H.udise&&('UDISE: '+H.udise),H.district&&('Dist/Taluka: '+H.district),H.board,H.medium,H.session&&('A.Y. '+H.session)].filter(Boolean).join('   ·   ');
   if(meta) merge(meta, {size:9,color:{argb:'FF555555'}}, true);
-  const codes=[H.reg_code&&('DEO Reg: '+H.reg_code),H.inspection_ref&&('Inspection Ref: '+H.inspection_ref)].filter(Boolean).join('   ·   ');
-  if(codes) merge(codes, {size:9,color:{argb:'FF555555'}}, true);
   merge(title, {bold:true,size:12}, true); if(subtitle) merge(subtitle,{size:10,color:{argb:'FF444444'}},true);
   r++; return r;
 }
@@ -2246,7 +2244,7 @@ function buildDeoSheet(wb, d, fmt){
   const sn=(/^patrak_[abk]_(pri|sec|hsec)$/.test(fmt))?fmt.split('_').pop():null;
   if(fmt.startsWith('patrak_a')){ const sec=secByKey[sn]||{present:false}; const ws=wb.addWorksheet('Patrak A '+(sn==='hsec'?'(HS)':sn==='pri'?'(Pri)':'(Sec)'));
     if(!sec.present){ ws.addRow(['No '+_secLabel(sn)+' classes.']); return; }
-    const subs=sec.subjects; const start=_deoXlHead(ws,d,String.fromCharCode(66+subs.length),'કાર્યભાર પત્રક-અ  ·  WORKLOAD PATRAK-A — CLASS ALLOCATION','('+_secLabel(sn)+')');
+    const subs=sec.subjects; const start=_deoXlHead(ws,d,String.fromCharCode(66+subs.length),'કાર્યભાર પત્રક-અ · Class Allocation','('+_secLabel(sn)+')');
     const headers=['ધોરણ / Std', ...subs.map(s=>s.name), 'કુલ / Total']; const rows=[];
     sec.patrakA.standards.forEach(st=>{ rows.push(['Std '+(st.std||'-')+'  ·  Periods (તાસ)', ...st.cols.map(c=>c.tas), '']);
       rows.push(['   Divisions (વર્ગ)', ...st.cols.map(c=>c.varg), st.divisions]);
@@ -2255,13 +2253,13 @@ function buildDeoSheet(wb, d, fmt){
     const end=_deoXlTable(ws,start,headers,rows,[22,...subs.map(()=>9),10]); _deoSig(ws,end,d.header.officer_name); return; }
   if(fmt.startsWith('patrak_b')){ const sec=secByKey[sn]||{present:false}; const ws=wb.addWorksheet('Patrak B '+(sn==='hsec'?'(HS)':sn==='pri'?'(Pri)':'(Sec)'));
     if(!sec.present){ ws.addRow(['No '+_secLabel(sn)+' classes.']); return; }
-    const subs=sec.subjects; const start=_deoXlHead(ws,d,String.fromCharCode(66+subs.length),'પત્રક-બ  ·  PATRAK-B — TEACHER WORKLOAD','('+_secLabel(sn)+')');
+    const subs=sec.subjects; const start=_deoXlHead(ws,d,String.fromCharCode(66+subs.length),'પત્રક-બ · Teacher Workload','('+_secLabel(sn)+')');
     const headers=['કર્મચારીનો ક્રમ / Teacher', ...subs.map(s=>s.name), 'કુલ / Total']; const rows=[];
     sec.patrakB.teachers.forEach((t,i)=>rows.push([(i+1)+'. '+t.name, ...subs.map(s=>t.per[s.id]||'-'), t.total]));
     const end=_deoXlTable(ws,start,headers,rows,[24,...subs.map(()=>9),10]); _deoSig(ws,end,d.header.officer_name); return; }
   if(fmt.startsWith('patrak_k')){ const sec=secByKey[sn]||{present:false}; const ws=wb.addWorksheet('Patrak K '+(sn==='hsec'?'(HS)':sn==='pri'?'(Pri)':'(Sec)'));
     if(!sec.present){ ws.addRow(['No '+_secLabel(sn)+' classes.']); return; }
-    const subs=sec.subjects; const start=_deoXlHead(ws,d,String.fromCharCode(66+subs.length),'કાર્યભાર પત્રક-ક  ·  PATRAK-K — WORKLOAD CERTIFICATE','('+_secLabel(sn)+')');
+    const subs=sec.subjects; const start=_deoXlHead(ws,d,String.fromCharCode(66+subs.length),'કાર્યભાર પત્રક-ક · Workload Certificate','('+_secLabel(sn)+')');
     const headers=['વિષય / Subject-wise', ...subs.map(s=>s.name)];
     const rows=[["પત્રક 'અ' મુજબ (as per A)", ...sec.patrakK.rows.map(r=>r.a)],
                 ["પત્રક 'બ' મુજબ (as per B)", ...sec.patrakK.rows.map(r=>r.b)],
