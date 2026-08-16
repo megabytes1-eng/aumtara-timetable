@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v14';
+const SW_JS = `const CACHE='aumtara-v15';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -2223,7 +2223,6 @@ function _deoXlHead(ws, d, lastCol, title, subtitle){
   let r=1; const merge=(txt,font,center)=>{ const c=ws.getCell('A'+r); c.value=txt; if(font)c.font=font; c.alignment={horizontal:center?'center':'left'}; ws.mergeCells('A'+r+':'+lastCol+r); r++; };
   const H=d.header;
   merge(H.school_name||'', {bold:true,size:14,color:{argb:'FF1F3864'}}, true);
-  merge('DISTRICT EDUCATION OFFICER (DEO) — OFFICIAL TIMETABLE & TEACHER LOAD REGISTER', {size:9,color:{argb:'FF555555'}}, true);
   const meta=[H.udise&&('UDISE: '+H.udise),H.district&&('Dist/Taluka: '+H.district),H.board,H.medium,H.session&&('A.Y. '+H.session)].filter(Boolean).join('   ·   ');
   if(meta) merge(meta, {size:9,color:{argb:'FF555555'}}, true);
   const codes=[H.reg_code&&('DEO Reg: '+H.reg_code),H.inspection_ref&&('Inspection Ref: '+H.inspection_ref)].filter(Boolean).join('   ·   ');

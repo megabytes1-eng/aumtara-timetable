@@ -1716,28 +1716,29 @@ function deoSectionHTML(cur){
   const opts=SECS.map(k=>{ const cnt=((DEOPACK.sections||[]).find(x=>x.key===k)||{}); const n=cnt.present?((cnt.subjects||[]).length):0;
     return `<option value="${k}" ${k===deoSec?'selected':''} ${cnt.present?'':'disabled'}>${_deoSecLabel(k)}${cnt.present?'':' — '+t('deo_sec_none')}</option>`; }).join('');
   const L=_deoSecLabel(deoSec);
-  const patrakBody=secPresent(deoSec)?`
+  const GRID=s=>`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:9px;margin-bottom:6px">${s}</div>`;
+  const patrakBody=secPresent(deoSec)?GRID(`
      ${deoRow('📗',t('deo_patrak_a')+' ('+L+')',t('deo_patrak_a_d'),"deoPrintPatrak('a')",'patrak_a_'+deoSec)}
      ${deoRow('📘',t('deo_patrak_b')+' ('+L+')',t('deo_patrak_b_d'),"deoPrintPatrak('b')",'patrak_b_'+deoSec)}
-     ${deoRow('📜',t('deo_patrak_k')+' ('+L+')',t('deo_patrak_k_d'),"deoPrintPatrak('k')",'patrak_k_'+deoSec)}`
+     ${deoRow('📜',t('deo_patrak_k')+' ('+L+')',t('deo_patrak_k_d'),"deoPrintPatrak('k')",'patrak_k_'+deoSec)}`)
     :`<div class="small" style="color:#c0392b;margin-bottom:8px">${t('deo_sec_empty')}</div>`;
   const patraks=anyPresent?`<div style="font-weight:800;color:#5a3ec8;margin:4px 0 6px">📚 ${t('deo_patrak_group')}</div>
      <div class="row" style="align-items:center;gap:8px;margin-bottom:9px"><label style="font-weight:700;color:#1F3864;font-size:13px">${t('deo_select_section')}:</label>
        <select onchange="deoSec=this.value;render()" style="min-width:180px">${opts}</select></div>
      ${patrakBody}`:`<div class="small" style="color:#c0392b;margin-bottom:8px">${t('deo_no_std')}</div>`;
-  const registers=`<div style="font-weight:800;color:#5a3ec8;margin:10px 0 6px">🏛 ${t('deo_reg_group')}</div>
+  const registers=`<div style="font-weight:800;color:#5a3ec8;margin:10px 0 6px">🏛 ${t('deo_reg_group')}</div>`+GRID(`
      ${deoRow('👩‍🏫',t('deo_f1'),t('deo_f1_d'),'deoPrintFormat(1)','format1')}
      ${deoRow('📋',t('deo_f2'),t('deo_f2_d'),'deoPrintFormat(2)','format2')}
      ${deoRow('🚪',t('deo_f3'),t('deo_f3_d'),'deoPrintFormat(3)','format3')}
      ${deoRow('🔔',t('deo_f4'),t('deo_f4_d'),'deoPrintFormat(4)','format4')}
-     ${deoRow('🗓',t('deo_f5'),t('deo_f5_d'),'deoPrintFormat(5)','format5')}`;
+     ${deoRow('🗓',t('deo_f5'),t('deo_f5_d'),'deoPrintFormat(5)','format5')}`);
   const legacyRow=(icon,title,desc,printJs,xlUrl)=>`<div style="border:1px solid #e5e7fb;border-radius:10px;padding:11px 13px;margin-bottom:9px;background:#fbfcff">
      <div style="font-weight:800;color:#1F3864">${icon} ${title}</div><div class="small" style="color:#5c6580;margin:2px 0 8px">${desc}</div>
      <div class="row" style="gap:9px;flex-wrap:wrap"><button class="green" onclick="${printJs}">🖨 ${t('print_pdf')}</button>
        <button class="ghost" onclick="dl('${xlUrl}')">⬇ ${t('excel')}</button></div></div>`;
-  const legacy=`<div style="font-weight:800;color:#5a3ec8;margin:10px 0 6px">📊 ${t('deo_quick_group')}</div>
+  const legacy=`<div style="font-weight:800;color:#5a3ec8;margin:10px 0 6px">📊 ${t('deo_quick_group')}</div>`+GRID(`
      ${legacyRow('👩‍🏫',t('rep_deo_workload'),t('rep_deo_workload_d'),"deoPrint('workload')",'/api/export/teacher-workload.xlsx')}
-     ${legacyRow('📋',t('rep_deo_requirement'),t('rep_deo_requirement_d'),"deoPrint('requirement')",'/api/export/teacher-requirement.xlsx')}`;
+     ${legacyRow('📋',t('rep_deo_requirement'),t('rep_deo_requirement_d'),"deoPrint('requirement')",'/api/export/teacher-requirement.xlsx')}`);
   return `<div class="card"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
        <h2 style="margin:0">🏛 ${t('rep_deo')}</h2>
        <div class="row" style="gap:8px"><button class="ghost" onclick="dl('/api/export/deo.xlsx?fmt=pack')">📦 ${t('deo_pack_all')}</button><button class="ghost" onclick="loadDeoPack(true)">↻ ${t('deo_refresh')}</button></div></div>
@@ -1759,10 +1760,8 @@ function _deoDocOpen(titleMain,titleSub,innerHTML,warnGen){
   const officer=H.officer_name?(' — '+esc(H.officer_name)):'';
   const html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(titleMain)+'</title>'+css+'</head><body><div class="wrap">'+
     '<div class="mast"><div class="sch">'+esc(H.school_name||'')+'</div>'+
-      '<div class="gov">'+esc(t('deo_gov_line'))+'</div>'+
-      '<div class="reg">'+esc(t('deo_reg_line'))+'</div>'+
-      (metaBits?'<div class="meta">'+metaBits+'</div>':'')+
-      (subMeta?'<div class="sub2">'+subMeta+'</div>':'')+'</div>'+
+      (subMeta?'<div class="sub2">'+subMeta+'</div>':'')+
+      (metaBits?'<div class="meta">'+metaBits+'</div>':'')+'</div>'+
     '<div class="title">'+titleMain+'</div>'+(titleSub?'<div class="tsub">'+titleSub+'</div>':'')+warn+
     innerHTML+
     '<div class="sig"><div class="box"><div class="line">'+esc(t('deo_sign_principal'))+'</div><div class="cap">'+esc(t('deo_seal_school'))+'</div></div>'+
