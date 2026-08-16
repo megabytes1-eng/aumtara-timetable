@@ -283,6 +283,8 @@ async function init() {
   // DEO / govt reports: teacher designation + sanctioned load; school UDISE code + district/taluka (report headers)
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS designation TEXT`);
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS sanctioned_load INTEGER`);
+  await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS email TEXT`);       // teacher directory / future email alerts
+  await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS mobile TEXT`);      // teacher directory / future SMS alerts
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS udise TEXT`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS district TEXT`);
   // DEO official masthead fields (printed on every DEO register/patrak)

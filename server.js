@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v20';
+const SW_JS = `const CACHE='aumtara-v21';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -573,6 +573,8 @@ app.put('/api/teachers/:id', h(async (req,res)=>{
   if(b.can_substitute!==undefined) await run('UPDATE tt_teacher SET can_substitute=? WHERE id=? AND school_id=?',[b.can_substitute?1:0, req.params.id, sid]);
   if(b.designation!==undefined) await run('UPDATE tt_teacher SET designation=? WHERE id=? AND school_id=?',[b.designation||null, req.params.id, sid]);
   if(b.sanctioned_load!==undefined) await run('UPDATE tt_teacher SET sanctioned_load=? WHERE id=? AND school_id=?',[b.sanctioned_load||null, req.params.id, sid]);
+  if(b.email!==undefined) await run('UPDATE tt_teacher SET email=? WHERE id=? AND school_id=?',[b.email||null, req.params.id, sid]);
+  if(b.mobile!==undefined) await run('UPDATE tt_teacher SET mobile=? WHERE id=? AND school_id=?',[b.mobile||null, req.params.id, sid]);
   if(b.subjects!==undefined){ const subs=new Set(b.subjects); if(b.main_subject_id)subs.add(+b.main_subject_id); await setSubjects(+req.params.id, [...subs]); }
   res.json({ok:true});
 }));
