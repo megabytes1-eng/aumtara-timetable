@@ -488,6 +488,52 @@ app.put('/api/enquiry/:id', h(async (req,res)=>{ if(!requireOwner(req,res)) retu
   await run('UPDATE tt_enquiry SET handled=? WHERE id=?',[req.body&&req.body.handled?1:0, Number(req.params.id)]);
   res.json({ ok:true });
 }));
+// owner-only: record a payment (sales ledger) + optionally mark the school paid
+app.post('/api/owner/payment', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const b=req.body||{};
+  const sid=Number(b.school_id)||null;
+  const amount=parseFloat(b.amount); if(!sid || !(amount>0)){ res.status(400).json({error:'school and a positive amount are required'}); return; }
+  const method=String(b.method||'other').trim().toLowerCase();
+  await run('INSERT INTO tt_payment(school_id,amount,method,note,ts) VALUES(?,?,?,?,now()::text)',[sid, amount, method, String(b.note||'').trim()||null]);
+  if(b.mark_paid) await run('UPDATE tt_school SET paid=1 WHERE id=?',[sid]);
+  res.json({ ok:true });
+}));
+// owner-only: sales ledger + totals (all / this-month / by method)
+app.get('/api/owner/payments', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const rows=await q('SELECT p.id,p.school_id,p.amount::float amount,p.method,p.note,p.ts,s.name school_name FROM tt_payment p LEFT JOIN tt_school s ON s.id=p.school_id ORDER BY p.id DESC LIMIT 200');
+  const byMethod=await q("SELECT COALESCE(NULLIF(method,''),'other') method, SUM(amount)::float total, COUNT(*)::int n FROM tt_payment GROUP BY 1 ORDER BY 2 DESC");
+  const tot=await q1('SELECT COALESCE(SUM(amount),0)::float total, COUNT(*)::int n FROM tt_payment');
+  const month=await q1("SELECT COALESCE(SUM(amount),0)::float total FROM tt_payment WHERE substr(ts,1,7)=to_char(now(),'YYYY-MM')");
+  res.json({ payments:rows, byMethod, total:tot.total, count:tot.n, month:month.total });
+}));
+// owner-only: reset a school's admin login password (for support)
+app.post('/api/owner/school/:id/reset-password', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const sid=Number(req.params.id); const pw=String((req.body||{}).password||'');
+  if(pw.length<6){ res.status(400).json({error:'password must be at least 6 characters'}); return; }
+  const u=await q1("SELECT id,login_id FROM tt_user WHERE school_id=? AND role IN ('admin','master') ORDER BY id LIMIT 1",[sid]);
+  if(!u){ res.status(404).json({error:'no admin login found for this school'}); return; }
+  await run('UPDATE tt_user SET password_hash=? WHERE id=?',[hashPw(pw), u.id]);
+  res.json({ ok:true, login_id:u.login_id });
+}));
+// any signed-in user: update own profile (email + mobile)
+app.put('/api/me', h(async (req,res)=>{
+  const b=req.body||{};
+  const email=String(b.email||'').trim()||null, mobile=String(b.mobile||'').trim()||null;
+  if(email && await q1('SELECT 1 FROM tt_user WHERE lower(email)=lower(?) AND id<>?',[email, req.user.id])){ res.status(400).json({error:'email already used by another account'}); return; }
+  if(mobile && await q1('SELECT 1 FROM tt_user WHERE mobile=? AND id<>?',[mobile, req.user.id])){ res.status(400).json({error:'mobile already used by another account'}); return; }
+  await run('UPDATE tt_user SET email=?, mobile=? WHERE id=?',[email, mobile, req.user.id]);
+  res.json({ ok:true, email, mobile });
+}));
+// any signed-in user: change own password (needs current password)
+app.post('/api/me/password', h(async (req,res)=>{
+  const b=req.body||{};
+  const cur=String(b.current||''), nw=String(b.new||'');
+  if(nw.length<6){ res.status(400).json({error:'new password must be at least 6 characters'}); return; }
+  const u=await q1('SELECT password_hash FROM tt_user WHERE id=?',[req.user.id]);
+  if(!u || !verifyPw(cur, u.password_hash)){ res.status(401).json({error:'current password is incorrect'}); return; }
+  await run('UPDATE tt_user SET password_hash=? WHERE id=?',[hashPw(nw), req.user.id]);
+  res.json({ ok:true });
+}));
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat'];
 const addMin = (hhmm,min)=>{const[h,m]=hhmm.split(':').map(Number);const d=new Date(2020,0,1,h,m+min);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};

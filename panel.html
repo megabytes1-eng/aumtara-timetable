@@ -6,116 +6,168 @@
 <title>Aumtara — Owner Control Panel</title>
 <meta name="robots" content="noindex">
 <style>
-  :root{--navy:#1F3864;--purple:#5a3ec8;--ink:#141b2e;--muted:#5c6580;--line:#e6e9f5;--bg:#eef1f8;--card:#fff;--ok:#16a34a;--red:#c0392b}
+  :root{--navy:#1F3864;--purple:#5a3ec8;--ink:#141b2e;--muted:#6b7391;--line:#e9ebf3;--ok:#16a34a;--red:#c0392b;--amber:#b45309}
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
-  .btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:.15s;text-decoration:none}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.5}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 22px}
+  a{color:inherit}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:8px;padding:9px 15px;font-size:14px;font-weight:700;cursor:pointer;transition:.12s;text-decoration:none}
   .btn:active{transform:translateY(1px)}
   .btn-primary{background:linear-gradient(135deg,#5a3ec8,#7c3aed);color:#fff}
   .btn-ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
-  .btn-sm{padding:6px 11px;font-size:13px;border-radius:8px}
-  .p-head{background:linear-gradient(135deg,#1F3864,#3b2a7a);color:#fff;padding:14px 0}
-  .p-head .wrap{display:flex;align-items:center;gap:14px}
-  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px}
-  .logo .mark{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:17px}
-  .who{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:14px}
-  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px}
-  .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-  .kpi b{display:block;font-size:24px;color:var(--navy)}.kpi span{font-size:12px;color:var(--muted)}
+  .btn-ghost:hover{border-color:var(--purple);color:var(--purple)}
+  .btn-sm{padding:6px 10px;font-size:12.5px;border-radius:7px}
+  /* header */
+  .top{border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:20}
+  .top .wrap{display:flex;align-items:center;gap:14px;height:60px}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;color:var(--navy)}
+  .logo .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#1F3864,#5a3ec8);color:#fff;display:grid;place-items:center;font-size:16px}
+  .who{margin-left:auto;display:flex;gap:14px;align-items:center;font-size:13.5px;color:var(--muted)}
+  /* tabs */
+  .tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);margin:0}
+  .tabs button{background:none;border:none;border-bottom:2.5px solid transparent;padding:14px 2px;font-weight:700;font-size:14.5px;color:var(--muted);cursor:pointer;margin-bottom:-1px}
+  .tabs button.active{color:var(--purple);border-color:var(--purple)}
+  .sec{display:none;padding:26px 0 60px}.sec.show{display:block}
+  h3.head{font-size:16px;color:var(--navy);margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+  hr{border:none;border-top:1px solid var(--line);margin:28px 0}
+  /* kpi row (flat, no boxes) */
+  .kpis{display:flex;flex-wrap:wrap;gap:0}
+  .kpi{padding:6px 26px 6px 0;margin-right:26px;border-right:1px solid var(--line)}
+  .kpi:last-child{border-right:none}
+  .kpi b{display:block;font-size:28px;color:var(--navy);line-height:1.1}
+  .kpi span{font-size:12.5px;color:var(--muted)}
+  .kpi.money b{color:var(--purple)}
+  /* method chips */
+  .methods{display:flex;flex-wrap:wrap;gap:22px;margin:6px 0 4px}
+  .method b{display:block;font-size:20px;color:var(--navy)}
+  .method span{font-size:12px;color:var(--muted);text-transform:capitalize}
+  /* tables */
   table{width:100%;border-collapse:collapse}
-  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
-  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
-  input,select{font-family:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;outline:none;background:#fff}
+  th,td{text-align:left;padding:10px 10px 10px 0;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+  th{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+  tr.pending td{background:#fffdf5}
+  /* inputs */
+  input,select{font-family:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;outline:none;background:#fff}
   input:focus,select:focus{border-color:var(--purple)}
   .field{display:flex;flex-direction:column;gap:4px}.field label{font-size:12px;color:var(--muted);font-weight:600}
-  .field input{width:100%}
-  .toggle{cursor:pointer;font-weight:700;font-size:12px;padding:5px 11px;border-radius:999px;border:none}
-  .t-paid{background:#dcfce7;color:#166534}.t-due{background:#fee2e2;color:#991b1b}
-  .t-on{background:#dbeafe;color:#1e40af}.t-off{background:#fef3c7;color:#92400e}
-  .del{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px}
-  .msg{padding:10px 12px;border-radius:9px;font-size:13.5px;margin-top:10px;display:none}
-  .msg.err{background:#fef2f2;color:#991b1b;display:block}.msg.ok{background:#f0fdf4;color:#166534;display:block}
-  .login-box{max-width:400px;margin:9vh auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px}
-  .login-box h2{margin:0 0 4px;color:var(--navy)}
-  .login-box p{margin:0 0 18px;color:var(--muted);font-size:14px}
+  .field input,.field select{width:100%}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+  .toggle{cursor:pointer;font-weight:700;font-size:12px;padding:5px 10px;border-radius:999px;border:none}
+  .t-paid{background:#dcfce7;color:#166534}.t-due{background:#fef3c7;color:#92400e}
+  .t-on{background:#dbeafe;color:#1e40af}.t-off{background:#fee2e2;color:#991b1b}
+  .link{color:var(--purple);font-weight:700;cursor:pointer;background:none;border:none;font-size:13px;padding:0}
+  .del{background:none;border:none;color:var(--red);cursor:pointer;font-size:15px}
+  .badge{display:inline-block;background:#fef3c7;color:#92400e;font-weight:700;font-size:11px;padding:2px 8px;border-radius:999px;margin-left:6px}
   .mini{font-size:12px;color:var(--muted)}
-  .badge-pending{display:inline-block;background:#fef3c7;color:#92400e;font-weight:700;font-size:11px;padding:2px 8px;border-radius:999px;margin-left:6px}
-  .tabbar{display:flex;gap:8px;margin:18px 0 14px;flex-wrap:wrap}
-  .tabbar button{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:9px 16px;font-weight:700;font-size:14px;color:var(--muted);cursor:pointer}
-  .tabbar button.active{background:var(--purple);border-color:var(--purple);color:#fff}
-  .sec{display:none}.sec.show{display:block}
   code{background:#f4f4fb;padding:2px 7px;border-radius:6px;font-size:13px}
+  .msg{padding:9px 12px;border-radius:8px;font-size:13px;margin-top:10px;display:none}
+  .msg.err{background:#fef2f2;color:#991b1b;display:block}.msg.ok{background:#f0fdf4;color:#166534;display:block}
+  /* login */
+  .login{max-width:400px;margin:9vh auto;padding:0 22px}
+  .login h2{margin:0 0 4px;color:var(--navy)}
+  .login p{margin:0 0 18px;color:var(--muted);font-size:14px}
+  /* toast */
+  #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:10px;font-size:13.5px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+  #toast.show{opacity:1}
+  .rowact{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 </style>
 </head>
 <body>
 
-<div class="p-head"><div class="wrap">
-  <div class="logo"><span class="mark">🔐</span> Aumtara — Owner Control Panel</div>
-  <div class="who">
-    <a class="mini" href="/launch" style="color:#cdd4ee">← Landing page</a>
-    <span id="whoami" style="display:none"></span>
-    <button class="btn btn-ghost btn-sm" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
-  </div>
-</div></div>
-
 <!-- LOGIN -->
-<div id="loginView"><div class="login-box">
+<div id="loginView" class="login">
+  <div class="logo" style="margin:6vh 0 22px"><span class="mark">🔐</span> Aumtara — Owner Control</div>
   <h2>Owner sign in</h2>
   <p>Platform-owner only. This is separate from the school app login — it manages every school, pricing, payments and enquiries.</p>
   <div class="field" style="margin-bottom:12px"><label>Login ID / email / mobile</label><input id="l_id" autocomplete="username"></div>
   <div class="field" style="margin-bottom:16px"><label>Password</label><input id="l_pw" type="password" autocomplete="current-password"></div>
   <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="login()">Sign in</button>
   <div id="loginMsg" class="msg"></div>
-</div></div>
+  <p class="mini" style="margin-top:18px"><a href="/launch">← Back to landing page</a></p>
+</div>
 
-<!-- DASHBOARD -->
-<div id="dash" style="display:none"><div class="wrap" style="padding:18px 18px 40px">
-  <div class="kpis" id="kpis"></div>
-
-  <div class="tabbar">
-    <button id="tab_schools" class="active" onclick="showTab('schools')">🏫 Schools</button>
-    <button id="tab_pay" onclick="showTab('pay')">💳 Payment settings</button>
-    <button id="tab_enq" onclick="showTab('enq')">📩 Enquiries</button>
-  </div>
-
-  <!-- SCHOOLS -->
-  <div id="sec_schools" class="sec show">
-    <div class="card" style="background:#faf9ff;border-color:#e5ddfb">
-      <b style="color:var(--navy)">🆕 Pending activations</b>
-      <p class="mini" style="margin:4px 0 0">Paid signups arrive as <b>Suspended</b>. Confirm the payment reached you, then press <b>Activate</b> — only then can that school sign in.</p>
+<!-- APP -->
+<div id="app" style="display:none">
+  <div class="top"><div class="wrap">
+    <div class="logo"><span class="mark">🔐</span> Owner Control Panel</div>
+    <div class="who">
+      <span id="whoami"></span>
+      <a class="mini" href="/launch">Landing</a>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
     </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <b style="color:var(--navy)">All schools</b>
-        <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
+  </div></div>
+
+  <div class="wrap">
+    <div class="tabs">
+      <button id="t_dash" class="active" onclick="tab('dash')">Dashboard</button>
+      <button id="t_schools" onclick="tab('schools')">Schools</button>
+      <button id="t_pay" onclick="tab('pay')">Payments</button>
+      <button id="t_set" onclick="tab('set')">Settings</button>
+      <button id="t_prof" onclick="tab('prof')">Profile</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="s_dash" class="sec show">
+      <h3 class="head">Overview</h3>
+      <div class="kpis" id="kpis" style="margin-bottom:26px"></div>
+      <h3 class="head">Sales &amp; payments received</h3>
+      <p class="sub">Total money you've recorded, and the split by how it was paid.</p>
+      <div class="kpis" style="margin-bottom:16px">
+        <div class="kpi money"><b id="k_total">₹0</b><span>Total received</span></div>
+        <div class="kpi money"><b id="k_month">₹0</b><span>This month</span></div>
+        <div class="kpi"><b id="k_count">0</b><span>Payments logged</span></div>
       </div>
-      <div style="overflow:auto"><table><thead><tr>
-        <th>School</th><th>Board · Medium</th><th>Users / Tch / Cls</th><th>Price ₹</th><th>Payment</th><th>Status</th><th></th>
-      </tr></thead><tbody id="schoolBody"></tbody></table></div>
+      <div class="methods" id="methodBreak"></div>
+      <hr>
+      <h3 class="head">Recent payments</h3>
+      <div style="overflow:auto"><table><thead><tr><th>When</th><th>School</th><th>Amount</th><th>Method</th><th>Note</th></tr></thead><tbody id="recentPay"></tbody></table></div>
     </div>
-    <div class="card">
-      <b style="color:var(--navy)">➕ Add a school manually</b>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px">
+
+    <!-- SCHOOLS -->
+    <div id="s_schools" class="sec">
+      <h3 class="head">Schools</h3>
+      <p class="sub">Paid signups arrive <b>Suspended</b> — confirm the payment reached you, then press <b>Activate</b>. Click <b>Open</b> to sign into any school and inspect its setup for support.</p>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button></div>
+      <div style="overflow:auto"><table><thead><tr>
+        <th>School</th><th>Board · Medium</th><th>U / T / C</th><th>Price ₹</th><th>Payment</th><th>Status</th><th>Actions</th>
+      </tr></thead><tbody id="schoolBody"></tbody></table></div>
+      <hr>
+      <h3 class="head">Add a school manually</h3>
+      <div class="grid" style="margin-top:10px">
         <div class="field"><label>School name *</label><input id="ns_name"></div>
         <div class="field"><label>Board</label><input id="ns_board" placeholder="GSEB / CBSE"></div>
         <div class="field"><label>Medium</label><input id="ns_medium" placeholder="Gujarati / English"></div>
         <div class="field"><label>Mobile</label><input id="ns_mobile"></div>
         <div class="field"><label>Email</label><input id="ns_email" type="email"></div>
-        <div class="field" style="justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="addSchool()">Add</button></div>
+        <div class="field" style="justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="addSchool()">Add school</button></div>
       </div>
       <div id="addMsg" class="msg"></div>
     </div>
-  </div>
 
-  <!-- PAYMENT SETTINGS -->
-  <div id="sec_pay" class="sec">
-    <div class="card">
-      <b style="color:var(--navy)">💳 Payment / Buy settings</b>
-      <p class="mini" style="margin:4px 0 12px">These show on the landing-page <b>Buy</b> buttons. Paste only a payment <b>page link</b> and your UPI ID — never a secret key.</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+    <!-- PAYMENTS -->
+    <div id="s_pay" class="sec">
+      <h3 class="head">Record a payment</h3>
+      <p class="sub">Log money you received for a school. It updates the sales totals and can mark the school Paid.</p>
+      <div class="grid" style="margin-top:10px">
+        <div class="field"><label>School *</label><select id="pm_school"></select></div>
+        <div class="field"><label>Amount ₹ *</label><input id="pm_amount" type="number" min="0" step="1"></div>
+        <div class="field"><label>Method</label><select id="pm_method"><option value="upi">UPI</option><option value="online">Online (card / netbanking)</option><option value="card">Card</option><option value="cash">Cash</option><option value="other">Other</option></select></div>
+        <div class="field"><label>Note</label><input id="pm_note" placeholder="txn id / reference"></div>
+        <div class="field" style="justify-content:flex-end"><label class="mini" style="margin-bottom:8px"><input type="checkbox" id="pm_markpaid" checked style="width:auto;margin-right:6px">Mark school Paid</label><button class="btn btn-primary btn-sm" onclick="recordPay()">Record payment</button></div>
+      </div>
+      <div id="pmMsg" class="msg"></div>
+      <hr>
+      <h3 class="head">Payment ledger</h3>
+      <div style="overflow:auto"><table><thead><tr><th>When</th><th>School</th><th>Amount</th><th>Method</th><th>Note</th></tr></thead><tbody id="ledger"></tbody></table></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="s_set" class="sec">
+      <h3 class="head">Payment / Buy settings</h3>
+      <p class="sub">These show on the landing-page <b>Buy</b> buttons. Paste only a payment <b>page link</b> and your UPI ID — never a secret API key.</p>
+      <div class="grid">
         <div class="field"><label>UPI ID (for QR &amp; UPI link)</label><input id="ps_upi" placeholder="yourname@okhdfcbank"></div>
         <div class="field"><label>Payee name (shows in UPI)</label><input id="ps_payee" placeholder="Aumtara Timetable"></div>
         <div class="field"><label>Payment page link (optional)</label><input id="ps_gateway" placeholder="https://rzp.io/l/..."></div>
@@ -123,40 +175,57 @@
         <div class="field"><label>Contact email</label><input id="ps_email" type="email"></div>
         <div class="field"><label>Note in Buy box (optional)</label><input id="ps_note"></div>
       </div>
-      <div style="display:flex;gap:18px;flex-wrap:wrap;margin:14px 0 4px">
-        <label class="mini"><input type="checkbox" id="ps_en_u"> UPI QR &amp; link</label>
-        <label class="mini"><input type="checkbox" id="ps_en_g"> "Pay online" link</label>
-        <label class="mini"><input type="checkbox" id="ps_en_e"> Enquiry form (Free Demo)</label>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin:16px 0 4px">
+        <label class="mini"><input type="checkbox" id="ps_en_u" style="width:auto;margin-right:6px"> UPI QR &amp; link</label>
+        <label class="mini"><input type="checkbox" id="ps_en_g" style="width:auto;margin-right:6px"> "Pay online" link</label>
+        <label class="mini"><input type="checkbox" id="ps_en_e" style="width:auto;margin-right:6px"> Enquiry form (Free Demo)</label>
       </div>
       <button class="btn btn-primary btn-sm" onclick="savePay()">Save settings</button>
       <div id="psMsg" class="msg"></div>
-    </div>
-  </div>
-
-  <!-- ENQUIRIES -->
-  <div id="sec_enq" class="sec">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <b style="color:var(--navy)">📩 Enquiries &amp; demo requests</b>
-        <button class="btn btn-ghost btn-sm" onclick="loadEnq()">↻ Refresh</button>
-      </div>
-      <p class="mini" style="margin:0 0 8px">Signup link to share with a paid customer: <code id="signupLink"></code> <button class="btn btn-ghost btn-sm" onclick="copyLink()">Copy</button></p>
+      <hr>
+      <h3 class="head">Enquiries &amp; demo requests</h3>
+      <p class="sub">Free-Demo requests and pending signups land here. Signup link to share: <code id="signupLink"></code> <button class="link" onclick="copyLink()">copy</button></p>
       <div style="overflow:auto"><table><thead><tr><th>When</th><th>Name</th><th>School</th><th>Phone</th><th>Email</th><th>Plan</th><th></th></tr></thead><tbody id="enqBody"></tbody></table></div>
     </div>
-  </div>
 
-</div></div>
+    <!-- PROFILE -->
+    <div id="s_prof" class="sec">
+      <h3 class="head">Your profile</h3>
+      <p class="sub">Your platform-owner account details.</p>
+      <div class="grid">
+        <div class="field"><label>Login ID</label><input id="me_login" disabled></div>
+        <div class="field"><label>Email</label><input id="me_email" type="email"></div>
+        <div class="field"><label>Mobile</label><input id="me_mobile"></div>
+        <div class="field" style="justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="saveMe()">Save profile</button></div>
+      </div>
+      <div id="meMsg" class="msg"></div>
+      <hr>
+      <h3 class="head">Change password</h3>
+      <div class="grid">
+        <div class="field"><label>Current password</label><input id="pw_cur" type="password" autocomplete="current-password"></div>
+        <div class="field"><label>New password (min 6)</label><input id="pw_new" type="password" autocomplete="new-password"></div>
+        <div class="field"><label>Confirm new password</label><input id="pw_c2" type="password" autocomplete="new-password"></div>
+        <div class="field" style="justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="changePw()">Update password</button></div>
+      </div>
+      <div id="pwMsg" class="msg"></div>
+      <hr>
+      <h3 class="head">Two-factor authentication (2FA)</h3>
+      <p class="sub">Add an extra code at sign-in via an authenticator app. This changes the sign-in flow for your account — it will be enabled here once set up and tested.</p>
+      <span class="badge" style="background:#eef;color:#5a3ec8">coming soon</span>
+    </div>
+
+  </div>
+</div>
+<div id="toast"></div>
 
 <script>
-  var TOKEN = null, SCHOOLS = [];
+  var TOKEN=null, SCHOOLS=[];
   function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-  function api(method, pathq, body){
-    var h={'Content-Type':'application/json'}; if(TOKEN) h['Authorization']='Bearer '+TOKEN;
-    return fetch(pathq,{method:method,headers:h,body:body?JSON.stringify(body):undefined}).then(function(r){
-      return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,status:r.status,data:j}; });
-    });
-  }
-  function msg(el,text,kind){ el.className='msg '+(kind||'ok'); el.textContent=text; }
+  function rup(n){ return '₹'+Math.round(n||0).toLocaleString('en-IN'); }
+  function api(m,p,b){ var h={'Content-Type':'application/json'}; if(TOKEN)h['Authorization']='Bearer '+TOKEN;
+    return fetch(p,{method:m,headers:h,body:b?JSON.stringify(b):undefined}).then(function(r){ return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,status:r.status,data:j};}); }); }
+  function msg(el,t,k){ el.className='msg '+(k||'ok'); el.textContent=t; }
+  var _tt; function toast(t){ var el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(function(){el.classList.remove('show');},1800); }
 
   function login(){
     var id=document.getElementById('l_id').value.trim(), pw=document.getElementById('l_pw').value, m=document.getElementById('loginMsg');
@@ -169,95 +238,136 @@
         if(o.status===403){ TOKEN=null; msg(m,'This login is not the platform owner. Use the owner account.','err'); return; }
         if(!o.ok){ TOKEN=null; msg(m,'Could not open the panel.','err'); return; }
         document.getElementById('loginView').style.display='none';
-        document.getElementById('dash').style.display='block';
-        var w=document.getElementById('whoami'); w.style.display='inline'; w.textContent='👤 '+((r.data.user&&r.data.user.login_id)||'owner');
-        document.getElementById('logoutBtn').style.display='inline-flex';
-        renderSchools(o.data); fillPay(); loadEnq();
+        document.getElementById('app').style.display='block';
+        renderSchools(o.data); loadPayments(); fillPay(); loadEnq(); loadMe();
       });
     }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
   }
-  function logout(){ TOKEN=null; SCHOOLS=[]; document.getElementById('dash').style.display='none'; document.getElementById('loginView').style.display='block'; document.getElementById('whoami').style.display='none'; document.getElementById('logoutBtn').style.display='none'; document.getElementById('l_pw').value=''; }
+  function logout(){ TOKEN=null; SCHOOLS=[]; document.getElementById('app').style.display='none'; document.getElementById('loginView').style.display='block'; document.getElementById('l_pw').value=''; }
+  function tab(t){ ['dash','schools','pay','set','prof'].forEach(function(x){ document.getElementById('s_'+x).classList.toggle('show',x===t); document.getElementById('t_'+x).classList.toggle('active',x===t); }); }
 
-  function showTab(t){
-    ['schools','pay','enq'].forEach(function(x){
-      document.getElementById('sec_'+x).classList.toggle('show', x===t);
-      document.getElementById('tab_'+x).classList.toggle('active', x===t);
-    });
-  }
-
+  // ---------- SCHOOLS ----------
   function loadAll(){ api('GET','/api/owner/overview').then(function(o){ if(o.ok) renderSchools(o.data); }); }
   function renderSchools(d){
-    SCHOOLS = d.schools||[];
-    var paid=SCHOOLS.filter(function(s){return +s.paid!==0;}).length;
+    SCHOOLS=d.schools||[];
     var pend=SCHOOLS.filter(function(s){return +s.active===0;}).length;
+    var paid=SCHOOLS.filter(function(s){return +s.paid!==0;}).length;
     var users=SCHOOLS.reduce(function(a,s){return a+(s.users||0);},0);
-    var K=[['Schools',SCHOOLS.length],['Active',SCHOOLS.length-pend],['Pending/Suspended',pend],['Paid',paid],['Total users',users]];
-    document.getElementById('kpis').innerHTML=K.map(function(k){return '<div class="kpi"><b>'+k[1]+'</b><span>'+k[0]+'</span></div>';}).join('');
+    document.getElementById('kpis').innerHTML=[['Schools',SCHOOLS.length],['Active',SCHOOLS.length-pend],['Pending',pend],['Paid',paid],['Unpaid',SCHOOLS.length-paid],['Total users',users]]
+      .map(function(k){return '<div class="kpi"><b>'+k[1]+'</b><span>'+k[0]+'</span></div>';}).join('');
     document.getElementById('schoolBody').innerHTML=SCHOOLS.map(function(s){
-      var paidP = +s.paid!==0 ? '<button class="toggle t-paid" onclick="setPaid('+s.id+',0)">✓ Paid</button>' : '<button class="toggle t-due" onclick="setPaid('+s.id+',1)">● Unpaid</button>';
-      var actP  = +s.active!==0 ? '<button class="toggle t-on" onclick="setActive('+s.id+',0)">🟢 Active</button>' : '<button class="toggle t-off" onclick="setActive('+s.id+',1)">▶ Activate</button>';
-      var badge = +s.active===0 ? '<span class="badge-pending">pending</span>' : '';
-      return '<tr'+(+s.active===0?' style="background:#fffbeb"':'')+'><td><b>'+esc(s.name)+'</b>'+badge+'</td>'+
+      var paidP=+s.paid!==0?'<button class="toggle t-paid" onclick="setField('+s.id+',\'paid\',0,\'Marked unpaid\')">✓ Paid</button>':'<button class="toggle t-due" onclick="setField('+s.id+',\'paid\',1,\'Marked paid\')">● Unpaid</button>';
+      var actP=+s.active!==0?'<button class="toggle t-on" onclick="setField('+s.id+',\'active\',0,\'Suspended\')">🟢 Active</button>':'<button class="toggle t-off" onclick="setField('+s.id+',\'active\',1,\'Activated\')">▶ Activate</button>';
+      var nm=esc(String(s.name)).replace(/\x27/g,'');
+      return '<tr'+(+s.active===0?' class="pending"':'')+'><td><b>'+esc(s.name)+'</b>'+(+s.active===0?'<span class="badge">pending</span>':'')+'</td>'+
         '<td>'+esc([s.board,s.medium].filter(Boolean).join(' · ')||'—')+'</td>'+
         '<td>'+(s.users||0)+' / '+(s.teachers||0)+' / '+(s.classes||0)+'</td>'+
         '<td><input style="width:74px" value="'+esc(s.price==null?'':s.price)+'" onchange="setPrice('+s.id+',this.value)"></td>'+
         '<td>'+paidP+'</td><td>'+actP+'</td>'+
-        '<td><button class="del" title="Delete school" onclick="delSchool('+s.id+',\''+esc(String(s.name)).replace(/\x27/g,"")+'\')">🗑</button></td></tr>';
-    }).join('') || '<tr><td colspan="7" style="color:var(--muted)">No schools yet.</td></tr>';
+        '<td><div class="rowact"><button class="link" onclick="openSchool('+s.id+',\''+nm+'\')">Open</button>'+
+        '<button class="link" onclick="payFor('+s.id+')">Record ₹</button>'+
+        '<button class="link" onclick="resetPw('+s.id+',\''+nm+'\')">Reset pw</button>'+
+        '<button class="del" title="Delete" onclick="delSchool('+s.id+',\''+nm+'\')">🗑</button></div></td></tr>';
+    }).join('') || '<tr><td colspan="7" class="mini">No schools yet.</td></tr>';
+    // fill payment-form school dropdown
+    var sel=document.getElementById('pm_school');
+    if(sel) sel.innerHTML=SCHOOLS.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+'</option>';}).join('');
   }
-  function setPrice(id,v){ api('PUT','/api/schools/'+id,{price:v||null}); }
-  function setPaid(id,v){ api('PUT','/api/schools/'+id,{paid:v}).then(loadAll); }
-  function setActive(id,v){ api('PUT','/api/schools/'+id,{active:v}).then(loadAll); }
-  function delSchool(id,name){ if(!confirm('Delete "'+name+'" and ALL its data? This cannot be undone.')) return; api('DELETE','/api/schools/'+id,null).then(loadAll); }
+  function setPrice(id,v){ api('PUT','/api/schools/'+id,{price:v||null}).then(function(r){ toast(r.ok?'Price saved':'Could not save'); }); }
+  function setField(id,f,v,label){ var o={}; o[f]=v; api('PUT','/api/schools/'+id,o).then(function(r){ if(r.ok){ toast('✓ '+label); loadAll(); } else { toast('Could not update'); } }); }
+  function openSchool(id,name){
+    if(!confirm('Open "'+name+'" in the school app (as owner) to inspect/fix its setup?')) return;
+    try{ localStorage.setItem('tt_token',TOKEN); localStorage.setItem('tt_school',String(id)); }catch(e){}
+    window.open('/','_blank');
+  }
+  function resetPw(id,name){
+    var pw=prompt('Set a NEW password for "'+name+'" admin login (min 6 chars).\nTell the school this password; they can change it after signing in.');
+    if(pw==null) return; pw=pw.trim(); if(pw.length<6){ toast('Password too short'); return; }
+    api('POST','/api/owner/school/'+id+'/reset-password',{password:pw}).then(function(r){
+      if(r.ok) toast('✓ Password reset for '+(r.data.login_id||name)); else toast((r.data&&r.data.error)||'Could not reset');
+    });
+  }
+  function delSchool(id,name){ if(!confirm('Delete "'+name+'" and ALL its data? This cannot be undone.')) return; api('DELETE','/api/schools/'+id,null).then(function(r){ toast(r.ok?'Deleted':'Could not delete'); loadAll(); }); }
   function addSchool(){
-    var g=function(x){return document.getElementById(x).value.trim();};
-    var m=document.getElementById('addMsg'), name=g('ns_name');
-    if(!name){ msg(m,'School name is required.','err'); return; }
-    msg(m,'Adding…','ok');
+    var g=function(x){return document.getElementById(x).value.trim();}, m=document.getElementById('addMsg'), name=g('ns_name');
+    if(!name){ msg(m,'School name is required.','err'); return; } msg(m,'Adding…','ok');
     api('POST','/api/schools',{name:name,board:g('ns_board'),medium:g('ns_medium'),mobile:g('ns_mobile'),email:g('ns_email')}).then(function(r){
       if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not add.','err'); return; }
-      msg(m,'✓ Added.','ok'); ['ns_name','ns_board','ns_medium','ns_mobile','ns_email'].forEach(function(x){document.getElementById(x).value='';});
-      loadAll();
+      msg(m,'✓ Added.','ok'); ['ns_name','ns_board','ns_medium','ns_mobile','ns_email'].forEach(function(x){document.getElementById(x).value='';}); loadAll();
     });
   }
 
-  function fillPay(){
-    api('GET','/api/pay-settings').then(function(r){ var p=r.ok?r.data:{};
-      document.getElementById('ps_upi').value=p.upi_id||'';
-      document.getElementById('ps_payee').value=p.payee_name||'';
-      document.getElementById('ps_gateway').value=p.gateway_url||'';
-      document.getElementById('ps_wa').value=p.whatsapp||'';
-      document.getElementById('ps_email').value=p.contact_email||'';
-      document.getElementById('ps_note').value=p.note||'';
-      document.getElementById('ps_en_u').checked=p.enable_upi!==0;
-      document.getElementById('ps_en_g').checked=p.enable_gateway!==0;
-      document.getElementById('ps_en_e').checked=p.enable_enquiry!==0;
+  // ---------- PAYMENTS ----------
+  function loadPayments(){ api('GET','/api/owner/payments').then(function(o){ if(o.ok) renderPayments(o.data); }); }
+  function renderPayments(d){
+    document.getElementById('k_total').textContent=rup(d.total);
+    document.getElementById('k_month').textContent=rup(d.month);
+    document.getElementById('k_count').textContent=d.count||0;
+    document.getElementById('methodBreak').innerHTML=(d.byMethod||[]).map(function(x){return '<div class="method"><b>'+rup(x.total)+'</b><span>'+esc(x.method)+' · '+x.n+'</span></div>';}).join('') || '<span class="mini">No payments recorded yet.</span>';
+    var rowsHtml=(d.payments||[]).map(function(p){ var when=(p.ts||'').replace('T',' ').slice(0,16);
+      return '<tr><td>'+when+'</td><td>'+esc(p.school_name||'—')+'</td><td><b>'+rup(p.amount)+'</b></td><td style="text-transform:capitalize">'+esc(p.method||'—')+'</td><td>'+esc(p.note||'')+'</td></tr>'; });
+    document.getElementById('ledger').innerHTML=rowsHtml.join('') || '<tr><td colspan="5" class="mini">No payments yet.</td></tr>';
+    document.getElementById('recentPay').innerHTML=rowsHtml.slice(0,6).join('') || '<tr><td colspan="5" class="mini">No payments yet.</td></tr>';
+  }
+  function payFor(id){ tab('pay'); var sel=document.getElementById('pm_school'); if(sel) sel.value=String(id); document.getElementById('pm_amount').focus(); }
+  function recordPay(){
+    var g=function(x){return document.getElementById(x).value;}, m=document.getElementById('pmMsg');
+    var sid=g('pm_school'), amt=parseFloat(g('pm_amount'));
+    if(!sid||!(amt>0)){ msg(m,'Pick a school and enter a positive amount.','err'); return; }
+    msg(m,'Recording…','ok');
+    api('POST','/api/owner/payment',{school_id:sid,amount:amt,method:g('pm_method'),note:g('pm_note'),mark_paid:document.getElementById('pm_markpaid').checked}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not record.','err'); return; }
+      msg(m,'✓ Payment recorded.','ok'); document.getElementById('pm_amount').value=''; document.getElementById('pm_note').value='';
+      loadPayments(); loadAll();
     });
   }
-  function savePay(){
-    var g=function(x){return document.getElementById(x).value.trim();};
-    var m=document.getElementById('psMsg'); msg(m,'Saving…','ok');
-    api('PUT','/api/pay-settings',{
-      upi_id:g('ps_upi'), payee_name:g('ps_payee'), gateway_url:g('ps_gateway'), whatsapp:g('ps_wa'),
-      contact_email:g('ps_email'), note:g('ps_note'),
-      enable_upi:document.getElementById('ps_en_u').checked, enable_gateway:document.getElementById('ps_en_g').checked, enable_enquiry:document.getElementById('ps_en_e').checked
-    }).then(function(r){ if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not save.','err'); return; } msg(m,'✓ Saved. Buy buttons updated.','ok'); });
-  }
 
+  // ---------- SETTINGS (pay + enquiries) ----------
+  function fillPay(){ api('GET','/api/pay-settings').then(function(r){ var p=r.ok?r.data:{};
+    document.getElementById('ps_upi').value=p.upi_id||''; document.getElementById('ps_payee').value=p.payee_name||'';
+    document.getElementById('ps_gateway').value=p.gateway_url||''; document.getElementById('ps_wa').value=p.whatsapp||'';
+    document.getElementById('ps_email').value=p.contact_email||''; document.getElementById('ps_note').value=p.note||'';
+    document.getElementById('ps_en_u').checked=p.enable_upi!==0; document.getElementById('ps_en_g').checked=p.enable_gateway!==0; document.getElementById('ps_en_e').checked=p.enable_enquiry!==0;
+  }); }
+  function savePay(){ var g=function(x){return document.getElementById(x).value.trim();}, m=document.getElementById('psMsg'); msg(m,'Saving…','ok');
+    api('PUT','/api/pay-settings',{upi_id:g('ps_upi'),payee_name:g('ps_payee'),gateway_url:g('ps_gateway'),whatsapp:g('ps_wa'),contact_email:g('ps_email'),note:g('ps_note'),
+      enable_upi:document.getElementById('ps_en_u').checked,enable_gateway:document.getElementById('ps_en_g').checked,enable_enquiry:document.getElementById('ps_en_e').checked
+    }).then(function(r){ if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not save.','err'); return; } msg(m,'✓ Saved. Buy buttons updated.','ok'); toast('✓ Settings saved'); });
+  }
   function signupLink(){ return location.origin+'/launch#signup'; }
-  function copyLink(){ var ta=document.createElement('textarea'); ta.value=signupLink(); document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); var el=document.getElementById('signupLink'); if(el){ el.style.background='#dcfce7'; setTimeout(function(){el.style.background='';},700);} }
+  function copyLink(){ var ta=document.createElement('textarea'); ta.value=signupLink(); document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); toast('Signup link copied'); }
   function loadEnq(){ api('GET','/api/enquiries').then(function(o){ if(o.ok) renderEnq(o.data); }); }
   function renderEnq(rows){
     var sl=document.getElementById('signupLink'); if(sl) sl.textContent=signupLink();
     var link=signupLink();
-    document.getElementById('enqBody').innerHTML=(rows||[]).map(function(e){
-      var when=(e.ts||'').replace('T',' ').slice(0,16);
-      var mk=+e.handled? '<span class="mini">✓ done</span>' : '<button class="btn btn-ghost btn-sm" onclick="markEnq('+e.id+')">Mark done</button>';
-      var mail = e.email ? '<a class="btn btn-ghost btn-sm" title="Email signup link" href="mailto:'+esc(e.email)+'?subject='+encodeURIComponent('Your Aumtara Timetable login')+'&body='+encodeURIComponent('Hi '+(e.name||'')+',\n\nThanks for your payment. Create your login here:\n'+link+'\n\n— Aumtara Timetable')+'">✉️</a> ' : '';
+    document.getElementById('enqBody').innerHTML=(rows||[]).map(function(e){ var when=(e.ts||'').replace('T',' ').slice(0,16);
+      var mk=+e.handled?'<span class="mini">✓ done</span>':'<button class="link" onclick="markEnq('+e.id+')">Mark done</button>';
+      var mail=e.email?'<a class="link" title="Email signup link" href="mailto:'+esc(e.email)+'?subject='+encodeURIComponent('Your Aumtara Timetable login')+'&body='+encodeURIComponent('Hi '+(e.name||'')+',\n\nCreate your login here:\n'+link+'\n\n— Aumtara Timetable')+'">✉️</a> ':'';
       return '<tr'+(+e.handled?' style="opacity:.5"':'')+'><td>'+when+'</td><td><b>'+esc(e.name)+'</b></td><td>'+esc(e.school||'—')+'</td><td>'+esc(e.phone)+'</td><td>'+esc(e.email||'—')+'</td><td>'+esc(e.plan||'—')+'</td><td>'+mail+mk+'</td></tr>';
-    }).join('') || '<tr><td colspan="7" style="color:var(--muted)">No enquiries yet.</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="mini">No enquiries yet.</td></tr>';
   }
   function markEnq(id){ api('PUT','/api/enquiry/'+id,{handled:1}).then(loadEnq); }
+
+  // ---------- PROFILE ----------
+  function loadMe(){ api('GET','/api/me').then(function(r){ if(!r.ok)return; var u=r.data||{};
+    document.getElementById('whoami').textContent='👤 '+(u.login_id||'owner');
+    document.getElementById('me_login').value=u.login_id||''; document.getElementById('me_email').value=u.email||''; document.getElementById('me_mobile').value=u.mobile||'';
+  }); }
+  function saveMe(){ var m=document.getElementById('meMsg'); msg(m,'Saving…','ok');
+    api('PUT','/api/me',{email:document.getElementById('me_email').value.trim(),mobile:document.getElementById('me_mobile').value.trim()}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not save.','err'); return; } msg(m,'✓ Profile saved.','ok'); toast('✓ Profile saved');
+    });
+  }
+  function changePw(){ var m=document.getElementById('pwMsg');
+    var cur=document.getElementById('pw_cur').value, nw=document.getElementById('pw_new').value, c2=document.getElementById('pw_c2').value;
+    if(nw.length<6){ msg(m,'New password must be at least 6 characters.','err'); return; }
+    if(nw!==c2){ msg(m,'New passwords do not match.','err'); return; }
+    msg(m,'Updating…','ok');
+    api('POST','/api/me/password',{current:cur,new:nw}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not update.','err'); return; }
+      msg(m,'✓ Password updated.','ok'); toast('✓ Password changed'); ['pw_cur','pw_new','pw_c2'].forEach(function(x){document.getElementById(x).value='';});
+    });
+  }
 
   document.getElementById('l_pw').addEventListener('keydown',function(e){ if(e.key==='Enter') login(); });
 </script>

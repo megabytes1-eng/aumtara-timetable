@@ -173,6 +173,8 @@ async function init() {
   // buy / sales enquiries submitted from the public landing page (pay-settings live in tt_appmeta key 'pay_settings')
   await run(`CREATE TABLE IF NOT EXISTS tt_enquiry (id SERIAL PRIMARY KEY, name TEXT, school TEXT, phone TEXT, plan TEXT, message TEXT, handled INTEGER DEFAULT 0, ts TEXT)`);
   await run(`ALTER TABLE tt_enquiry ADD COLUMN IF NOT EXISTS email TEXT`);
+  // owner sales ledger: each recorded payment (amount + method: upi/online/card/cash) against a school
+  await run(`CREATE TABLE IF NOT EXISTS tt_payment (id SERIAL PRIMARY KEY, school_id INTEGER, amount NUMERIC, method TEXT, note TEXT, ts TEXT)`);
   // drop ANY old 3-column UNIQUE constraint on (class_id,day_of_week,period_index) — name may vary — so weeks can repeat a slot
   await run(`DO $$
     DECLARE cname text;
