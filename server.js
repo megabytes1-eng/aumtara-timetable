@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v22';
+const SW_JS = `const CACHE='aumtara-v23';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -553,7 +553,7 @@ app.delete('/api/chapters/:id', h(async (req,res)=>{ await run('DELETE FROM tt_c
 // ---------- TEACHERS (with subject mapping) ----------
 app.get('/api/teachers', h(async (req,res)=>{
   const t=await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY id',[req.sid]);
-  const map=await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[req.sid]);
+  const map=await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=? ORDER BY ts.teacher_id, ts.seq NULLS LAST, ts.subject_id',[req.sid]);
   t.forEach(x=>x.subjects=map.filter(m=>m.teacher_id===x.id).map(m=>m.subject_id));
   res.json(t);
 }));
@@ -588,7 +588,9 @@ app.delete('/api/teachers/:id', h(async (req,res)=>{
 }));
 async function setSubjects(tid, subs){
   await run('DELETE FROM tt_teacher_subject WHERE teacher_id=?',[tid]);
-  for(const s of subs) await run('INSERT INTO tt_teacher_subject VALUES (?,?) ON CONFLICT DO NOTHING',[tid, s]);
+  let i=0; const seen=new Set();
+  for(const s of subs){ if(seen.has(s))continue; seen.add(s);   // keep array order = priority (0 = 1st)
+    await run('INSERT INTO tt_teacher_subject(teacher_id,subject_id,seq) VALUES (?,?,?) ON CONFLICT DO NOTHING',[tid, s, i++]); }
 }
 
 // ---------- CONFIG / SLOTS ----------
@@ -829,6 +831,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const predRun=(t,di,pi)=> (lastPi[t+'_'+di]===pi-1 ? (consRun[t+'_'+di]||0)+1 : 1);   // consecutive run if placed at (di,pi)
   const capOk=(t,di,pi)=> (dayCount[t+'_'+di]||0)<capDay[t] && predRun(t,di,pi)<=capCons[t];
   const teachersForSubject=sid=>tmap.filter(m=>m.subject_id===sid).map(m=>m.teacher_id);
+  const tsubSeq={}; tmap.forEach(m=>{ tsubSeq[m.teacher_id+'_'+m.subject_id]=(m.seq==null?99:m.seq); });   // teacher's priority for a subject (0=1st) → auto-generate fills higher-priority subjects first
 
   // subject placement rules (not_same_day / not_consecutive), resolved per class
   const allRules=await q('SELECT * FROM tt_rule WHERE school_id=? AND active=1',[sid]);
@@ -908,7 +911,8 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
           const subjId=pickSubject(c.id,di,pi);
           if(subjId==null) return;   // class has no schedulable subjects
           let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&!blocked(teacherBlock,t,di,pi)&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
-          if(optBalance||optGap) opts.sort((a,b)=>{
+          opts.sort((a,b)=>{
+            const sp=(tsubSeq[a+'_'+subjId]??99)-(tsubSeq[b+'_'+subjId]??99); if(sp) return sp;   // teacher's own subject priority (1st subject first)
             if(optBalance){ const d=(load[a]||0)-(load[b]||0); if(d) return d; }        // least-loaded first
             if(optGap){ const ga=(lastPi[a+'_'+di]===pi-1?0:1), gb=(lastPi[b+'_'+di]===pi-1?0:1); if(ga!==gb) return ga-gb; }  // prefer contiguous → fewer gaps
             return 0;
@@ -1875,8 +1879,8 @@ app.post('/api/import/setup', upload.single('file'), async (req,res)=>{
         let tid;
         if(tr){ tid=tr.id; await cq('UPDATE tt_teacher SET qualification=COALESCE(?,qualification), main_subject_id=COALESCE(?,main_subject_id), max_load=COALESCE(?,max_load) WHERE id=?',[qual,mainId,load,tid]); }
         else { added.teachers++; tid=(await cq1('INSERT INTO tt_teacher(name,qualification,main_subject_id,max_load,school_id) VALUES(?,?,?,?,?) RETURNING id',[name,qual,mainId,load,sid])).id; }
-        if(mainId) await cq('INSERT INTO tt_teacher_subject VALUES(?,?) ON CONFLICT DO NOTHING',[tid, mainId]);
-        for(const sn of optNames){ await cq('INSERT INTO tt_teacher_subject VALUES(?,?) ON CONFLICT DO NOTHING',[tid, await subId(sn)]); }
+        if(mainId) await cq('INSERT INTO tt_teacher_subject(teacher_id,subject_id) VALUES(?,?) ON CONFLICT DO NOTHING',[tid, mainId]);
+        for(const sn of optNames){ await cq('INSERT INTO tt_teacher_subject(teacher_id,subject_id) VALUES(?,?) ON CONFLICT DO NOTHING',[tid, await subId(sn)]); }
       }
 
       let ci=0;

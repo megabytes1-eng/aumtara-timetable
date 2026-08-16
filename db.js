@@ -285,6 +285,7 @@ async function init() {
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS sanctioned_load INTEGER`);
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS email TEXT`);       // teacher directory / future email alerts
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS mobile TEXT`);      // teacher directory / future SMS alerts
+  await run(`ALTER TABLE tt_teacher_subject ADD COLUMN IF NOT EXISTS seq INTEGER`); // subject priority order per teacher (0 = 1st/main) — auto-generate fills higher-priority subjects first
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS udise TEXT`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS district TEXT`);
   // DEO official masthead fields (printed on every DEO register/patrak)
@@ -387,8 +388,8 @@ async function seed() {
       const mid = subId[main];
       const row = await cq1('INSERT INTO tt_teacher(name,qualification,main_subject_id,max_load) VALUES (?,?,?,?) RETURNING id',
         [name, qual, mid, load]);
-      await cq('INSERT INTO tt_teacher_subject VALUES (?,?) ON CONFLICT DO NOTHING', [row.id, mid]);
-      for (const sn of opts) await cq('INSERT INTO tt_teacher_subject VALUES (?,?) ON CONFLICT DO NOTHING', [row.id, subId[sn]]);
+      await cq('INSERT INTO tt_teacher_subject(teacher_id,subject_id) VALUES (?,?) ON CONFLICT DO NOTHING', [row.id, mid]);
+      for (const sn of opts) await cq('INSERT INTO tt_teacher_subject(teacher_id,subject_id) VALUES (?,?) ON CONFLICT DO NOTHING', [row.id, subId[sn]]);
     }
 
     for (const [sn, list] of Object.entries(chapters)) {
