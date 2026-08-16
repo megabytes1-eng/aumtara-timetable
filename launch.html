@@ -155,7 +155,7 @@
       <a href="#faq">FAQ</a>
     </div>
     <div class="nav-cta">
-      <a class="btn btn-primary btn-sm" href="#" id="cta_signin">Sign in</a>
+      <a class="btn btn-primary btn-sm" href="#" id="cta_signin">School login</a>
     </div>
   </div></nav>
 
@@ -305,7 +305,7 @@
   <footer><div class="wrap">
     <div class="logo"><span class="mark">🕘</span> Aumtara Timetable</div>
     <div>Contact: <a href="mailto:mannmehta2502@gmail.com" style="color:var(--purple);font-weight:600">mannmehta2502@gmail.com</a></div>
-    <div>© <span id="yr"></span> Aumtara · School Timetable Software · <span class="flink" onclick="return openSales()">Owner</span></div>
+    <div>© <span id="yr"></span> Aumtara · School Timetable Software · <a class="flink" href="/panel">Owner Control Panel</a></div>
   </div></footer>
 </div>
 
@@ -348,56 +348,6 @@
       </div>
     </div>
   </div>
-</div>
-
-<!-- ================= SALES / PAYMENT CONTROL PANEL ================= -->
-<div id="salespanel">
-  <div class="p-head"><div class="wrap">
-    <div class="logo"><span class="mark">💳</span> Aumtara — Sales &amp; Payments</div>
-    <div class="who">
-      <span class="backlink" onclick="closeSales()">← Back to site</span>
-      <button class="btn btn-ghost btn-sm" id="sLogout" style="display:none" onclick="salesLogout()">Logout</button>
-    </div>
-  </div></div>
-
-  <div id="sLogin"><div class="login-box">
-    <h2>Owner sign in</h2>
-    <p class="sub">Set your UPI / payment link and manage buy enquiries.</p>
-    <div class="field" style="margin-bottom:12px"><label>Login ID / email / mobile</label><input id="sL_id" autocomplete="username"></div>
-    <div class="field" style="margin-bottom:16px"><label>Password</label><input id="sL_pw" type="password" autocomplete="current-password"></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="salesLogin()">Sign in</button>
-    <div id="sLoginMsg" class="msg"></div>
-  </div></div>
-
-  <div id="sDash" style="display:none"><div class="wrap" style="padding:22px 20px">
-    <div class="card">
-      <b style="color:var(--navy)">💳 Payment / Buy settings</b>
-      <p class="mini" style="margin:4px 0 12px">These appear on the public <b>Buy</b> buttons. Paste only a payment <b>page link</b> (e.g. a Razorpay / payment-page URL) and your UPI ID — never a secret API key.</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
-        <div class="field"><label>UPI ID (for QR &amp; UPI link)</label><input id="ps_upi" placeholder="yourname@okhdfcbank"></div>
-        <div class="field"><label>Payee name (shows in UPI)</label><input id="ps_payee" placeholder="Aumtara Timetable"></div>
-        <div class="field"><label>Payment page link (optional)</label><input id="ps_gateway" placeholder="https://rzp.io/l/..."></div>
-        <div class="field"><label>WhatsApp number (with country code)</label><input id="ps_wa" placeholder="9198xxxxxxxx"></div>
-        <div class="field"><label>Contact email</label><input id="ps_email" type="email"></div>
-        <div class="field"><label>Note in Buy box (optional)</label><input id="ps_note"></div>
-      </div>
-      <div style="display:flex;gap:18px;flex-wrap:wrap;margin:14px 0 4px">
-        <label class="mini"><input type="checkbox" id="ps_en_u"> UPI QR &amp; link</label>
-        <label class="mini"><input type="checkbox" id="ps_en_g"> "Pay online" link</label>
-        <label class="mini"><input type="checkbox" id="ps_en_e"> Enquiry form</label>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="savePay()">Save settings</button>
-      <div id="psMsg" class="msg"></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <b style="color:var(--navy)">📩 Buy enquiries</b>
-        <button class="btn btn-ghost btn-sm" onclick="loadEnquiries()">↻ Refresh</button>
-      </div>
-      <p class="mini" style="margin:0 0 8px">Signup link to share with a paid customer: <code id="signupLink"></code> <button class="btn btn-ghost btn-sm" onclick="copyLink()">Copy</button></p>
-      <div style="overflow:auto"><table><thead><tr><th>When</th><th>Name</th><th>School</th><th>Phone</th><th>Email</th><th>Plan</th><th></th></tr></thead><tbody id="enqBody"></tbody></table></div>
-    </div>
-  </div></div>
 </div>
 
 <script>
@@ -526,69 +476,9 @@
     });
   }
 
-  // ------------- SALES / PAYMENT CONTROL PANEL -------------
-  function openSales(){ document.getElementById('site').style.display='none'; document.getElementById('salespanel').style.display='block'; window.scrollTo(0,0); if(!TOKEN) document.getElementById('sL_id').focus(); return false; }
-  function closeSales(){ document.getElementById('salespanel').style.display='none'; document.getElementById('site').style.display='block'; return false; }
-  function salesLogin(){
-    var id=document.getElementById('sL_id').value.trim(), pw=document.getElementById('sL_pw').value, m=document.getElementById('sLoginMsg');
-    if(!id||!pw){ msg(m,'Enter login and password.','err'); return; }
-    msg(m,'Signing in…','ok');
-    api('POST','/api/login',{login_id:id,password:pw}).then(function(r){
-      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Invalid credentials.','err'); return; }
-      TOKEN=r.data.token;
-      return api('GET','/api/enquiries').then(function(o){
-        if(o.status===403){ TOKEN=null; msg(m,'This login is not the platform owner.','err'); return; }
-        if(!o.ok){ TOKEN=null; msg(m,'Could not open panel.','err'); return; }
-        document.getElementById('sLogin').style.display='none';
-        document.getElementById('sDash').style.display='block';
-        document.getElementById('sLogout').style.display='inline-flex';
-        fillPay(); renderEnquiries(o.data);
-      });
-    }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
-  }
-  function salesLogout(){ TOKEN=null; document.getElementById('sDash').style.display='none'; document.getElementById('sLogin').style.display='block'; document.getElementById('sLogout').style.display='none'; document.getElementById('sL_pw').value=''; }
-  function fillPay(){
-    loadPay().then(function(p){ p=p||{};
-      document.getElementById('ps_upi').value=p.upi_id||'';
-      document.getElementById('ps_payee').value=p.payee_name||'';
-      document.getElementById('ps_gateway').value=p.gateway_url||'';
-      document.getElementById('ps_wa').value=p.whatsapp||'';
-      document.getElementById('ps_email').value=p.contact_email||'';
-      document.getElementById('ps_note').value=p.note||'';
-      document.getElementById('ps_en_u').checked=p.enable_upi!==0;
-      document.getElementById('ps_en_g').checked=p.enable_gateway!==0;
-      document.getElementById('ps_en_e').checked=p.enable_enquiry!==0;
-    });
-  }
-  function savePay(){
-    var g=function(x){return document.getElementById(x).value.trim();};
-    var m=document.getElementById('psMsg'); msg(m,'Saving…','ok');
-    api('PUT','/api/pay-settings',{
-      upi_id:g('ps_upi'), payee_name:g('ps_payee'), gateway_url:g('ps_gateway'), whatsapp:g('ps_wa'),
-      contact_email:g('ps_email'), note:g('ps_note'),
-      enable_upi:document.getElementById('ps_en_u').checked, enable_gateway:document.getElementById('ps_en_g').checked, enable_enquiry:document.getElementById('ps_en_e').checked
-    }).then(function(r){
-      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not save.','err'); return; }
-      PAY=r.data.settings; msg(m,'✓ Saved. Buy buttons updated.','ok');
-    });
-  }
-  function loadEnquiries(){ api('GET','/api/enquiries').then(function(o){ if(o.ok) renderEnquiries(o.data); }); }
-  function signupLink(){ return APP+'/launch#signup'; }
-  function copyLink(){ var ta=document.createElement('textarea'); ta.value=signupLink(); document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); var el=document.getElementById('signupLink'); if(el){ el.style.background='#dcfce7'; setTimeout(function(){el.style.background='';},700);} }
-  function renderEnquiries(rows){
-    var sl=document.getElementById('signupLink'); if(sl) sl.textContent=signupLink();
-    var link=signupLink();
-    document.getElementById('enqBody').innerHTML=(rows||[]).map(function(e){
-      var when=(e.ts||'').replace('T',' ').slice(0,16);
-      var mk=+e.handled? '<span class="mini">✓ done</span>' : '<button class="btn btn-ghost btn-sm" onclick="markEnq('+e.id+')">Mark done</button>';
-      var mail = e.email ? '<a class="btn btn-ghost btn-sm" title="Email signup link" href="mailto:'+esc(e.email)+'?subject='+encodeURIComponent('Your Aumtara Timetable login')+'&body='+encodeURIComponent('Hi '+(e.name||'')+',\n\nThanks for your payment. Create your login here:\n'+link+'\n\n— Aumtara Timetable')+'">✉️</a> ' : '';
-      return '<tr'+(+e.handled?' style="opacity:.5"':'')+'><td>'+when+'</td><td><b>'+esc(e.name)+'</b></td><td>'+esc(e.school||'—')+'</td><td>'+esc(e.phone)+'</td><td>'+esc(e.email||'—')+'</td><td>'+esc(e.plan||'—')+'</td><td>'+mail+mk+'</td></tr>';
-    }).join('') || '<tr><td colspan="7" style="color:var(--muted)">No enquiries yet.</td></tr>';
-  }
-  function markEnq(id){ api('PUT','/api/enquiry/'+id,{handled:1}).then(loadEnquiries); }
-
+  // The owner control panel now lives on its own page at /panel (separate from the school "Sign in").
   loadPay();  // warm the Buy modal
-  if(location.hash==='#owner'||location.hash==='#sales'){ openSales(); }
+  if(location.hash==='#owner'||location.hash==='#sales'){ location.href='/panel'; }
   else if(location.hash==='#signup'){ openBuy('Advance',499); showSignup(); }   // emailed signup link lands here
   else if(location.hash==='#buy'){ openBuy('Advance',499); }
 </script>

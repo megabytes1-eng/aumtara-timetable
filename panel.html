@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aumtara — Owner Control Panel</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{--navy:#1F3864;--purple:#5a3ec8;--ink:#141b2e;--muted:#5c6580;--line:#e6e9f5;--bg:#eef1f8;--card:#fff;--ok:#16a34a;--red:#c0392b}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:.15s;text-decoration:none}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:linear-gradient(135deg,#5a3ec8,#7c3aed);color:#fff}
+  .btn-ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+  .btn-sm{padding:6px 11px;font-size:13px;border-radius:8px}
+  .p-head{background:linear-gradient(135deg,#1F3864,#3b2a7a);color:#fff;padding:14px 0}
+  .p-head .wrap{display:flex;align-items:center;gap:14px}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px}
+  .logo .mark{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:17px}
+  .who{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .kpi b{display:block;font-size:24px;color:var(--navy)}.kpi span{font-size:12px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  input,select{font-family:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;outline:none;background:#fff}
+  input:focus,select:focus{border-color:var(--purple)}
+  .field{display:flex;flex-direction:column;gap:4px}.field label{font-size:12px;color:var(--muted);font-weight:600}
+  .field input{width:100%}
+  .toggle{cursor:pointer;font-weight:700;font-size:12px;padding:5px 11px;border-radius:999px;border:none}
+  .t-paid{background:#dcfce7;color:#166534}.t-due{background:#fee2e2;color:#991b1b}
+  .t-on{background:#dbeafe;color:#1e40af}.t-off{background:#fef3c7;color:#92400e}
+  .del{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px}
+  .msg{padding:10px 12px;border-radius:9px;font-size:13.5px;margin-top:10px;display:none}
+  .msg.err{background:#fef2f2;color:#991b1b;display:block}.msg.ok{background:#f0fdf4;color:#166534;display:block}
+  .login-box{max-width:400px;margin:9vh auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px}
+  .login-box h2{margin:0 0 4px;color:var(--navy)}
+  .login-box p{margin:0 0 18px;color:var(--muted);font-size:14px}
+  .mini{font-size:12px;color:var(--muted)}
+  .badge-pending{display:inline-block;background:#fef3c7;color:#92400e;font-weight:700;font-size:11px;padding:2px 8px;border-radius:999px;margin-left:6px}
+  .tabbar{display:flex;gap:8px;margin:18px 0 14px;flex-wrap:wrap}
+  .tabbar button{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:9px 16px;font-weight:700;font-size:14px;color:var(--muted);cursor:pointer}
+  .tabbar button.active{background:var(--purple);border-color:var(--purple);color:#fff}
+  .sec{display:none}.sec.show{display:block}
+  code{background:#f4f4fb;padding:2px 7px;border-radius:6px;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="p-head"><div class="wrap">
+  <div class="logo"><span class="mark">🔐</span> Aumtara — Owner Control Panel</div>
+  <div class="who">
+    <a class="mini" href="/launch" style="color:#cdd4ee">← Landing page</a>
+    <span id="whoami" style="display:none"></span>
+    <button class="btn btn-ghost btn-sm" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
+  </div>
+</div></div>
+
+<!-- LOGIN -->
+<div id="loginView"><div class="login-box">
+  <h2>Owner sign in</h2>
+  <p>Platform-owner only. This is separate from the school app login — it manages every school, pricing, payments and enquiries.</p>
+  <div class="field" style="margin-bottom:12px"><label>Login ID / email / mobile</label><input id="l_id" autocomplete="username"></div>
+  <div class="field" style="margin-bottom:16px"><label>Password</label><input id="l_pw" type="password" autocomplete="current-password"></div>
+  <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="login()">Sign in</button>
+  <div id="loginMsg" class="msg"></div>
+</div></div>
+
+<!-- DASHBOARD -->
+<div id="dash" style="display:none"><div class="wrap" style="padding:18px 18px 40px">
+  <div class="kpis" id="kpis"></div>
+
+  <div class="tabbar">
+    <button id="tab_schools" class="active" onclick="showTab('schools')">🏫 Schools</button>
+    <button id="tab_pay" onclick="showTab('pay')">💳 Payment settings</button>
+    <button id="tab_enq" onclick="showTab('enq')">📩 Enquiries</button>
+  </div>
+
+  <!-- SCHOOLS -->
+  <div id="sec_schools" class="sec show">
+    <div class="card" style="background:#faf9ff;border-color:#e5ddfb">
+      <b style="color:var(--navy)">🆕 Pending activations</b>
+      <p class="mini" style="margin:4px 0 0">Paid signups arrive as <b>Suspended</b>. Confirm the payment reached you, then press <b>Activate</b> — only then can that school sign in.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b style="color:var(--navy)">All schools</b>
+        <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
+      </div>
+      <div style="overflow:auto"><table><thead><tr>
+        <th>School</th><th>Board · Medium</th><th>Users / Tch / Cls</th><th>Price ₹</th><th>Payment</th><th>Status</th><th></th>
+      </tr></thead><tbody id="schoolBody"></tbody></table></div>
+    </div>
+    <div class="card">
+      <b style="color:var(--navy)">➕ Add a school manually</b>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px">
+        <div class="field"><label>School name *</label><input id="ns_name"></div>
+        <div class="field"><label>Board</label><input id="ns_board" placeholder="GSEB / CBSE"></div>
+        <div class="field"><label>Medium</label><input id="ns_medium" placeholder="Gujarati / English"></div>
+        <div class="field"><label>Mobile</label><input id="ns_mobile"></div>
+        <div class="field"><label>Email</label><input id="ns_email" type="email"></div>
+        <div class="field" style="justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="addSchool()">Add</button></div>
+      </div>
+      <div id="addMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <!-- PAYMENT SETTINGS -->
+  <div id="sec_pay" class="sec">
+    <div class="card">
+      <b style="color:var(--navy)">💳 Payment / Buy settings</b>
+      <p class="mini" style="margin:4px 0 12px">These show on the landing-page <b>Buy</b> buttons. Paste only a payment <b>page link</b> and your UPI ID — never a secret key.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+        <div class="field"><label>UPI ID (for QR &amp; UPI link)</label><input id="ps_upi" placeholder="yourname@okhdfcbank"></div>
+        <div class="field"><label>Payee name (shows in UPI)</label><input id="ps_payee" placeholder="Aumtara Timetable"></div>
+        <div class="field"><label>Payment page link (optional)</label><input id="ps_gateway" placeholder="https://rzp.io/l/..."></div>
+        <div class="field"><label>WhatsApp number (with country code)</label><input id="ps_wa" placeholder="9198xxxxxxxx"></div>
+        <div class="field"><label>Contact email</label><input id="ps_email" type="email"></div>
+        <div class="field"><label>Note in Buy box (optional)</label><input id="ps_note"></div>
+      </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin:14px 0 4px">
+        <label class="mini"><input type="checkbox" id="ps_en_u"> UPI QR &amp; link</label>
+        <label class="mini"><input type="checkbox" id="ps_en_g"> "Pay online" link</label>
+        <label class="mini"><input type="checkbox" id="ps_en_e"> Enquiry form (Free Demo)</label>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="savePay()">Save settings</button>
+      <div id="psMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <!-- ENQUIRIES -->
+  <div id="sec_enq" class="sec">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b style="color:var(--navy)">📩 Enquiries &amp; demo requests</b>
+        <button class="btn btn-ghost btn-sm" onclick="loadEnq()">↻ Refresh</button>
+      </div>
+      <p class="mini" style="margin:0 0 8px">Signup link to share with a paid customer: <code id="signupLink"></code> <button class="btn btn-ghost btn-sm" onclick="copyLink()">Copy</button></p>
+      <div style="overflow:auto"><table><thead><tr><th>When</th><th>Name</th><th>School</th><th>Phone</th><th>Email</th><th>Plan</th><th></th></tr></thead><tbody id="enqBody"></tbody></table></div>
+    </div>
+  </div>
+
+</div></div>
+
+<script>
+  var TOKEN = null, SCHOOLS = [];
+  function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function api(method, pathq, body){
+    var h={'Content-Type':'application/json'}; if(TOKEN) h['Authorization']='Bearer '+TOKEN;
+    return fetch(pathq,{method:method,headers:h,body:body?JSON.stringify(body):undefined}).then(function(r){
+      return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,status:r.status,data:j}; });
+    });
+  }
+  function msg(el,text,kind){ el.className='msg '+(kind||'ok'); el.textContent=text; }
+
+  function login(){
+    var id=document.getElementById('l_id').value.trim(), pw=document.getElementById('l_pw').value, m=document.getElementById('loginMsg');
+    if(!id||!pw){ msg(m,'Enter login and password.','err'); return; }
+    msg(m,'Signing in…','ok');
+    api('POST','/api/login',{login_id:id,password:pw}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Invalid credentials.','err'); return; }
+      TOKEN=r.data.token;
+      return api('GET','/api/owner/overview').then(function(o){
+        if(o.status===403){ TOKEN=null; msg(m,'This login is not the platform owner. Use the owner account.','err'); return; }
+        if(!o.ok){ TOKEN=null; msg(m,'Could not open the panel.','err'); return; }
+        document.getElementById('loginView').style.display='none';
+        document.getElementById('dash').style.display='block';
+        var w=document.getElementById('whoami'); w.style.display='inline'; w.textContent='👤 '+((r.data.user&&r.data.user.login_id)||'owner');
+        document.getElementById('logoutBtn').style.display='inline-flex';
+        renderSchools(o.data); fillPay(); loadEnq();
+      });
+    }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
+  }
+  function logout(){ TOKEN=null; SCHOOLS=[]; document.getElementById('dash').style.display='none'; document.getElementById('loginView').style.display='block'; document.getElementById('whoami').style.display='none'; document.getElementById('logoutBtn').style.display='none'; document.getElementById('l_pw').value=''; }
+
+  function showTab(t){
+    ['schools','pay','enq'].forEach(function(x){
+      document.getElementById('sec_'+x).classList.toggle('show', x===t);
+      document.getElementById('tab_'+x).classList.toggle('active', x===t);
+    });
+  }
+
+  function loadAll(){ api('GET','/api/owner/overview').then(function(o){ if(o.ok) renderSchools(o.data); }); }
+  function renderSchools(d){
+    SCHOOLS = d.schools||[];
+    var paid=SCHOOLS.filter(function(s){return +s.paid!==0;}).length;
+    var pend=SCHOOLS.filter(function(s){return +s.active===0;}).length;
+    var users=SCHOOLS.reduce(function(a,s){return a+(s.users||0);},0);
+    var K=[['Schools',SCHOOLS.length],['Active',SCHOOLS.length-pend],['Pending/Suspended',pend],['Paid',paid],['Total users',users]];
+    document.getElementById('kpis').innerHTML=K.map(function(k){return '<div class="kpi"><b>'+k[1]+'</b><span>'+k[0]+'</span></div>';}).join('');
+    document.getElementById('schoolBody').innerHTML=SCHOOLS.map(function(s){
+      var paidP = +s.paid!==0 ? '<button class="toggle t-paid" onclick="setPaid('+s.id+',0)">✓ Paid</button>' : '<button class="toggle t-due" onclick="setPaid('+s.id+',1)">● Unpaid</button>';
+      var actP  = +s.active!==0 ? '<button class="toggle t-on" onclick="setActive('+s.id+',0)">🟢 Active</button>' : '<button class="toggle t-off" onclick="setActive('+s.id+',1)">▶ Activate</button>';
+      var badge = +s.active===0 ? '<span class="badge-pending">pending</span>' : '';
+      return '<tr'+(+s.active===0?' style="background:#fffbeb"':'')+'><td><b>'+esc(s.name)+'</b>'+badge+'</td>'+
+        '<td>'+esc([s.board,s.medium].filter(Boolean).join(' · ')||'—')+'</td>'+
+        '<td>'+(s.users||0)+' / '+(s.teachers||0)+' / '+(s.classes||0)+'</td>'+
+        '<td><input style="width:74px" value="'+esc(s.price==null?'':s.price)+'" onchange="setPrice('+s.id+',this.value)"></td>'+
+        '<td>'+paidP+'</td><td>'+actP+'</td>'+
+        '<td><button class="del" title="Delete school" onclick="delSchool('+s.id+',\''+esc(String(s.name)).replace(/\x27/g,"")+'\')">🗑</button></td></tr>';
+    }).join('') || '<tr><td colspan="7" style="color:var(--muted)">No schools yet.</td></tr>';
+  }
+  function setPrice(id,v){ api('PUT','/api/schools/'+id,{price:v||null}); }
+  function setPaid(id,v){ api('PUT','/api/schools/'+id,{paid:v}).then(loadAll); }
+  function setActive(id,v){ api('PUT','/api/schools/'+id,{active:v}).then(loadAll); }
+  function delSchool(id,name){ if(!confirm('Delete "'+name+'" and ALL its data? This cannot be undone.')) return; api('DELETE','/api/schools/'+id,null).then(loadAll); }
+  function addSchool(){
+    var g=function(x){return document.getElementById(x).value.trim();};
+    var m=document.getElementById('addMsg'), name=g('ns_name');
+    if(!name){ msg(m,'School name is required.','err'); return; }
+    msg(m,'Adding…','ok');
+    api('POST','/api/schools',{name:name,board:g('ns_board'),medium:g('ns_medium'),mobile:g('ns_mobile'),email:g('ns_email')}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not add.','err'); return; }
+      msg(m,'✓ Added.','ok'); ['ns_name','ns_board','ns_medium','ns_mobile','ns_email'].forEach(function(x){document.getElementById(x).value='';});
+      loadAll();
+    });
+  }
+
+  function fillPay(){
+    api('GET','/api/pay-settings').then(function(r){ var p=r.ok?r.data:{};
+      document.getElementById('ps_upi').value=p.upi_id||'';
+      document.getElementById('ps_payee').value=p.payee_name||'';
+      document.getElementById('ps_gateway').value=p.gateway_url||'';
+      document.getElementById('ps_wa').value=p.whatsapp||'';
+      document.getElementById('ps_email').value=p.contact_email||'';
+      document.getElementById('ps_note').value=p.note||'';
+      document.getElementById('ps_en_u').checked=p.enable_upi!==0;
+      document.getElementById('ps_en_g').checked=p.enable_gateway!==0;
+      document.getElementById('ps_en_e').checked=p.enable_enquiry!==0;
+    });
+  }
+  function savePay(){
+    var g=function(x){return document.getElementById(x).value.trim();};
+    var m=document.getElementById('psMsg'); msg(m,'Saving…','ok');
+    api('PUT','/api/pay-settings',{
+      upi_id:g('ps_upi'), payee_name:g('ps_payee'), gateway_url:g('ps_gateway'), whatsapp:g('ps_wa'),
+      contact_email:g('ps_email'), note:g('ps_note'),
+      enable_upi:document.getElementById('ps_en_u').checked, enable_gateway:document.getElementById('ps_en_g').checked, enable_enquiry:document.getElementById('ps_en_e').checked
+    }).then(function(r){ if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not save.','err'); return; } msg(m,'✓ Saved. Buy buttons updated.','ok'); });
+  }
+
+  function signupLink(){ return location.origin+'/launch#signup'; }
+  function copyLink(){ var ta=document.createElement('textarea'); ta.value=signupLink(); document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); var el=document.getElementById('signupLink'); if(el){ el.style.background='#dcfce7'; setTimeout(function(){el.style.background='';},700);} }
+  function loadEnq(){ api('GET','/api/enquiries').then(function(o){ if(o.ok) renderEnq(o.data); }); }
+  function renderEnq(rows){
+    var sl=document.getElementById('signupLink'); if(sl) sl.textContent=signupLink();
+    var link=signupLink();
+    document.getElementById('enqBody').innerHTML=(rows||[]).map(function(e){
+      var when=(e.ts||'').replace('T',' ').slice(0,16);
+      var mk=+e.handled? '<span class="mini">✓ done</span>' : '<button class="btn btn-ghost btn-sm" onclick="markEnq('+e.id+')">Mark done</button>';
+      var mail = e.email ? '<a class="btn btn-ghost btn-sm" title="Email signup link" href="mailto:'+esc(e.email)+'?subject='+encodeURIComponent('Your Aumtara Timetable login')+'&body='+encodeURIComponent('Hi '+(e.name||'')+',\n\nThanks for your payment. Create your login here:\n'+link+'\n\n— Aumtara Timetable')+'">✉️</a> ' : '';
+      return '<tr'+(+e.handled?' style="opacity:.5"':'')+'><td>'+when+'</td><td><b>'+esc(e.name)+'</b></td><td>'+esc(e.school||'—')+'</td><td>'+esc(e.phone)+'</td><td>'+esc(e.email||'—')+'</td><td>'+esc(e.plan||'—')+'</td><td>'+mail+mk+'</td></tr>';
+    }).join('') || '<tr><td colspan="7" style="color:var(--muted)">No enquiries yet.</td></tr>';
+  }
+  function markEnq(id){ api('PUT','/api/enquiry/'+id,{handled:1}).then(loadEnq); }
+
+  document.getElementById('l_pw').addEventListener('keydown',function(e){ if(e.key==='Enter') login(); });
+</script>
+</body>
+</html>

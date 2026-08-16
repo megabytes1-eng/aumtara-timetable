@@ -39,7 +39,8 @@ app.use(express.json({ limit: '8mb' }));   // logos (base64 data-URLs) can excee
 // so the repo uploads cleanly to GitHub's web uploader, which can't preserve subfolders).
 // index.html is fully self-contained (inline CSS/JS), so no other static assets are needed.
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/launch', (_, res) => res.sendFile(path.join(__dirname, 'launch.html')));   // public marketing landing + dedicated owner control panel
+app.get('/launch', (_, res) => res.sendFile(path.join(__dirname, 'launch.html')));   // public marketing landing (customers)
+app.get('/panel', (_, res) => res.sendFile(path.join(__dirname, 'panel.html')));    // dedicated owner control panel (separate from the school app login)
 
 // ---------- PWA (installable web app: manifest + service worker + icons) ----------
 const MANIFEST = {
