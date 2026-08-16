@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v27';
+const SW_JS = `const CACHE='aumtara-v28';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -1237,7 +1237,11 @@ app.get('/api/datesub/fetch', h(async (req,res)=>{
   // subject-match ranking data: teacher → {subjectId: seq} + main subject → tier a candidate for a given period's subject
   const tSub={}; (await q('SELECT ts.teacher_id,ts.subject_id,ts.seq FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid])).forEach(r=>{ (tSub[r.teacher_id]=tSub[r.teacher_id]||{})[r.subject_id]=(r.seq==null?99:r.seq); });
   const mainOf={}; allTeachers.forEach(t=>mainOf[t.id]=t.main_subject_id);
-  const subTier=(tid,subjId)=>{ if(subjId==null) return 3; if(mainOf[tid]===subjId) return 1; const sm=tSub[tid]; if(sm && sm[subjId]!=null) return sm[subjId]===0?1:2; return 3; };  // 1=exact/primary · 2=secondary · 3=general
+  const subTier=(tid,subjId)=>{ if(subjId==null) return 4; const sm=tSub[tid]; const seq=(sm&&sm[subjId]!=null)?sm[subjId]:null;
+    if(mainOf[tid]===subjId || seq===0) return 1;   // primary (main / priority-1)
+    if(seq!=null && seq<=2) return 2;               // secondary (priority 2-3)
+    if(seq!=null) return 3;                          // backup/proxy (teaches it, priority 4+)
+    return 4; };                                    // general (can-substitute, doesn't teach it)
   const cells=await q(`SELECT day_of_week,period_index,teacher_id FROM tt_timetable WHERE teacher_id IS NOT NULL AND week_index=${curCycleIdx(sid)} AND school_id=?`,[sid]);
   const busy={}; cells.forEach(c=>{ const k=c.day_of_week+'_'+c.period_index; (busy[k]=busy[k]||new Set()).add(c.teacher_id); });
   const myCells=await q(`SELECT tt.day_of_week,tt.period_index,tt.class_id,tt.subject_id,c.name cls,s.name subj
