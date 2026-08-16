@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v12';
+const SW_JS = `const CACHE='aumtara-v13';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -325,7 +325,7 @@ app.post('/api/schools', h(async (req,res)=>{
 app.put('/api/schools/:id', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
   const b=req.body||{}, id=req.params.id;
-  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes','email','mobile','udise','district'];   // SaaS/profile + DEO header fields
+  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes','email','mobile','udise','district','deo_reg_code','deo_inspection_ref','deo_officer_name','deo_max_load'];   // SaaS/profile + DEO header fields
   const set=cols.filter(c=>b[c]!==undefined);
   if(set.length) await run(`UPDATE tt_school SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
   // keep this school's config row in sync for display (school_name/board/medium)
@@ -2119,6 +2119,181 @@ app.get('/api/export/teacher-requirement.xlsx', h(async (req,res)=>{
   d.requirement.forEach((x,i)=>{ const row=ws.getRow(r); row.values=[i+1,x.subject,x.total,x.norm,x.required,x.available,(x.gap>0?'+'+x.gap:''+x.gap)];
     row.eachCell(c=>{c.border=_XB;c.alignment={horizontal:'center'};}); row.getCell(2).alignment={horizontal:'left'}; r++; });
   res.setHeader('Content-Disposition','attachment; filename=teacher-requirement.xlsx');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  await wb.xlsx.write(res); res.end();
+}));
+
+// ============================================================================
+// DEO / GUJARAT PATRAK full report pack (Patrak A/B/K × Secondary/Higher-Sec + DEO Format 1-5)
+// ============================================================================
+function _stdOf(name){ const m=String(name||'').match(/\d+/); return m?+m[0]:null; }
+function _sectionOf(std){ return (std!=null && std>=11)?'hsec':'sec'; }  // std 11-12 = Higher-Sec, else Secondary
+async function deoPack(sid){
+  const cfg=getConfig(sid)||{};
+  const sch=(await q1('SELECT * FROM tt_school WHERE id=?',[sid]))||{};
+  const teachers=await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY name,id',[sid]);
+  const subjects=await q('SELECT id,name FROM tt_subject WHERE school_id=? ORDER BY id',[sid]);
+  const subjById={}; subjects.forEach(s=>subjById[s.id]=s.name);
+  const classes=await q('SELECT * FROM tt_class WHERE school_id=? ORDER BY id',[sid]);
+  const clsById={}; classes.forEach(c=>clsById[c.id]=c);
+  const rooms=await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY name,id',[sid]);
+  const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
+  const cells=await q('SELECT class_id,subject_id,teacher_id,room_id,day_of_week,period_index FROM tt_timetable WHERE school_id=? AND week_index=0',[sid]);
+  const tchById={}; teachers.forEach(t=>tchById[t.id]=t);
+  const header={ school_name:cfg.school_name||sch.name||'', board:sch.board||'', medium:sch.medium||'', udise:sch.udise||'', district:sch.district||'', session:cfg.academic_session||'', reg_code:sch.deo_reg_code||'', inspection_ref:sch.deo_inspection_ref||'', officer_name:sch.deo_officer_name||'' };
+  const generated=cells.some(c=>c.subject_id);
+
+  const secClasses={sec:[],hsec:[]};
+  classes.forEach(c=>{ const st=_stdOf(c.name); secClasses[_sectionOf(st)].push({id:c.id,name:c.name,std:st}); });
+  function buildSection(key){
+    const scls=secClasses[key]; if(!scls.length) return {key,present:false};
+    const clsIds=new Set(scls.map(c=>c.id));
+    const secCells=cells.filter(c=>clsIds.has(c.class_id) && c.subject_id);
+    const subjSet=new Set();
+    quotas.forEach(qq=>{ if(clsIds.has(qq.class_id) && +qq.per_week>0) subjSet.add(qq.subject_id); });
+    secCells.forEach(c=>subjSet.add(c.subject_id));
+    const subjList=subjects.filter(s=>subjSet.has(s.id)).map(s=>({id:s.id,name:s.name}));
+    const stds=[...new Set(scls.map(c=>c.std==null?0:c.std))].sort((a,b)=>a-b);
+    const patrakA={ standards:[], colTotal:{}, grand:0 };
+    stds.forEach(st=>{
+      const divs=scls.filter(c=>(c.std==null?0:c.std)===st); const divisions=divs.length; const divIds=new Set(divs.map(c=>c.id));
+      const row={ std:st, divisions, cols:[], total:0 };
+      subjList.forEach(su=>{
+        const qv=quotas.filter(qq=>divIds.has(qq.class_id) && qq.subject_id===su.id).map(x=>+x.per_week||0).filter(x=>x>0);
+        let tas;
+        if(qv.length){ const f={}; qv.forEach(x=>f[x]=(f[x]||0)+1); tas=+Object.keys(f).sort((a,b)=>f[b]-f[a])[0]; }
+        else { const tc=secCells.filter(c=>divIds.has(c.class_id) && c.subject_id===su.id).length; tas=divisions?Math.round(tc/divisions):0; }
+        const total=tas*divisions;
+        row.cols.push({subj:su.id, tas, varg:divisions, total}); row.total+=total;
+        patrakA.colTotal[su.id]=(patrakA.colTotal[su.id]||0)+total; patrakA.grand+=total;
+      });
+      patrakA.standards.push(row);
+    });
+    const secTeacherIds=[...new Set(secCells.filter(c=>c.teacher_id).map(c=>c.teacher_id))];
+    const patrakB={ teachers:[] }; const colB={};
+    secTeacherIds.map(id=>tchById[id]).filter(Boolean).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))).forEach(t=>{
+      const per={}; let tot=0;
+      subjList.forEach(su=>{ const n=secCells.filter(c=>c.teacher_id===t.id && c.subject_id===su.id).length; per[su.id]=n; tot+=n; if(n) colB[su.id]=(colB[su.id]||0)+n; });
+      patrakB.teachers.push({ id:t.id, name:t.name||'', per, total:tot });
+    });
+    const patrakK={ rows: subjList.map(su=>{ const a=patrakA.colTotal[su.id]||0, b=colB[su.id]||0; return { subj:su.id, a, b, remain:a-b }; }) };
+    return { key, present:true, subjects:subjList, patrakA, patrakB, patrakK,
+             totals:{ A:patrakA.grand, B:subjList.reduce((s,su)=>s+(colB[su.id]||0),0) } };
+  }
+  const sections=[buildSection('sec'),buildSection('hsec')];
+
+  const maxLoad=+sch.deo_max_load||32;
+  const format1=teachers.map((t,i)=>{ const total=cells.filter(c=>c.teacher_id===t.id && c.subject_id).length;
+    const pct=maxLoad>0?Math.round(total/maxLoad*100):0; const status=total===0?'unassigned':(pct<60?'under':(pct>100?'over':'optimal'));
+    return { sr:i+1, name:t.name||'', designation:t.designation||'', total, max:maxLoad, pct, status }; });
+
+  const format2=[]; let f2sr=0;
+  classes.forEach(c=>{ const cc=cells.filter(x=>x.class_id===c.id && x.subject_id);
+    const cnt={}, tset={}; cc.forEach(x=>{ cnt[x.subject_id]=(cnt[x.subject_id]||0)+1; if(x.teacher_id)(tset[x.subject_id]=tset[x.subject_id]||new Set()).add(x.teacher_id); });
+    const qs=quotas.filter(x=>x.class_id===c.id); const seen=new Set();
+    const addRow=(subjId,mandated)=>{ const sched=cnt[subjId]||0; const teachs=tset[subjId]?[...tset[subjId]].map(id=>(tchById[id]||{}).name).filter(Boolean).join(', '):'';
+      const pct=mandated>0?Math.round(sched/mandated*100):(sched>0?100:0); const status=mandated>0?(sched>=mandated?'compliant':'short'):(sched>0?'extra':'none');
+      format2.push({ sr:++f2sr, cls:c.name, subject:subjById[subjId]||('#'+subjId), teacher:teachs||'—', mandated:mandated||0, scheduled:sched, pct, status }); };
+    qs.forEach(qq=>{ seen.add(qq.subject_id); addRow(qq.subject_id, +qq.per_week||0); });
+    Object.keys(cnt).forEach(k=>{ if(!seen.has(+k)) addRow(+k, 0); }); });
+
+  let totalSlots=0; workingDaysArr(sid).forEach(di=>totalSlots+=teachingSlots(di,sid).length);
+  const format3=rooms.map((rm,i)=>{ const used=cells.filter(x=>x.room_id===rm.id).length; const pct=totalSlots>0?Math.round(used/totalSlots*100):0;
+    const status=pct===0?'unused':(pct<40?'under':(pct>90?'high':'optimal'));
+    return { sr:i+1, room:rm.name||'', capacity:rm.capacity||'', used, slots:totalSlots, pct, status }; });
+
+  const dmin=(a,b)=>{ try{const x=a.split(':').map(Number),y=b.split(':').map(Number);return (y[0]*60+y[1])-(x[0]*60+x[1]);}catch(e){return 0;} };
+  const format4=[]; const wd=workingDaysArr(sid);
+  const mkShift=(dayIdx,label)=>{ const slots=slotsForDay(dayIdx,sid); if(!slots.length)return; const teach=slots.filter(s=>!s.is_break);
+    const instr=teach.reduce((s,x)=>s+dmin(x.start,x.end),0); const first=slots[0], last=slots[slots.length-1]; const dur=teach.length?Math.round(instr/teach.length):0;
+    format4.push({ shift:label, board:[sch.board,sch.medium].filter(Boolean).join(' / ')||'—', timings:(first.start||'')+' – '+(last.end||''), periods:teach.length, duration:dur, dailyMin:instr }); };
+  const wdFirst=wd.find(d=>d!==5); if(wdFirst!=null) mkShift(wdFirst,'weekdays'); if(wd.includes(5)) mkShift(5,'saturday');
+
+  const ds=await q('SELECT * FROM tt_datesub WHERE school_id=? ORDER BY sub_date DESC, id DESC LIMIT 300',[sid]);
+  const format5=ds.map((r,i)=>({ sr:i+1, id:'ABS-'+String(r.id).padStart(3,'0'), date:r.sub_date||'', absent:(tchById[r.absent_teacher_id]||{}).name||'—',
+    cls:(clsById[r.class_id]||{}).name||'', period:(r.period_index!=null?('P'+(r.period_index+1)):''),
+    sub:r.is_free?'(free)':((tchById[r.proxy_teacher_id]||{}).name||'—'), status:r.is_free?'free':(r.proxy_teacher_id?'assigned':'pending') }));
+
+  return { header, generated, subjById, sections, format1, format2, format3, format4, format5, maxLoad };
+}
+app.get('/api/reports/deo-pack', h(async (req,res)=>{ res.json(await deoPack(req.sid)); }));
+
+// ---- Excel export for any DEO format (fmt query), plus a combined pack ----
+function _deoXlHead(ws, d, lastCol, title, subtitle){
+  let r=1; const merge=(txt,font,center)=>{ const c=ws.getCell('A'+r); c.value=txt; if(font)c.font=font; c.alignment={horizontal:center?'center':'left'}; ws.mergeCells('A'+r+':'+lastCol+r); r++; };
+  const H=d.header;
+  merge(H.school_name||'', {bold:true,size:14,color:{argb:'FF1F3864'}}, true);
+  merge('DISTRICT EDUCATION OFFICER (DEO) — OFFICIAL TIMETABLE & TEACHER LOAD REGISTER', {size:9,color:{argb:'FF555555'}}, true);
+  const meta=[H.udise&&('UDISE: '+H.udise),H.district&&('Dist/Taluka: '+H.district),H.board,H.medium,H.session&&('A.Y. '+H.session)].filter(Boolean).join('   ·   ');
+  if(meta) merge(meta, {size:9,color:{argb:'FF555555'}}, true);
+  const codes=[H.reg_code&&('DEO Reg: '+H.reg_code),H.inspection_ref&&('Inspection Ref: '+H.inspection_ref)].filter(Boolean).join('   ·   ');
+  if(codes) merge(codes, {size:9,color:{argb:'FF555555'}}, true);
+  merge(title, {bold:true,size:12}, true); if(subtitle) merge(subtitle,{size:10,color:{argb:'FF444444'}},true);
+  r++; return r;
+}
+function _deoXlTable(ws, startRow, headers, rows, widths){
+  if(widths) ws.columns=widths.map(w=>({width:w}));
+  let r=startRow; const hr=ws.getRow(r); hr.values=headers;
+  hr.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};c.alignment={horizontal:'center',wrapText:true,vertical:'middle'};c.border=_XB;}); r++;
+  rows.forEach(row=>{ const rr=ws.getRow(r); rr.values=row; rr.eachCell(c=>{c.border=_XB;c.alignment={vertical:'middle',wrapText:true};}); r++; });
+  return r;
+}
+function _deoSig(ws, r, officer){ r+=2; ws.getCell('A'+r).value='__________________________'; ws.getCell('E'+r).value='__________________________'; r++;
+  ws.getCell('A'+r).value='Signature of School Principal'; ws.getCell('E'+r).value='Signature of District Education Officer (DEO)'+(officer?(' — '+officer):''); r++;
+  ws.getCell('A'+r).value='Institutional Stamp & Seal'; ws.getCell('E'+r).value='Government Department Verification Seal'; return r; }
+function _secLabel(key){ return key==='hsec'?'Higher Secondary Section':'Secondary Section'; }
+function buildDeoSheet(wb, d, fmt){
+  const secByKey={}; (d.sections||[]).forEach(s=>secByKey[s.key]=s);
+  const sn={ patrak_a_sec:'sec',patrak_a_hsec:'hsec',patrak_b_sec:'sec',patrak_b_hsec:'hsec',patrak_k_sec:'sec',patrak_k_hsec:'hsec' }[fmt];
+  if(fmt.startsWith('patrak_a')){ const sec=secByKey[sn]||{present:false}; const ws=wb.addWorksheet('Patrak A '+(sn==='hsec'?'(HS)':'(Sec)'));
+    if(!sec.present){ ws.addRow(['No '+_secLabel(sn)+' classes.']); return; }
+    const subs=sec.subjects; const start=_deoXlHead(ws,d,String.fromCharCode(66+subs.length),'કાર્યભાર પત્રક-અ  ·  WORKLOAD PATRAK-A — CLASS ALLOCATION','('+_secLabel(sn)+')');
+    const headers=['ધોરણ / Std', ...subs.map(s=>s.name), 'કુલ / Total']; const rows=[];
+    sec.patrakA.standards.forEach(st=>{ rows.push(['Std '+(st.std||'-')+'  ·  Periods (તાસ)', ...st.cols.map(c=>c.tas), '']);
+      rows.push(['   Divisions (વર્ગ)', ...st.cols.map(c=>c.varg), st.divisions]);
+      rows.push(['   Total (કુલ તાસ)', ...st.cols.map(c=>c.total), st.total]); });
+    rows.push(['GRAND TOTAL', ...subs.map(s=>sec.patrakA.colTotal[s.id]||0), sec.patrakA.grand]);
+    const end=_deoXlTable(ws,start,headers,rows,[22,...subs.map(()=>9),10]); _deoSig(ws,end,d.header.officer_name); return; }
+  if(fmt.startsWith('patrak_b')){ const sec=secByKey[sn]||{present:false}; const ws=wb.addWorksheet('Patrak B '+(sn==='hsec'?'(HS)':'(Sec)'));
+    if(!sec.present){ ws.addRow(['No '+_secLabel(sn)+' classes.']); return; }
+    const subs=sec.subjects; const start=_deoXlHead(ws,d,String.fromCharCode(66+subs.length),'પત્રક-બ  ·  PATRAK-B — TEACHER WORKLOAD','('+_secLabel(sn)+')');
+    const headers=['કર્મચારીનો ક્રમ / Teacher', ...subs.map(s=>s.name), 'કુલ / Total']; const rows=[];
+    sec.patrakB.teachers.forEach((t,i)=>rows.push([(i+1)+'. '+t.name, ...subs.map(s=>t.per[s.id]||'-'), t.total]));
+    const end=_deoXlTable(ws,start,headers,rows,[24,...subs.map(()=>9),10]); _deoSig(ws,end,d.header.officer_name); return; }
+  if(fmt.startsWith('patrak_k')){ const sec=secByKey[sn]||{present:false}; const ws=wb.addWorksheet('Patrak K '+(sn==='hsec'?'(HS)':'(Sec)'));
+    if(!sec.present){ ws.addRow(['No '+_secLabel(sn)+' classes.']); return; }
+    const subs=sec.subjects; const start=_deoXlHead(ws,d,String.fromCharCode(66+subs.length),'કાર્યભાર પત્રક-ક  ·  PATRAK-K — WORKLOAD CERTIFICATE','('+_secLabel(sn)+')');
+    const headers=['વિષય / Subject-wise', ...subs.map(s=>s.name)];
+    const rows=[["પત્રક 'અ' મુજબ (as per A)", ...sec.patrakK.rows.map(r=>r.a)],
+                ["પત્રક 'બ' મુજબ (as per B)", ...sec.patrakK.rows.map(r=>r.b)],
+                ["બાકી રહેતું (remaining)", ...sec.patrakK.rows.map(r=>r.remain)]];
+    const end=_deoXlTable(ws,start,headers,rows,[26,...subs.map(()=>9)]);
+    let r=end+1; ws.getCell('A'+r).value='આથી પ્રમાણપત્ર આપવામાં આવે છે કે ઉપર્યુક્ત પત્રકમાં દર્શાવ્યા મુજબનો કાર્યભાર શાળાના સમયપત્રકમાં દર્શાવેલ છે.'; ws.mergeCells('A'+r+':'+String.fromCharCode(66+subs.length)+r); r++;
+    _deoSig(ws,r,d.header.officer_name); return; }
+  if(fmt==='format1'){ const ws=wb.addWorksheet('DEO Format 1'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 1 — TEACHER WEEKLY WORKLOAD & DUTY SUMMARY','DEO Mandated Max: '+d.maxLoad+' periods/week');
+    const rows=d.format1.map(w=>[w.sr,w.name,w.designation,w.total,w.max,w.pct+'%',_deoStatusText(w.status)]);
+    const end=_deoXlTable(ws,start,['S.No','Faculty Name','Designation / Cadre','Total Weekly Load','DEO Max','Capacity %','DEO Status'],rows,[6,26,20,14,10,11,16]); _deoSig(ws,end,d.header.officer_name); return; }
+  if(fmt==='format2'){ const ws=wb.addWorksheet('DEO Format 2'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 2 — CLASS SUBJECT PERIOD ALLOCATION & CURRICULUM COVERAGE','');
+    const rows=d.format2.map(w=>[w.sr,w.cls,w.subject,w.teacher,w.mandated+' p/wk',w.scheduled+' p/wk',w.pct+'% '+_deoStatusText(w.status)]);
+    const end=_deoXlTable(ws,start,['S.No','Class & Section','Subject','Assigned Faculty','Mandated','Scheduled','Compliance'],rows,[6,18,22,24,11,11,20]); _deoSig(ws,end,d.header.officer_name); return; }
+  if(fmt==='format3'){ const ws=wb.addWorksheet('DEO Format 3'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 3 — ROOM & LAB INFRASTRUCTURE UTILIZATION AUDIT','');
+    const rows=d.format3.map(w=>[w.sr,w.room,w.capacity!==''?(w.capacity+' seats'):'—',w.used+' / '+w.slots+' slots',w.pct+'%',_deoStatusText(w.status)]);
+    const end=_deoXlTable(ws,start,['S.No','Room / Name','Seating Capacity','Occupied Periods/Wk','Occupancy %','DEO Audit Status'],rows,[6,24,16,20,13,18]); _deoSig(ws,end,d.header.officer_name); return; }
+  if(fmt==='format4'){ const ws=wb.addWorksheet('DEO Format 4'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 4 — BELL SCHEDULE & INSTRUCTIONAL MINUTES','');
+    const rows=d.format4.map((w,i)=>[i+1,_deoStatusText(w.shift),w.board,w.timings,w.periods+' periods',w.duration+' min',w.dailyMin+' min ('+(w.dailyMin/60).toFixed(1)+' hrs)']);
+    const end=_deoXlTable(ws,start,['S.No','Shift / Day','Board Affiliation','Timings','Periods/Day','Period Duration','Daily Instructional Time'],rows,[6,16,20,16,13,14,22]); _deoSig(ws,end,d.header.officer_name); return; }
+  if(fmt==='format5'){ const ws=wb.addWorksheet('DEO Format 5'); const start=_deoXlHead(ws,d,'G','DEO FORMAT 5 — FACULTY ABSENCE & SUBSTITUTE DUTY REGISTER','');
+    const rows=d.format5.map(w=>[w.sr,w.id+'  '+w.date,w.absent,(w.cls?(w.cls+' '):'')+w.period,w.sub,_deoStatusText(w.status)]);
+    const end=_deoXlTable(ws,start,['S.No','Absence ID & Date','Absent Faculty','Class / Period','Substitute Faculty','Duty Status'],rows,[6,20,22,16,22,14]); _deoSig(ws,end,d.header.officer_name); return; }
+}
+function _deoStatusText(s){ return ({under:'Underloaded',over:'Overloaded',optimal:'Optimal',unassigned:'Unassigned',compliant:'Compliant',short:'Shortfall',extra:'Extra',none:'—',unused:'Unused',high:'High Demand',assigned:'Assigned',pending:'Pending',free:'Free Period',weekdays:'Weekdays',saturday:'Saturday'}[s]||s); }
+app.get('/api/export/deo.xlsx', h(async (req,res)=>{
+  const d=await deoPack(req.sid); const wb=new ExcelJS.Workbook(); wb.creator='Aumtara';
+  const fmt=String(req.query.fmt||'pack');
+  const ALL=['patrak_a_sec','patrak_a_hsec','patrak_b_sec','patrak_b_hsec','patrak_k_sec','patrak_k_hsec','format1','format2','format3','format4','format5'];
+  if(fmt==='pack') ALL.forEach(f=>buildDeoSheet(wb,d,f)); else buildDeoSheet(wb,d,fmt);
+  if(!wb.worksheets.length) wb.addWorksheet('DEO').addRow(['No data']);
+  res.setHeader('Content-Disposition','attachment; filename=deo-'+fmt+'.xlsx');
   res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   await wb.xlsx.write(res); res.end();
 }));

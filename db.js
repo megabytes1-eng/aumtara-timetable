@@ -285,6 +285,11 @@ async function init() {
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS sanctioned_load INTEGER`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS udise TEXT`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS district TEXT`);
+  // DEO official masthead fields (printed on every DEO register/patrak)
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS deo_reg_code TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS deo_inspection_ref TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS deo_officer_name TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS deo_max_load INTEGER`);
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();
