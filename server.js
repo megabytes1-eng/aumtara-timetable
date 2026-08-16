@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v23';
+const SW_JS = `const CACHE='aumtara-v24';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -1235,7 +1235,11 @@ app.get('/api/datesub/fetch', h(async (req,res)=>{
   if(to<from){ res.status(400).json({error:'End date is before start date.'}); return; }
   const dates=datesBetween(from,to); if(dates.length>31){ res.status(400).json({error:'Date range too large (max 31 days).'}); return; }
   const wdays=new Set(workingDaysArr(sid));
-  const allTeachers=await q('SELECT id,name,can_substitute FROM tt_teacher WHERE school_id=? ORDER BY name',[sid]);
+  const allTeachers=await q('SELECT id,name,can_substitute,main_subject_id FROM tt_teacher WHERE school_id=? ORDER BY name',[sid]);
+  // subject-match ranking data: teacher → {subjectId: seq} + main subject → tier a candidate for a given period's subject
+  const tSub={}; (await q('SELECT ts.teacher_id,ts.subject_id,ts.seq FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid])).forEach(r=>{ (tSub[r.teacher_id]=tSub[r.teacher_id]||{})[r.subject_id]=(r.seq==null?99:r.seq); });
+  const mainOf={}; allTeachers.forEach(t=>mainOf[t.id]=t.main_subject_id);
+  const subTier=(tid,subjId)=>{ if(subjId==null) return 3; if(mainOf[tid]===subjId) return 1; const sm=tSub[tid]; if(sm && sm[subjId]!=null) return sm[subjId]===0?1:2; return 3; };  // 1=exact/primary · 2=secondary · 3=general
   const cells=await q(`SELECT day_of_week,period_index,teacher_id FROM tt_timetable WHERE teacher_id IS NOT NULL AND week_index=${curCycleIdx(sid)} AND school_id=?`,[sid]);
   const busy={}; cells.forEach(c=>{ const k=c.day_of_week+'_'+c.period_index; (busy[k]=busy[k]||new Set()).add(c.teacher_id); });
   const myCells=await q(`SELECT tt.day_of_week,tt.period_index,tt.class_id,tt.subject_id,c.name cls,s.name subj
@@ -1248,10 +1252,12 @@ app.get('/api/datesub/fetch', h(async (req,res)=>{
   for(const date of dates){ const dow=dowFromISO(date); if(!wdays.has(dow)) continue; const list=byDow[dow]||[]; if(!list.length) continue;
     const slots=teachingSlots(dow,sid);
     for(const c of list){ const busySet=busy[dow+'_'+c.period_index]||new Set();
-      const free=allTeachers.filter(t=>t.id!==teacher_id && !busySet.has(t.id) && +t.can_substitute!==0);
+      const free=allTeachers.filter(t=>t.id!==teacher_id && !busySet.has(t.id) && +t.can_substitute!==0)
+        .map(f=>({id:f.id,name:f.name,tier:subTier(f.id,c.subject_id)}))
+        .sort((a,b)=>a.tier-b.tier || String(a.name||'').localeCompare(String(b.name||'')));   // best subject match first
       const e=exMap[date+'_'+c.class_id+'_'+c.period_index]; const sl=slots[c.period_index];
       out.push({ sub_date:date, dow, period_index:c.period_index, class_id:c.class_id, cls:c.cls, subject_id:c.subject_id, subj:c.subj||'',
-        start:sl?sl.start:'', end:sl?sl.end:'', free:free.map(f=>({id:f.id,name:f.name})),
+        start:sl?sl.start:'', end:sl?sl.end:'', free,
         proxy_teacher_id: e?e.proxy_teacher_id:null, is_free: e?+e.is_free:0 }); }
   }
   res.json({periods:out});
