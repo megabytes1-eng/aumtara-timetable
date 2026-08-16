@@ -194,8 +194,8 @@ app.post('/api/enquiry', h(async (req,res)=>{
   const b=req.body||{};
   const name=String(b.name||'').trim(), phone=String(b.phone||'').trim();
   if(!name||!phone){ res.status(400).json({error:'name and phone are required'}); return; }
-  await run('INSERT INTO tt_enquiry(name,school,phone,plan,message,handled,ts) VALUES(?,?,?,?,?,0,now()::text)',
-    [name, String(b.school||'').trim()||null, phone, String(b.plan||'').trim()||null, String(b.message||'').trim()||null]);
+  await run('INSERT INTO tt_enquiry(name,school,phone,email,plan,message,handled,ts) VALUES(?,?,?,?,?,?,0,now()::text)',
+    [name, String(b.school||'').trim()||null, phone, String(b.email||'').trim()||null, String(b.plan||'').trim()||null, String(b.message||'').trim()||null]);
   res.json({ ok:true });
 }));
 // gate: every other /api route requires a valid session
@@ -473,7 +473,7 @@ app.put('/api/pay-settings', h(async (req,res)=>{ if(!requireOwner(req,res)) ret
 }));
 // owner-only: list buy enquiries + mark handled
 app.get('/api/enquiries', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
-  res.json(await q('SELECT id,name,school,phone,plan,message,handled,ts FROM tt_enquiry ORDER BY id DESC LIMIT 200'));
+  res.json(await q('SELECT id,name,school,phone,email,plan,message,handled,ts FROM tt_enquiry ORDER BY id DESC LIMIT 200'));
 }));
 app.put('/api/enquiry/:id', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
   await run('UPDATE tt_enquiry SET handled=? WHERE id=?',[req.body&&req.body.handled?1:0, Number(req.params.id)]);

@@ -316,12 +316,32 @@
     <h3 id="buyTitle">Buy plan</h3>
     <div class="amt" id="buyAmt"></div>
     <div id="payOpts"></div>
+    <div id="paidCta" style="display:none">
+      <div class="pay-opt" style="border-color:var(--purple);background:#faf9ff">
+        <h4>✅ Payment done?</h4>
+        <p class="mini" style="margin:0 0 8px">Create your school login now and start using Aumtara right away.</p>
+        <button class="btn btn-primary btn-sm" onclick="showSignup()">Create my account →</button>
+      </div>
+    </div>
+    <div id="signupBox" style="display:none">
+      <div class="pay-opt" style="border-color:var(--purple)">
+        <h4>🔑 Create your login</h4>
+        <div class="field" style="margin-bottom:8px"><input id="su_school" placeholder="School name *"></div>
+        <div class="field" style="margin-bottom:8px"><input id="su_name" placeholder="Your name *"></div>
+        <div class="field" style="margin-bottom:8px"><input id="su_login" placeholder="Login ID (username) *" autocomplete="username"></div>
+        <div class="field" style="margin-bottom:8px"><input id="su_pw" type="password" placeholder="Password (min 6) *" autocomplete="new-password"></div>
+        <div class="row2" style="margin-bottom:8px"><input id="su_email" type="email" placeholder="Email" style="flex:1;min-width:130px"><input id="su_mobile" placeholder="Mobile" style="flex:1;min-width:110px"></div>
+        <button class="btn btn-primary btn-sm" onclick="doSignup()">Create account &amp; open app →</button>
+        <div id="suMsg" class="msg"></div>
+      </div>
+    </div>
     <div id="enqBox">
       <div class="pay-opt">
         <h4 id="enqH">✉️ Request a callback</h4>
         <div class="field" style="margin-bottom:8px"><input id="eq_name" placeholder="Your name *"></div>
         <div class="field" style="margin-bottom:8px"><input id="eq_school" placeholder="School name"></div>
         <div class="field" style="margin-bottom:8px"><input id="eq_phone" placeholder="Phone / WhatsApp *"></div>
+        <div class="field" style="margin-bottom:8px"><input id="eq_email" type="email" placeholder="Email (so we can send your login link)"></div>
         <button class="btn btn-primary btn-sm" onclick="sendEnquiry()">Send request</button>
         <div id="eqMsg" class="msg"></div>
       </div>
@@ -373,7 +393,8 @@
         <b style="color:var(--navy)">📩 Buy enquiries</b>
         <button class="btn btn-ghost btn-sm" onclick="loadEnquiries()">↻ Refresh</button>
       </div>
-      <div style="overflow:auto"><table><thead><tr><th>When</th><th>Name</th><th>School</th><th>Phone</th><th>Plan</th><th></th></tr></thead><tbody id="enqBody"></tbody></table></div>
+      <p class="mini" style="margin:0 0 8px">Signup link to share with a paid customer: <code id="signupLink"></code> <button class="btn btn-ghost btn-sm" onclick="copyLink()">Copy</button></p>
+      <div style="overflow:auto"><table><thead><tr><th>When</th><th>Name</th><th>School</th><th>Phone</th><th>Email</th><th>Plan</th><th></th></tr></thead><tbody id="enqBody"></tbody></table></div>
     </div>
   </div></div>
 </div>
@@ -410,11 +431,37 @@
     document.getElementById('buyTitle').textContent='Book a Free Demo';
     document.getElementById('buyAmt').textContent='Leave your details — we’ll set up a guided demo & training for your school.';
     document.getElementById('payOpts').innerHTML='';
+    document.getElementById('paidCta').style.display='none';
+    document.getElementById('signupBox').style.display='none';
     document.getElementById('enqBox').style.display='block';
     var eh=document.getElementById('enqH'); if(eh) eh.textContent='🎬 Book your free demo';
     var m=document.getElementById('eqMsg'); if(m){ m.className='msg'; m.textContent=''; }
     document.getElementById('buyModal').classList.add('open');
     return false;
+  }
+  // reveal the signup form after payment
+  function showSignup(){
+    document.getElementById('signupBox').style.display='block';
+    document.getElementById('paidCta').style.display='none';
+    var sc=document.getElementById('eq_school'), t=document.getElementById('su_school');
+    if(t && !t.value && sc && sc.value) t.value=sc.value;
+    (t||{focus:function(){}}).focus();
+    return false;
+  }
+  // create the school + admin login, then open the app already signed in (same origin → localStorage carries over)
+  function doSignup(){
+    var g=function(x){return document.getElementById(x).value.trim();};
+    var m=document.getElementById('suMsg');
+    var school=g('su_school'), name=g('su_name'), login=g('su_login'), pw=document.getElementById('su_pw').value;
+    if(!school||!login||!pw){ msg(m,'School, login ID and password are required.','err'); return; }
+    if(pw.length<6){ msg(m,'Password must be at least 6 characters.','err'); return; }
+    msg(m,'Creating your account…','ok');
+    api('POST','/api/signup',{school_name:school,name:name||login,username:login,password:pw,email:g('su_email'),mobile:g('su_mobile'),plan:CURPLAN}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not create account.','err'); return; }
+      try{ localStorage.setItem('tt_token', r.data.token); if(r.data.user&&r.data.user.school_id!=null) localStorage.setItem('tt_school', String(r.data.user.school_id)); }catch(e){}
+      msg(m,'✓ Account created! Opening your dashboard…','ok');
+      setTimeout(function(){ location.href='/'; }, 800);
+    }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
   }
   function renderBuy(){
     var p=PAY||{}, out='';
@@ -441,7 +488,11 @@
     }
     document.getElementById('payOpts').innerHTML = out || '<p class="mini" style="margin-bottom:8px">Fill the form below and we’ll set you up.</p>';
     document.getElementById('enqBox').style.display=(p.enable_enquiry===0)?'none':'block';
-    var eh=document.getElementById('enqH'); if(eh) eh.textContent='✉️ Request a callback';
+    var eh=document.getElementById('enqH'); if(eh) eh.textContent='✉️ Or request a callback';
+    // buy = show the "payment done → create account" step; hide the signup form until clicked
+    document.getElementById('paidCta').style.display='block';
+    document.getElementById('signupBox').style.display='none';
+    var sm=document.getElementById('suMsg'); if(sm){ sm.className='msg'; sm.textContent=''; }
     // build the UPI QR + deep link now that the box exists
     if(p.enable_upi!==0 && p.upi_id){
       var uri='upi://pay?pa='+encodeURIComponent(p.upi_id)+'&pn='+encodeURIComponent(p.payee_name||'Aumtara')+'&am='+CURAMT+'&cu=INR&tn='+encodeURIComponent('Aumtara '+CURPLAN);
@@ -457,10 +508,10 @@
     var m=document.getElementById('eqMsg'), name=g('eq_name'), phone=g('eq_phone');
     if(!name||!phone){ msg(m,'Name and phone are required.','err'); return; }
     msg(m,'Sending…','ok');
-    api('POST','/api/enquiry',{name:name,school:g('eq_school'),phone:phone,plan:CURPLAN}).then(function(r){
+    api('POST','/api/enquiry',{name:name,school:g('eq_school'),phone:phone,email:g('eq_email'),plan:CURPLAN}).then(function(r){
       if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not send.','err'); return; }
       msg(m,'✓ Sent! We’ll contact you soon.','ok');
-      ['eq_name','eq_school','eq_phone'].forEach(function(x){document.getElementById(x).value='';});
+      ['eq_name','eq_school','eq_phone','eq_email'].forEach(function(x){document.getElementById(x).value='';});
     });
   }
 
@@ -511,17 +562,24 @@
     });
   }
   function loadEnquiries(){ api('GET','/api/enquiries').then(function(o){ if(o.ok) renderEnquiries(o.data); }); }
+  function signupLink(){ return APP+'/launch#signup'; }
+  function copyLink(){ var ta=document.createElement('textarea'); ta.value=signupLink(); document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); var el=document.getElementById('signupLink'); if(el){ el.style.background='#dcfce7'; setTimeout(function(){el.style.background='';},700);} }
   function renderEnquiries(rows){
+    var sl=document.getElementById('signupLink'); if(sl) sl.textContent=signupLink();
+    var link=signupLink();
     document.getElementById('enqBody').innerHTML=(rows||[]).map(function(e){
       var when=(e.ts||'').replace('T',' ').slice(0,16);
       var mk=+e.handled? '<span class="mini">✓ done</span>' : '<button class="btn btn-ghost btn-sm" onclick="markEnq('+e.id+')">Mark done</button>';
-      return '<tr'+(+e.handled?' style="opacity:.5"':'')+'><td>'+when+'</td><td><b>'+esc(e.name)+'</b></td><td>'+esc(e.school||'—')+'</td><td>'+esc(e.phone)+'</td><td>'+esc(e.plan||'—')+'</td><td>'+mk+'</td></tr>';
-    }).join('') || '<tr><td colspan="6" style="color:var(--muted)">No enquiries yet.</td></tr>';
+      var mail = e.email ? '<a class="btn btn-ghost btn-sm" title="Email signup link" href="mailto:'+esc(e.email)+'?subject='+encodeURIComponent('Your Aumtara Timetable login')+'&body='+encodeURIComponent('Hi '+(e.name||'')+',\n\nThanks for your payment. Create your login here:\n'+link+'\n\n— Aumtara Timetable')+'">✉️</a> ' : '';
+      return '<tr'+(+e.handled?' style="opacity:.5"':'')+'><td>'+when+'</td><td><b>'+esc(e.name)+'</b></td><td>'+esc(e.school||'—')+'</td><td>'+esc(e.phone)+'</td><td>'+esc(e.email||'—')+'</td><td>'+esc(e.plan||'—')+'</td><td>'+mail+mk+'</td></tr>';
+    }).join('') || '<tr><td colspan="7" style="color:var(--muted)">No enquiries yet.</td></tr>';
   }
   function markEnq(id){ api('PUT','/api/enquiry/'+id,{handled:1}).then(loadEnquiries); }
 
   loadPay();  // warm the Buy modal
   if(location.hash==='#owner'||location.hash==='#sales'){ openSales(); }
+  else if(location.hash==='#signup'){ openBuy('Advance',499); showSignup(); }   // emailed signup link lands here
+  else if(location.hash==='#buy'){ openBuy('Advance',499); }
 </script>
 </body>
 </html>
