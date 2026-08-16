@@ -49,7 +49,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v21';
+const SW_JS = `const CACHE='aumtara-v22';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -319,6 +319,9 @@ app.post('/api/schools', h(async (req,res)=>{
   if(!name){ res.status(400).json({error:'school name required'}); return; }
   const row=await q1('INSERT INTO tt_school(name,board,medium,active,created_at) VALUES(?,?,?,1,now()::text) RETURNING id',
     [name, b.board||null, b.medium||null]);
+  for(const f of ['address','school_code','mobile','email','udise','district']){   // optional profile fields captured at creation
+    if(b[f]!==undefined && String(b[f]).trim()!=='') await run('UPDATE tt_school SET '+f+'=? WHERE id=?',[String(b[f]).trim(), row.id]);
+  }
   await seedConfigForSchool(row.id, name, b.board||null, b.medium||null);
   res.json({ id:row.id });
 }));
@@ -2241,7 +2244,7 @@ function _deoXlTable(ws, startRow, headers, rows, widths){
   return r;
 }
 function _deoSig(ws, r, officer){ r+=2; ws.getCell('A'+r).value='__________________________'; ws.getCell('E'+r).value='__________________________'; r++;
-  ws.getCell('A'+r).value='Signature of School Principal'; ws.getCell('E'+r).value='Signature of District Education Officer (DEO)'; r++;
+  ws.getCell('A'+r).value='Signature of School Principal'; ws.getCell('E'+r).value='Signature of District Education Officer'; r++;
   ws.getCell('A'+r).value='Institutional Stamp & Seal'; ws.getCell('E'+r).value='Government Department Verification Seal'; return r; }
 function _secLabel(key){ return key==='hsec'?'Higher Secondary Section':(key==='pri'?'Primary Section':'Secondary Section'); }
 function buildDeoSheet(wb, d, fmt){
@@ -2274,13 +2277,13 @@ function buildDeoSheet(wb, d, fmt){
     _deoSig(ws,r,d.header.officer_name); return; }
   if(fmt==='format1'){ const ws=wb.addWorksheet('Format 1'); const start=_deoXlHead(ws,d,'G','FORMAT 1 — TEACHER WEEKLY WORKLOAD & DUTY SUMMARY','');
     const rows=d.format1.map(w=>[w.sr,w.name,w.designation,w.total,w.max,w.pct+'%',_deoStatusText(w.status)]);
-    const end=_deoXlTable(ws,start,['S.No','Faculty Name','Designation / Cadre','Total Weekly Load','DEO Max','Capacity %','DEO Status'],rows,[6,26,20,14,10,11,16]); _deoSig(ws,end,d.header.officer_name); return; }
+    const end=_deoXlTable(ws,start,['S.No','Faculty Name','Designation / Cadre','Total Weekly Load','Max','Capacity %','Status'],rows,[6,26,20,14,10,11,16]); _deoSig(ws,end,d.header.officer_name); return; }
   if(fmt==='format2'){ const ws=wb.addWorksheet('Format 2'); const start=_deoXlHead(ws,d,'G','FORMAT 2 — CLASS SUBJECT PERIOD ALLOCATION & CURRICULUM COVERAGE','');
     const rows=d.format2.map(w=>[w.sr,w.cls,w.subject,w.teacher,w.mandated+' p/wk',w.scheduled+' p/wk',w.pct+'% '+_deoStatusText(w.status)]);
     const end=_deoXlTable(ws,start,['S.No','Class & Section','Subject','Assigned Faculty','Mandated','Scheduled','Compliance'],rows,[6,18,22,24,11,11,20]); _deoSig(ws,end,d.header.officer_name); return; }
   if(fmt==='format3'){ const ws=wb.addWorksheet('Format 3'); const start=_deoXlHead(ws,d,'G','FORMAT 3 — ROOM & LAB INFRASTRUCTURE UTILIZATION AUDIT','');
     const rows=d.format3.map(w=>[w.sr,w.room,w.capacity!==''?(w.capacity+' seats'):'—',w.used+' / '+w.slots+' slots',w.pct+'%',_deoStatusText(w.status)]);
-    const end=_deoXlTable(ws,start,['S.No','Room / Name','Seating Capacity','Occupied Periods/Wk','Occupancy %','DEO Audit Status'],rows,[6,24,16,20,13,18]); _deoSig(ws,end,d.header.officer_name); return; }
+    const end=_deoXlTable(ws,start,['S.No','Room / Name','Seating Capacity','Occupied Periods/Wk','Occupancy %','Audit Status'],rows,[6,24,16,20,13,18]); _deoSig(ws,end,d.header.officer_name); return; }
   if(fmt==='format4'){ const ws=wb.addWorksheet('Format 4'); const start=_deoXlHead(ws,d,'G','FORMAT 4 — BELL SCHEDULE & INSTRUCTIONAL MINUTES','');
     const rows=d.format4.map((w,i)=>[i+1,_deoStatusText(w.shift),w.board,w.timings,w.periods+' periods',w.duration+' min',w.dailyMin+' min ('+(w.dailyMin/60).toFixed(1)+' hrs)']);
     const end=_deoXlTable(ws,start,['S.No','Shift / Day','Board Affiliation','Timings','Periods/Day','Period Duration','Daily Instructional Time'],rows,[6,16,20,16,13,14,22]); _deoSig(ws,end,d.header.officer_name); return; }
