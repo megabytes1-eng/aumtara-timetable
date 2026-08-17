@@ -2565,7 +2565,7 @@ function splitAt(cid,di,pi){ return (ALLELECTIVES||[]).find(e=>e.class_id===cid&
 function splitCellHTML(sp){ const opts=(sp.options||[]).map(o=>`<div style="border-top:1px dashed #e6e1f7;padding:2px 0"><b style="font-size:11.5px">${sesc(o.label)}</b> <span style="font-size:11px;color:#475569">${sesc(sName(o.subject_id)||'')}${o.teacher_id?' · '+sesc(tName(o.teacher_id)):''}${o.room_id?' · '+sesc(rName(o.room_id)):''}</span></div>`).join('')||`<div class="small" style="color:#94a3b8">${t('opt_none2')}</div>`;
   return `<td style="background:#faf8ff;vertical-align:top" title="${t('split_title')}"><div class="small" style="color:#7c3aed;font-weight:700">⧉ ${sesc(sp.name||'')}</div>${opts}</td>`; }
 function elecOption(e,oid){ return (e.options||[]).find(o=>o.id===oid); }
-function pickSClass(id){ curSClass=+id; curStudent=null; loadStudents(); }
+function pickSClass(id){ curSClass=+id; curStudent=null; cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); loadStudents(); }
 let elDay=null, elPeriod=0, OPTSEL={};
 function _chipHL(btn){ [...btn.parentElement.children].forEach(b=>{ if(b.tagName==='BUTTON'){ b.style.background='';b.style.color='';b.style.borderColor='';b.style.fontWeight=''; } }); btn.style.background='#7c3aed';btn.style.color='#fff';btn.style.borderColor='#7c3aed';btn.style.fontWeight='700'; }
 function pickElDay(di,btn){ elDay=di; _chipHL(btn); }
@@ -2606,10 +2606,31 @@ async function cbCreate(){
     for(const s of subs){ const c=cbSubs[s.id]; await api('POST','/api/elective-options',{elective_id:r.id,label:s.name,subject_id:s.id,teacher_id:(c&&c.teacher)||null,room_id:null}); }
   }}
   cbSubs={}; cbDays=new Set(); cbPeriods=new Set();
-  toast(slots+' combined slot'+(slots===1?'':'s')+' created');
+  toast('✅ '+name+' added — '+slots+' day'+(slots===1?'':'s'));
   await loadStudents();
 }
 function subTeachers(sid){ return teachers.filter(t=>(t.subjects||[]).includes(sid)||t.main_subject_id===sid); }
+// group created electives by name+period so all-week shows as ONE summary line, not 6 cards
+function electiveGroups(){
+  const g={};
+  ELECTIVES.forEach(e=>{ const k=e.name+'|'+e.period_index; if(!g[k]) g[k]={name:e.name,pi:e.period_index,slots:[],opts:(e.options||[])}; g[k].slots.push(e); if((e.options||[]).length>g[k].opts.length) g[k].opts=e.options; });
+  return Object.values(g).sort((a,b)=>a.pi-b.pi);
+}
+function electiveGroupCard(g){
+  const daysSet=new Set(g.slots.map(s=>s.day_of_week));
+  const isAll=WD().length&&WD().every(d=>daysSet.has(d));
+  const daysTxt=isAll?'🗓 All week':[...daysSet].sort((a,b)=>a-b).map(d=>DD()[d]).join(', ');
+  const opts=g.opts.map(o=>`<span class="tag" style="background:#ede9fe;color:#4c1d95">${sesc(o.label)}${o.teacher_id?' → '+sesc(tName(o.teacher_id)):(o.subject_id?'':'')}</span>`).join(' ')||'<span style="color:#c0392b">No options</span>';
+  const ids=g.slots.map(s=>s.id).join(',');
+  return `<div class="card" style="background:#f2fbf4;border:1px solid #cdefd6;margin:6px 0;padding:10px 12px">
+    <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
+      <div><b>🧩 ${sesc(g.name)}</b> <span class="tag" style="background:#dbeafe">P${g.pi+1}</span> <span class="tag" style="background:#dcfce7">${daysTxt}</span></div>
+      <button class="ghost red mini" onclick="delElectiveGroup('${ids}','${sesc(g.name).replace(/'/g,'')}')">🗑 Remove</button>
+    </div>
+    <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">${opts}</div>
+  </div>`;
+}
+async function delElectiveGroup(ids,nm){ if(!confirm('Remove "'+nm+'" from all its days?'))return; for(const id of ids.split(',')){ await api('DELETE','/api/electives/'+id); } toast('Removed '+nm); await loadStudents(); }
 function combineBuilder(){
   const AC='background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700';
   // subjects as a wrapping grid (no scroll) — ~3 per row
@@ -2685,7 +2706,7 @@ function studentGrid(){
 function studentsView(){
   const cls=filteredClasses();
   if((!curSClass||!cls.find(c=>c.id===curSClass))&&cls[0]) curSClass=cls[0].id;
-  const classSel=`<select onchange="curSClass=+this.value;curStudent=null;loadStudents()">${cls.map(c=>`<option value="${c.id}" ${c.id===curSClass?'selected':''}>${sesc(c.name)}</option>`).join('')}</select>`;
+  const classSel=`<select onchange="pickSClass(this.value)">${cls.map(c=>`<option value="${c.id}" ${c.id===curSClass?'selected':''}>${sesc(c.name)}</option>`).join('')}</select>`;
   const classChips=cls.length?`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${cls.map(c=>`<button class="ghost" style="${c.id===curSClass?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pickSClass(${c.id})">${sesc(c.name)}</button>`).join('')}</div>`:'';
   const stuRows=STUDENTS.length?'<div class="stugrid">'+STUDENTS.map(s=>`<div class="sturow"><b>${sesc(s.name)}</b>${s.roll?`<span class="tag">${sesc(s.roll)}</span>`:''}<button class="ghost red mini" onclick="delStudent(${s.id})">🗑</button></div>`).join('')+'</div>':`<div class="small" style="color:#5c6580">${t('stu_none')}</div>`;
   const maxP=maxTeachPeriods();
@@ -2693,7 +2714,8 @@ function studentsView(){
   const _dsel=(elDay==null?(WD()[0]||0):elDay);
   const dayChips=`<button class="ghost mini" style="${elDay==='ALL'?AC:''}" onclick="pickElDay('ALL',this)">🗓 All week</button>`+WD().map(i=>`<button class="ghost mini" style="${(elDay!=='ALL'&&i===_dsel)?AC:''}" onclick="pickElDay(${i},this)">${DD()[i]}</button>`).join('');
   const perChips=Array.from({length:maxP},(_,i)=>`<button class="ghost mini" style="${i===(elPeriod||0)?AC:''}" onclick="pickElPeriod(${i},this)">P${i+1}</button>`).join('');
-  const elRows=ELECTIVES.length?ELECTIVES.map(e=>electiveCard(e)).join(''):`<div class="small" style="color:#5c6580">${t('elec_none')}</div>`;
+  const _egroups=electiveGroups();
+  const elRows=_egroups.length?('<div class="small" style="color:#166534;font-weight:800;margin:2px 0 4px">✅ Combined periods in this class ('+_egroups.length+')</div>'+_egroups.map(g=>electiveGroupCard(g)).join('')):`<div class="small" style="color:#5c6580">${t('elec_none')}</div>`;
   // choices for current student
   const stuSel=STUDENTS.length?`<div class="row" style="gap:4px;flex-wrap:wrap">${STUDENTS.map(s=>`<button class="ghost mini" style="${s.id===curStudent?AC:''}" onclick="pickStudent(${s.id})">${sesc(s.name)}${s.roll?' ('+sesc(s.roll)+')':''}</button>`).join('')}</div>`:'';
   const choiceRows=(curStudent&&ELECTIVES.length)?'<div class="choicegrid">'+ELECTIVES.map(e=>{
