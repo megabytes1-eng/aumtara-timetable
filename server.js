@@ -920,6 +920,14 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     if(r.teacher_id) u.T.add(r.teacher_id); if(r.room_id) u.R.add(r.room_id);
     if(r.teacher_id){ const lk=sk+'_'+r.teacher_id; if(!seenLoad.has(lk)){ seenLoad.add(lk); (lockLoadWk[w]=lockLoadWk[w]||[]).push({t:r.teacher_id,di:r.day_of_week}); } }   // count a combined teacher once per slot, not per member class
   });
+  // group-splits (electives): reserve the class-slot so no normal subject is scheduled there, and mark each option's teacher & room busy so they aren't double-booked
+  const elecRows = await q('SELECT e.class_id,e.day_of_week,e.period_index,e.week_index,o.teacher_id,o.room_id FROM tt_elective e LEFT JOIN tt_elective_option o ON o.elective_id=e.id WHERE e.school_id=?',[sid]);
+  elecRows.forEach(r=>{ const w=r.week_index||0;
+    lockSlot.add(w+'_'+r.class_id+'_'+r.day_of_week+'_'+r.period_index);
+    const sk=w+'_'+r.day_of_week+'_'+r.period_index; const u=lockUseAt[sk]||(lockUseAt[sk]={T:new Set(),R:new Set()});
+    if(r.teacher_id) u.T.add(r.teacher_id); if(r.room_id) u.R.add(r.room_id);
+    if(r.teacher_id){ const lk=sk+'_'+r.teacher_id; if(!seenLoad.has(lk)){ seenLoad.add(lk); (lockLoadWk[w]=lockLoadWk[w]||[]).push({t:r.teacher_id,di:r.day_of_week}); } }
+  });
   // per-period availability blocks
   const teacherBlock={}, classBlock={}, roomBlock={};
   (await q('SELECT entity_type,entity_id,day_of_week,period_index FROM tt_avail WHERE school_id=?',[sid])).forEach(a=>{
@@ -1505,6 +1513,8 @@ app.get('/api/timetable/free-now', h(async (req,res)=>{
     const cells=await q(`SELECT teacher_id FROM tt_timetable WHERE school_id=? AND day_of_week=? AND period_index=? AND week_index=${curCycleIdx(sid)} AND subject_id IS NOT NULL`,[sid,day,pi]);
     classesNow=cells.length; const busy=new Set();
     cells.forEach(c=>{ if(c.teacher_id) busy.add(c.teacher_id); else noTeacher++; });   // subject scheduled but no teacher = coverage gap
+    // group-split (elective) teachers are also teaching this period even though there's no tt_timetable row
+    (await q(`SELECT o.teacher_id FROM tt_elective e JOIN tt_elective_option o ON o.elective_id=e.id WHERE e.school_id=? AND e.day_of_week=? AND e.period_index=? AND COALESCE(e.week_index,0)=${curCycleIdx(sid)} AND o.teacher_id IS NOT NULL`,[sid,day,pi])).forEach(r=>busy.add(r.teacher_id));
     busyCount=busy.size;
     teachers.forEach(tt=>{ if(absent.has(tt.id)) return; if(!busy.has(tt.id)) free.push({id:tt.id,name:tt.name}); });
   }
