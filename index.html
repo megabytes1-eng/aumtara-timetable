@@ -2600,7 +2600,17 @@ async function editCombine(ids,cid){
   const el=document.getElementById('cbNamePreview'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
   showOk('✏ Editing — change subjects/teachers/days, then press Update');
 }
-function scrollStuTop(){ const el=document.getElementById('stuTop'); if(el){ try{el.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){try{el.scrollIntoView();}catch(_){}} } else { try{window.scrollTo(0,0);}catch(e){} } }
+function scrollStuTop(){
+  const doIt=()=>{ try{
+    let n=document.getElementById('stuTop');
+    // reset EVERY scrollable ancestor (the app may scroll an inner container, not window)
+    let a=n; while(a){ try{ if(a.scrollHeight>a.clientHeight+2) a.scrollTop=0; }catch(e){} a=a.parentElement; }
+    try{ if(document.scrollingElement) document.scrollingElement.scrollTop=0; }catch(e){}
+    try{ document.documentElement.scrollTop=0; document.body.scrollTop=0; window.scrollTo(0,0); }catch(e){}
+    if(n){ try{ n.scrollIntoView({block:'start'}); }catch(e){} }
+  }catch(e){} };
+  doIt(); try{ requestAnimationFrame(doIt); }catch(e){ setTimeout(doIt,60); }
+}
 function cancelEdit(){ cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; render(); scrollStuTop(); }
 async function refreshStudents(){ cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; await loadStudents(); scrollStuTop(); toast('Refreshed'); }
 // --- light DOM updates only (NO full-page render → no flicker, no missed clicks) ---
