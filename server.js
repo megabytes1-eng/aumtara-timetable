@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v32';
+const SW_JS = `const CACHE='aumtara-v33';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -1497,13 +1497,16 @@ app.get('/api/timetable/free-now', h(async (req,res)=>{
   }
   const teachers=await q('SELECT id,name FROM tt_teacher WHERE school_id=? ORDER BY name',[sid]);
   const absent=new Set(); (await q('SELECT teacher_id FROM tt_absence WHERE school_id=? AND day_of_week=?',[sid,day])).forEach(a=>absent.add(a.teacher_id));
-  let free=[], busyCount=0;
+  let free=[], busyCount=0, classesNow=0, noTeacher=0;
   if(status==='running'){
-    const busy=new Set();
-    (await q(`SELECT DISTINCT teacher_id FROM tt_timetable WHERE school_id=? AND day_of_week=? AND period_index=? AND week_index=${curCycleIdx(sid)} AND teacher_id IS NOT NULL`,[sid,day,pi])).forEach(r=>busy.add(r.teacher_id));
-    teachers.forEach(tt=>{ if(absent.has(tt.id)) return; if(busy.has(tt.id)) busyCount++; else free.push({id:tt.id,name:tt.name}); });
+    // all classes with a subject scheduled this period; a teacher may or may not be assigned
+    const cells=await q(`SELECT teacher_id FROM tt_timetable WHERE school_id=? AND day_of_week=? AND period_index=? AND week_index=${curCycleIdx(sid)} AND subject_id IS NOT NULL`,[sid,day,pi]);
+    classesNow=cells.length; const busy=new Set();
+    cells.forEach(c=>{ if(c.teacher_id) busy.add(c.teacher_id); else noTeacher++; });   // subject scheduled but no teacher = coverage gap
+    busyCount=busy.size;
+    teachers.forEach(tt=>{ if(absent.has(tt.id)) return; if(!busy.has(tt.id)) free.push({id:tt.id,name:tt.name}); });
   }
-  res.json({ day, time:hhmm, status, period, free, busyCount, absentCount:absent.size, totalTeachers:teachers.length });
+  res.json({ day, time:hhmm, status, period, free, busyCount, absentCount:absent.size, totalTeachers:teachers.length, classesNow, noTeacher });
 }));
 
 // ---------- TEACHER DIARY ----------
