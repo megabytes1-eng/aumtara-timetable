@@ -2609,26 +2609,34 @@ async function cbCreate(){
   toast(slots+' combined slot'+(slots===1?'':'s')+' created');
   await loadStudents();
 }
+function subTeachers(sid){ return teachers.filter(t=>(t.subjects||[]).includes(sid)||t.main_subject_id===sid); }
 function combineBuilder(){
   const AC='background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700';
-  const subList=subjects.map(s=>{
+  // subjects as a wrapping grid (no scroll) — ~3 per row
+  const subGrid=subjects.map(s=>{
     const on=!!(cbSubs[s.id]&&cbSubs[s.id].on);
-    let inner='';
-    if(on){ const tsel=cbSubs[s.id].teacher;
-      const tchBtns=teachers.map(x=>`<button class="ghost mini" style="${tsel===x.id?AC:''}" onclick="cbSetTeacher(${s.id},${x.id},this)">${sesc(x.name)}</button>`).join('')||'<span class="small" style="color:#c0392b">No teachers — add in Teachers</span>';
-      inner=`<div style="margin:2px 0 8px 26px"><div class="small" style="color:#5c6580;margin-bottom:2px">👩‍🏫 Teacher for <b>${sesc(s.name)}</b></div><div class="row" style="gap:4px;flex-wrap:wrap;max-height:90px;overflow:auto">${tchBtns}</div></div>`; }
-    return `<label class="row" style="gap:8px;align-items:center;cursor:pointer;padding:3px 0"><input type="checkbox" ${on?'checked':''} onclick="cbToggleSub(${s.id})" style="width:18px;height:18px;flex:none"><b>${sesc(s.name)}</b></label>${inner}`;
+    return `<label style="display:flex;gap:8px;align-items:center;cursor:pointer;flex:0 0 30%;min-width:130px;padding:4px 0"><input type="checkbox" ${on?'checked':''} onclick="cbToggleSub(${s.id})" style="width:18px;height:18px;flex:none"><b>${sesc(s.name)}</b></label>`;
   }).join('')||'<span class="small" style="color:#5c6580">No subjects yet</span>';
+  // teacher picker per ticked subject — only that subject's teachers
+  const chosenSubs=subjects.filter(s=>cbSubs[s.id]&&cbSubs[s.id].on);
+  const tpick=chosenSubs.map(s=>{
+    let caps=subTeachers(s.id), note='';
+    if(!caps.length){ caps=teachers; note=` <span style="color:#c0392b">(none linked to ${sesc(s.name)} — showing all)</span>`; }
+    const tsel=cbSubs[s.id].teacher;
+    const btns=caps.map(x=>`<button class="ghost mini" style="${tsel===x.id?AC:''}" onclick="cbSetTeacher(${s.id},${x.id},this)">${sesc(x.name)}</button>`).join('')||'<span class="small" style="color:#c0392b">No teachers — add in Teachers screen</span>';
+    return `<div style="margin:6px 0"><div class="small" style="color:#5c6580;margin-bottom:2px">👩‍🏫 Teacher for <b>${sesc(s.name)}</b>${note}</div><div class="row" style="gap:4px;flex-wrap:wrap">${btns}</div></div>`;
+  }).join('');
   const allOn=WD().length&&WD().every(i=>cbDays.has(i));
   const dayBoxes=`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${allOn?'checked':''} onclick="cbAllWeek()" style="width:17px;height:17px"><b>🗓 All week</b></label>`+WD().map(i=>`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${cbDays.has(i)?'checked':''} onclick="cbToggleDay(${i})" style="width:17px;height:17px">${DD()[i]}</label>`).join('');
   const maxP=maxTeachPeriods();
   const perBoxes=Array.from({length:maxP},(_,i)=>`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${cbPeriods.has(i)?'checked':''} onclick="cbTogglePeriod(${i})" style="width:17px;height:17px">P${i+1}</label>`).join('');
-  const chosen=subjects.filter(s=>cbSubs[s.id]&&cbSubs[s.id].on).map(s=>s.name).join(' / ');
+  const chosen=chosenSubs.map(s=>s.name).join(' / ');
   return `<div style="margin-top:12px;border-top:2px solid #ece7fb;padding-top:12px">
     <div style="font-weight:800;color:#4c1d95;margin-bottom:4px">🧩 Quick combine builder</div>
     <div class="small" style="color:#5c6580;margin-bottom:8px">Tick the parallel subjects, pick a teacher for each, tick the days &amp; period(s), then Create. No name typing needed.</div>
     <div class="small" style="color:#5c6580;margin:2px 0 3px;font-weight:700">1 · Subjects to combine ${chosen?`<span class="tag">${sesc(chosen)}</span>`:''}</div>
-    <div style="max-height:220px;overflow:auto;border:1px solid #eee;border-radius:8px;padding:6px 10px">${subList}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:2px 12px;border:1px solid #eee;border-radius:8px;padding:8px 12px">${subGrid}</div>
+    ${tpick?`<div style="margin-top:6px">${tpick}</div>`:''}
     <div class="small" style="color:#5c6580;margin:10px 0 3px;font-weight:700">2 · Days</div>
     <div class="row" style="gap:14px;flex-wrap:wrap">${dayBoxes}</div>
     <div class="small" style="color:#5c6580;margin:10px 0 3px;font-weight:700">3 · Period(s)</div>
