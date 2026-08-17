@@ -946,8 +946,8 @@ function showUserChip(){if(!ME)return;let c=document.getElementById('userchip');
   c.innerHTML=`<span>👤 ${nm} · <b>${t('role_'+ME.role)}</b></span><button class="helpbtn" id="helpbtn" onclick="openHelp()" title="Help Center" aria-label="Help">?</button><button class="ghost mini" style="background:#2c4a7c;color:#fff;border-color:#3f5f95" onclick="doLogout()">${t('logout')}</button>`;}
 // role → which tabs are visible
 const ROLE_TABS={
-  principal:['dash','mclasses','msubjects','mteachers','mrooms','hours','quota','avail','build','optimizer','class','students','teacher','diary','school','insights','sub','monitor','notify','reports','versions','data','help'],
-  supervisor:['dash','class','students','teacher','school','insights','sub','monitor','notify','reports','diary','help'],
+  principal:['dash','mclasses','msubjects','gsplit','mteachers','mrooms','hours','quota','avail','build','optimizer','class','students','teacher','diary','school','insights','sub','monitor','notify','reports','versions','data','help'],
+  supervisor:['dash','class','students','gsplit','teacher','school','insights','sub','monitor','notify','reports','diary','help'],
   teacher:['dash','class','teacher','diary','notify','reports','help'],
 };
 function allowedTabs(){const r=(ME&&ME.role)||'master';const owner=!!(ME&&ME.is_owner);
@@ -1146,7 +1146,7 @@ const absentDay=tid=>absence.filter(a=>a.teacher_id===tid).map(a=>a.day_of_week)
 const conflictCount=()=>conflicts.teacher.length+conflicts.room.length;
 
 function L(ent){ const c=config&&config['label_'+ent]; return (c&&(''+c).trim())?(''+c):''; }  // custom entity label or ''
-const TABKEYS=[["dash","nav_dash"],["mclasses","setup_classes"],["msubjects","setup_subjects"],["mteachers","setup_teachers"],["mrooms","setup_rooms"],["hours","nav_hours"],["quota","nav_quota"],["avail","nav_avail"],["build","nav_build"],["optimizer","opt_title"],["class","nav_class"],["students","nav_students"],["teacher","nav_teacher"],["diary","nav_diary"],["school","nav_school"],["insights","nav_insights"],["sub","nav_sub"],["monitor","nav_monitor"],["notify","push_title"],["reports","nav_reports"],["versions","nav_versions"],["data","nav_data"],["usage","nav_usage"],["owner","nav_owner"],["schools","nav_schools"],["users","nav_users"],["help","nav_help"]];
+const TABKEYS=[["dash","nav_dash"],["mclasses","setup_classes"],["msubjects","setup_subjects"],["gsplit","nav_gsplit"],["mteachers","setup_teachers"],["mrooms","setup_rooms"],["hours","nav_hours"],["quota","nav_quota"],["avail","nav_avail"],["build","nav_build"],["optimizer","opt_title"],["class","nav_class"],["students","nav_students"],["teacher","nav_teacher"],["diary","nav_diary"],["school","nav_school"],["insights","nav_insights"],["sub","nav_sub"],["monitor","nav_monitor"],["notify","push_title"],["reports","nav_reports"],["versions","nav_versions"],["data","nav_data"],["usage","nav_usage"],["owner","nav_owner"],["schools","nav_schools"],["users","nav_users"],["help","nav_help"]];
 function render(){
   if(loggedOut||!ME)return;
   const allow=allowedTabs();
@@ -1154,15 +1154,15 @@ function render(){
   const allowSet=new Set(allow.map(([k])=>k)), TABLABEL=Object.fromEntries(TABKEYS);
   const seen=new Set();
   let navHtml=NAVGROUPS.map(g=>{const items=g.tabs.filter(k=>allowSet.has(k));items.forEach(k=>seen.add(k));if(!items.length)return"";
-    const itemHtml=items.map(k=>{const lbl=(k==='class'&&L('class'))||(k==='teacher'&&L('teacher'))||t(TABLABEL[k]);return `<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${lbl}</div>`;}).join("");
+    const itemHtml=items.map(k=>{const lbl=(k==='class'&&L('class'))||(k==='teacher'&&L('teacher'))||(k==='gsplit'&&'🧩 Combine Subjects')||t(TABLABEL[k]);return `<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${lbl}</div>`;}).join("");
     if(!g.key)return itemHtml;// standalone (dash / bottom items) — no pulldown
     const collapsed=!!GRPCOLL[g.key];// click the heading to open/close
     return `<div class="navgrp ${collapsed?'collapsed':''}" onclick="toggleGrp('${g.key}')">${t(g.key)}<span class="car">▾</span></div><div class="navsec"${collapsed?' style="display:none"':''}>${itemHtml}</div>`;}).join("");
   const extra=allow.filter(([k])=>!seen.has(k));// any allowed tab not placed in a group
   if(extra.length)navHtml+=extra.map(([k,lk])=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${t(lk)}</div>`).join("");
   document.getElementById("tabs").innerHTML=navHtml;
-  document.getElementById("view").innerHTML=({dash,mclasses:mClassesView,msubjects:mSubjectsView,mteachers:mTeachersView,mrooms:mRoomsView,hours,quota:quotaView,avail:availView,build:builder,optimizer:optimizerCard,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,notify:pushCard,reports:reportsView,versions:versionsView,data:dataView,usage:usageView,owner:ownerView,schools:schoolsView,users:usersView,help}[tab])();
-  if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary"&&dTab==='diary')loadDiary(); if(tab==="dash"){loadReadiness();loadFreeNow();} if(tab==="notify"&&!PUSH._init){PUSH._init=true;initPush().then(()=>render());} if(tab==="versions")loadVersions(); if(tab==="build"&&bTab==='combine')loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="owner")loadOwner(); if(tab==="students")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
+  document.getElementById("view").innerHTML=({dash,mclasses:mClassesView,msubjects:mSubjectsView,gsplit:combineView,mteachers:mTeachersView,mrooms:mRoomsView,hours,quota:quotaView,avail:availView,build:builder,optimizer:optimizerCard,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,notify:pushCard,reports:reportsView,versions:versionsView,data:dataView,usage:usageView,owner:ownerView,schools:schoolsView,users:usersView,help}[tab])();
+  if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary"&&dTab==='diary')loadDiary(); if(tab==="dash"){loadReadiness();loadFreeNow();} if(tab==="notify"&&!PUSH._init){PUSH._init=true;initPush().then(()=>render());} if(tab==="versions")loadVersions(); if(tab==="build"&&bTab==='combine')loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="owner")loadOwner(); if(tab==="students")loadStudents(); if(tab==="gsplit")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
   document.body.classList.toggle('wide-view', tab==='build');   // Auto Set shows full-width
   paintBoxes();
 }
@@ -1266,7 +1266,7 @@ try{const _sp=localStorage.getItem('tt_sidenav');if(_sp==='off'||(_sp===null&&wi
 // sidebar groups — Master/Timetable/Daily/Admin; dash & help stand alone
 const NAVGROUPS=[
   {key:null, tabs:['dash']},
-  {key:'grp_master', tabs:['mclasses','msubjects','mteachers','mrooms','hours','students','quota','avail']},   // define the school + constraints
+  {key:'grp_master', tabs:['mclasses','msubjects','gsplit','mteachers','mrooms','hours','students','quota','avail']},   // define the school + constraints
   {key:'grp_build', tabs:['build','optimizer','class','teacher','school','insights','reports','versions']},   // build → view → insights → report → save
   {key:'grp_daily', tabs:['sub','monitor','diary','notify']},   // day-to-day operations
   {key:'grp_admin', tabs:['owner','data','usage','schools','users']},   // back-office (owner = SaaS panel, owner-only)
@@ -2720,6 +2720,27 @@ function combineBuilder(){
     <div class="row" style="gap:14px;flex-wrap:wrap">${perBoxes}</div>
     <div class="row" style="gap:8px;margin-top:12px;align-items:center"><button class="green" style="font-size:15px;padding:10px 20px" onclick="cbCreate()">✅ ${editing?'Update':'Create'} combined period</button>${editing?'<button class="ghost" onclick="cancelEdit()">Cancel edit</button>':''}</div>
   </div>`;
+}
+function combineView(){
+  const cls=filteredClasses();
+  if((!curSClass||!cls.find(c=>c.id===curSClass))&&cls[0]) curSClass=cls[0].id;
+  const classChips=cls.length?`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${cls.map(c=>`<button class="ghost" style="${c.id===curSClass?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pickSClass(${c.id})">${sesc(c.name)}</button>`).join('')}</div>`:'<span class="small" style="color:#5c6580">No classes yet</span>';
+  const curName=curSClass?sesc((classes.find(c=>c.id===curSClass)||{}).name||''):'—';
+  const _egroups=electiveGroups();
+  const elRows=_egroups.length?('<div class="small" style="color:#166534;font-weight:800;margin:2px 0 4px">✅ Combined periods in this class ('+_egroups.length+')</div>'+_egroups.map(g=>electiveGroupCard(g)).join('')):'<div class="small" style="color:#5c6580">No combined periods in this class yet.</div>';
+  return `<div id="stuTop" class="card" style="margin-bottom:12px"><h2>🧩 Combine Subjects <span class="small" style="font-weight:400;color:#5c6580">(group-split)</span></h2><div class="desc">Combine two subjects that run in parallel for the same class &amp; period — half the class does one, half the other (e.g. Computer / PT, or Hindi / Sanskrit). Pick a class, tick the two subjects with a teacher each, tick the days &amp; period, then Create.</div></div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center"><div style="font-weight:800;color:#4c1d95;margin-bottom:2px">${L('class')||t('nav_class')} — <span style="color:#1e293b">${curName}</span></div><button class="ghost mini" onclick="refreshStudents()">↻ Refresh</button></div>
+      ${classChips}
+      <div style="border-top:1px solid #eee;margin:10px 0"></div>
+      ${elRows}
+      ${combineBuilder()}
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">📋 All combined periods — all classes</h2>
+      <div class="desc">Recheck everything here. ✏ edits, 🗑 removes that combine from all its days.</div>
+      ${allCombinesHTML()}
+    </div>`;
 }
 async function delElective(id){ if(!confirm(t('elec_confirm_del')))return; await api('DELETE','/api/electives/'+id); toast(); await loadStudents(); }
 async function addOption(eid){ const lab=(document.getElementById('op_lab_'+eid).value||'').trim(); if(!lab){showErr(t('opt_need_label'));return;} const sel=OPTSEL[eid]||{}; const r=await api('POST','/api/elective-options',{elective_id:eid,label:lab,subject_id:sel.sub||null,teacher_id:sel.tch||null,room_id:sel.rm||null}); if(r&&r.error){showErr(r.error);return;} OPTSEL[eid]=null; toast(); await loadStudents(); }
