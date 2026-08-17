@@ -2566,7 +2566,7 @@ function splitAt(cid,di,pi){ return (ALLELECTIVES||[]).find(e=>e.class_id===cid&
 function splitCellHTML(sp){ const opts=(sp.options||[]).map(o=>`<div style="border-top:1px dashed #e6e1f7;padding:2px 0"><b style="font-size:11.5px">${sesc(o.label)}</b> <span style="font-size:11px;color:#475569">${sesc(sName(o.subject_id)||'')}${o.teacher_id?' · '+sesc(tName(o.teacher_id)):''}${o.room_id?' · '+sesc(rName(o.room_id)):''}</span></div>`).join('')||`<div class="small" style="color:#94a3b8">${t('opt_none2')}</div>`;
   return `<td style="background:#faf8ff;vertical-align:top" title="${t('split_title')}"><div class="small" style="color:#7c3aed;font-weight:700">⧉ ${sesc(sp.name||'')}</div>${opts}</td>`; }
 function elecOption(e,oid){ return (e.options||[]).find(o=>o.id===oid); }
-function pickSClass(id){ curSClass=+id; curStudent=null; cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; loadStudents(); }
+function pickSClass(id){ curSClass=+id; curStudent=null; cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; cbPrevClass=null; loadStudents(); }
 let elDay=null, elPeriod=0, OPTSEL={};
 function _chipHL(btn){ [...btn.parentElement.children].forEach(b=>{ if(b.tagName==='BUTTON'){ b.style.background='';b.style.color='';b.style.borderColor='';b.style.fontWeight=''; } }); btn.style.background='#7c3aed';btn.style.color='#fff';btn.style.borderColor='#7c3aed';btn.style.fontWeight='700'; }
 function pickElDay(di,btn){ elDay=di; _chipHL(btn); }
@@ -2587,11 +2587,11 @@ async function addStudent(){ const n=(document.getElementById('stu_name').value|
 async function delStudent(id){ if(!confirm(t('stu_confirm_del')))return; await api('DELETE','/api/students/'+id); toast(); if(curStudent===id)curStudent=null; await loadStudents(); }
 async function addElective(){ if(!curSClass){showErr('Select a class first');return;} const n=(document.getElementById('el_name').value||'').trim(); if(!n){showErr(t('elec_need_name'));return;} const pi=elPeriod||0; const days=(elDay==='ALL')?WD():[(elDay==null?(WD()[0]||0):elDay)]; let ok=0; for(const di of days){ const r=await api('POST','/api/electives',{class_id:curSClass,name:n,day_of_week:di,period_index:pi,week_index:0}); if(!(r&&r.error)) ok++; } elDay=null;elPeriod=0; if(ok>1) toast(ok+' slots added — whole week'); else if(ok) toast(); await loadStudents(); }
 async function copyOptWeek(eid){ const e=ELECTIVES.find(x=>x.id===eid); if(!e||!(e.options||[]).length){ showErr('Add options to this slot first'); return; } const targets=ELECTIVES.filter(x=>x.id!==eid && x.period_index===e.period_index); if(!targets.length){ showErr('No other same-period slots this week — use "All week" when adding'); return; } for(const tg of targets){ for(const o of (tg.options||[])) await api('DELETE','/api/elective-options/'+o.id); for(const o of (e.options||[])) await api('POST','/api/elective-options',{elective_id:tg.id,label:o.label,subject_id:o.subject_id,teacher_id:o.teacher_id,room_id:o.room_id}); } toast(targets.length+' slots updated'); await loadStudents(); }
-let cbSubs={}, cbDays=new Set(), cbPeriods=new Set(), cbEditIds=[];
+let cbSubs={}, cbDays=new Set(), cbPeriods=new Set(), cbEditIds=[], cbPrevClass=null;
 const _cbAC='background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700';
 async function editCombine(ids,cid){
   cid=+cid; const idset=ids.split(',').map(Number);
-  curSClass=cid; curStudent=null; await loadStudents();
+  cbPrevClass=curSClass; curSClass=cid; curStudent=null; await loadStudents();
   const slots=(ELECTIVES||[]).filter(e=>idset.includes(e.id)); if(!slots.length){ showErr('Combine not found'); return; }
   cbSubs={}; cbDays=new Set(); cbPeriods=new Set();
   (slots[0].options||[]).forEach(o=>{ if(o.subject_id) cbSubs[o.subject_id]={on:true,teacher:o.teacher_id||undefined}; });
@@ -2611,7 +2611,7 @@ function scrollStuTop(){
   // fire now + over the next ~0.5s to beat re-layout, scroll-anchoring, and any lingering animation
   doIt(); try{ requestAnimationFrame(doIt); }catch(e){} setTimeout(doIt,120); setTimeout(doIt,300); setTimeout(doIt,500);
 }
-function cancelEdit(){ cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; render(); scrollStuTop(); }
+async function cancelEdit(){ const back=(cbPrevClass!=null?cbPrevClass:curSClass); cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; cbPrevClass=null; if(back!==curSClass){ curSClass=back; curStudent=null; await loadStudents(); } else { render(); } scrollStuTop(); }
 async function refreshStudents(){ cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; await loadStudents(); scrollStuTop(); toast('Refreshed'); }
 // --- light DOM updates only (NO full-page render → no flicker, no missed clicks) ---
 function cbTeachersHTML(){
@@ -2646,11 +2646,12 @@ async function cbCreate(){
     if(r&&r.error){ errs++; continue; } slots++;
     for(const s of subs){ const c=cbSubs[s.id]; await api('POST','/api/elective-options',{elective_id:r.id,label:s.name,subject_id:s.id,teacher_id:(c&&c.teacher)||null,room_id:null}); }
   }}
-  const wasEdit=cbEditIds.length;
+  const wasEdit=cbEditIds.length; const back=cbPrevClass;
   if(slots && wasEdit){ for(const id of cbEditIds){ await api('DELETE','/api/electives/'+id); } }
-  cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[];
+  cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; cbPrevClass=null;
   if(slots) showOk('✅ '+name+' → '+clsName+(wasEdit?' updated':' added')+' ('+slots+' slot'+(slots===1?'':'s')+(errs?', '+errs+' failed':'')+')');
   else showErr('❌ Nothing '+(wasEdit?'updated':'created')+(errs?' — '+errs+' failed':''));
+  if(wasEdit && back!=null && back!==curSClass){ curSClass=back; curStudent=null; }
   await loadStudents();
   scrollStuTop();
 }
