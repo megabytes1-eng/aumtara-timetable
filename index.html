@@ -2600,7 +2600,8 @@ async function editCombine(ids,cid){
   const el=document.getElementById('cbNamePreview'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
   showOk('✏ Editing — change subjects/teachers/days, then press Update');
 }
-function cancelEdit(){ cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; render(); }
+function cancelEdit(){ cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; render(); try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);} }
+async function refreshStudents(){ cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; await loadStudents(); try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);} toast('Refreshed'); }
 // --- light DOM updates only (NO full-page render → no flicker, no missed clicks) ---
 function cbTeachersHTML(){
   const chosen=subjects.filter(s=>cbSubs[s.id]&&cbSubs[s.id].on);
@@ -2640,6 +2641,7 @@ async function cbCreate(){
   if(slots) showOk('✅ '+name+' → '+clsName+(wasEdit?' updated':' added')+' ('+slots+' slot'+(slots===1?'':'s')+(errs?', '+errs+' failed':'')+')');
   else showErr('❌ Nothing '+(wasEdit?'updated':'created')+(errs?' — '+errs+' failed':''));
   await loadStudents();
+  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}
 }
 function subTeachers(sid){ return teachers.filter(t=>(t.subjects||[]).includes(sid)||t.main_subject_id===sid); }
 // group created electives by name+period so all-week shows as ONE summary line, not 6 cards
@@ -2769,7 +2771,7 @@ function studentsView(){
   const curName=curSClass?sesc((classes.find(c=>c.id===curSClass)||{}).name||''):'—';
   const secList=`
     <div class="card">
-      <div style="font-weight:800;color:#4c1d95;margin-bottom:2px">${L('class')||t('nav_class')} — <span style="color:#1e293b">${curName}</span></div>
+      <div class="row" style="justify-content:space-between;align-items:center"><div style="font-weight:800;color:#4c1d95;margin-bottom:2px">${L('class')||t('nav_class')} — <span style="color:#1e293b">${curName}</span></div><button class="ghost mini" onclick="refreshStudents()">↻ Refresh</button></div>
       ${classChips}
       <div style="border-top:1px solid #eee;margin:10px 0"></div>
       ${elRows}
