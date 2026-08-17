@@ -962,7 +962,7 @@ function allowedTabs(){const r=(ME&&ME.role)||'master';const owner=!!(ME&&ME.is_
 const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat"];
 let classes=[],subjects=[],teachers=[],rooms=[],config={},TT=[],absence=[],conflicts={teacher:[],room:[]},chaptersAll=[],TERMS=[];
 let tab="dash",curClass=null,curTeacher=null,buildDay=0,monDay=null,monTime=null,subDay=0,cover=null,verFilter='',ttWeek=0;
-let curSClass=null,curStudent=null,STUDENTS=[],ELECTIVES=[],SCHOICES={};
+let curSClass=null,curStudent=null,STUDENTS=[],ELECTIVES=[],SCHOICES={},ALLCOMB=[];
 let COMBINES=[];
 let ALLELECTIVES=[];   // every class's group-splits (electives), for showing splits in the Class view
 let addTch=false;   // Teachers page: is the add-teacher form open?
@@ -1066,6 +1066,7 @@ function appConfirm(msg,onYes){
 }
 function onAuthFail(){AUTH=null;ME=null;loggedOut=true;try{localStorage.removeItem('tt_token');}catch(e){}renderLogin();}
 function dl(u){let x=u+(u.includes('?')?'&':'?')+'token='+encodeURIComponent(AUTH||'');if(SCHOOL)x+='&school='+encodeURIComponent(SCHOOL);location.href=x;}
+function showOk(msg){let e=document.getElementById('okbanner');if(!e){e=document.createElement('div');e.id='okbanner';e.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#16a34a;color:#fff;padding:14px 44px 14px 18px;text-align:center;font-weight:700;font-size:15px;box-shadow:0 2px 10px rgba(0,0,0,.25);cursor:pointer';e.onclick=()=>{e.style.display='none';};document.body.appendChild(e);}e.innerHTML=String(msg).replace(/</g,'&lt;')+' <span style="opacity:.85;font-weight:400">(tap to dismiss)</span>';e.style.display='block';clearTimeout(showOk._t);showOk._t=setTimeout(()=>{e.style.display='none';},6000);}
 function toast(msg){const e=document.getElementById('saved');e.textContent=msg||t('saved');e.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>{e.classList.remove('show');e.textContent=t('saved');},msg?2800:1200);}
 function showErr(msg){let e=document.getElementById('errbanner');if(!e){e=document.createElement('div');e.id='errbanner';e.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;padding:13px 44px 13px 18px;text-align:center;font-weight:600;font-size:14px;box-shadow:0 2px 10px rgba(0,0,0,.25);cursor:pointer';e.title='';e.onclick=()=>{e.style.display='none';};document.body.appendChild(e);}e.innerHTML='⚠ '+String(msg).replace(/</g,'&lt;')+' <span style="opacity:.8;font-weight:400">(tap to dismiss)</span>';e.style.display='block';clearTimeout(showErr._t);showErr._t=setTimeout(()=>{e.style.display='none';},7000);}
 
@@ -2575,8 +2576,8 @@ async function loadStudents(){
   const cls=filteredClasses();
   if(!curSClass||!cls.find(c=>c.id===curSClass)) curSClass=(cls[0]||classes[0]||{}).id||null;
   if(!curSClass){ STUDENTS=[];ELECTIVES=[];SCHOICES={};render();return; }
-  const [st,el]=await Promise.all([api('GET','/api/students?class_id='+curSClass),api('GET','/api/electives?class_id='+curSClass)]);
-  STUDENTS=Array.isArray(st)?st:[]; ELECTIVES=Array.isArray(el)?el:[];
+  const [st,el,allc]=await Promise.all([api('GET','/api/students?class_id='+curSClass),api('GET','/api/electives?class_id='+curSClass),api('GET','/api/electives')]);
+  STUDENTS=Array.isArray(st)?st:[]; ELECTIVES=Array.isArray(el)?el:[]; ALLCOMB=Array.isArray(allc)?allc:[];
   if(!curStudent||!STUDENTS.find(s=>s.id===curStudent)) curStudent=STUDENTS[0]?STUDENTS[0].id:null;
   await loadChoices(); render();
 }
@@ -2587,11 +2588,26 @@ async function delStudent(id){ if(!confirm(t('stu_confirm_del')))return; await a
 async function addElective(){ if(!curSClass){showErr('Select a class first');return;} const n=(document.getElementById('el_name').value||'').trim(); if(!n){showErr(t('elec_need_name'));return;} const pi=elPeriod||0; const days=(elDay==='ALL')?WD():[(elDay==null?(WD()[0]||0):elDay)]; let ok=0; for(const di of days){ const r=await api('POST','/api/electives',{class_id:curSClass,name:n,day_of_week:di,period_index:pi,week_index:0}); if(!(r&&r.error)) ok++; } elDay=null;elPeriod=0; if(ok>1) toast(ok+' slots added — whole week'); else if(ok) toast(); await loadStudents(); }
 async function copyOptWeek(eid){ const e=ELECTIVES.find(x=>x.id===eid); if(!e||!(e.options||[]).length){ showErr('Add options to this slot first'); return; } const targets=ELECTIVES.filter(x=>x.id!==eid && x.period_index===e.period_index); if(!targets.length){ showErr('No other same-period slots this week — use "All week" when adding'); return; } for(const tg of targets){ for(const o of (tg.options||[])) await api('DELETE','/api/elective-options/'+o.id); for(const o of (e.options||[])) await api('POST','/api/elective-options',{elective_id:tg.id,label:o.label,subject_id:o.subject_id,teacher_id:o.teacher_id,room_id:o.room_id}); } toast(targets.length+' slots updated'); await loadStudents(); }
 let cbSubs={}, cbDays=new Set(), cbPeriods=new Set();
-function cbToggleSub(sid){ const c=cbSubs[sid]=cbSubs[sid]||{on:false}; c.on=!c.on; render(); }
+const _cbAC='background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700';
+// --- light DOM updates only (NO full-page render → no flicker, no missed clicks) ---
+function cbTeachersHTML(){
+  const chosen=subjects.filter(s=>cbSubs[s.id]&&cbSubs[s.id].on);
+  if(!chosen.length) return '';
+  return chosen.map(s=>{
+    let caps=subTeachers(s.id), note='';
+    if(!caps.length){ caps=teachers; note=' <span style="color:#c0392b">(none linked — showing all)</span>'; }
+    const tsel=cbSubs[s.id].teacher;
+    const btns=caps.map(x=>`<button class="ghost mini" style="${tsel===x.id?_cbAC:''}" onclick="cbSetTeacher(${s.id},${x.id},this)">${sesc(x.name)}</button>`).join('')||'<span class="small" style="color:#c0392b">No teachers — add in Teachers</span>';
+    return `<div style="margin:6px 0"><div class="small" style="color:#5c6580;margin-bottom:2px">👩‍🏫 Teacher for <b>${sesc(s.name)}</b>${note}</div><div class="row" style="gap:4px;flex-wrap:wrap">${btns}</div></div>`;
+  }).join('');
+}
+function cbUpdateName(){ const el=document.getElementById('cbNamePreview'); if(!el)return; const nm=subjects.filter(s=>cbSubs[s.id]&&cbSubs[s.id].on).map(s=>s.name).join(' / '); el.innerHTML=nm?`<span class="tag">${sesc(nm)}</span>`:''; }
+function cbToggleSub(sid){ const c=cbSubs[sid]=cbSubs[sid]||{on:false}; c.on=!c.on; const el=document.getElementById('cbTeachers'); if(el) el.innerHTML=cbTeachersHTML(); cbUpdateName(); }
 function cbSetTeacher(sid,tid,btn){ (cbSubs[sid]=cbSubs[sid]||{on:true}).teacher=tid; _chipHL(btn); }
-function cbToggleDay(di){ if(cbDays.has(di))cbDays.delete(di); else cbDays.add(di); render(); }
-function cbAllWeek(){ const all=WD().every(i=>cbDays.has(i)); WD().forEach(i=>{ if(all)cbDays.delete(i); else cbDays.add(i); }); render(); }
-function cbTogglePeriod(pi){ if(cbPeriods.has(pi))cbPeriods.delete(pi); else cbPeriods.add(pi); render(); }
+function cbSyncAllWeek(){ const el=document.getElementById('cbAllWeekBox'); if(el) el.checked=WD().length&&WD().every(i=>cbDays.has(i)); }
+function cbToggleDay(di){ if(cbDays.has(di))cbDays.delete(di); else cbDays.add(di); cbSyncAllWeek(); }
+function cbAllWeek(){ const all=WD().every(i=>cbDays.has(i)); WD().forEach(i=>{ if(all)cbDays.delete(i); else cbDays.add(i); }); document.querySelectorAll('input[data-cbday]').forEach(x=>{ x.checked=cbDays.has(+x.getAttribute('data-cbday')); }); }
+function cbTogglePeriod(pi){ if(cbPeriods.has(pi))cbPeriods.delete(pi); else cbPeriods.add(pi); }
 async function cbCreate(){
   const subs=subjects.filter(s=>cbSubs[s.id]&&cbSubs[s.id].on);
   if(!curSClass){ showErr('Select a class first'); return; }
@@ -2599,14 +2615,16 @@ async function cbCreate(){
   if(!cbDays.size){ showErr('Tick at least one day'); return; }
   if(!cbPeriods.size){ showErr('Tick at least one period'); return; }
   const name=subs.map(s=>s.name).join(' / ');
-  let slots=0;
+  const clsName=(classes.find(c=>c.id===curSClass)||{}).name||'';
+  let slots=0, errs=0;
   for(const di of [...cbDays]){ for(const pi of [...cbPeriods]){
     const r=await api('POST','/api/electives',{class_id:curSClass,name:name,day_of_week:di,period_index:pi,week_index:0});
-    if(r&&r.error) continue; slots++;
+    if(r&&r.error){ errs++; continue; } slots++;
     for(const s of subs){ const c=cbSubs[s.id]; await api('POST','/api/elective-options',{elective_id:r.id,label:s.name,subject_id:s.id,teacher_id:(c&&c.teacher)||null,room_id:null}); }
   }}
   cbSubs={}; cbDays=new Set(); cbPeriods=new Set();
-  toast('✅ '+name+' added — '+slots+' day'+(slots===1?'':'s'));
+  if(slots) showOk('✅ '+name+' → '+clsName+' added ('+slots+' slot'+(slots===1?'':'s')+(errs?', '+errs+' failed':'')+')');
+  else showErr('❌ Nothing created'+(errs?' — '+errs+' failed':''));
   await loadStudents();
 }
 function subTeachers(sid){ return teachers.filter(t=>(t.subjects||[]).includes(sid)||t.main_subject_id===sid); }
@@ -2631,38 +2649,47 @@ function electiveGroupCard(g){
   </div>`;
 }
 async function delElectiveGroup(ids,nm){ if(!confirm('Remove "'+nm+'" from all its days?'))return; for(const id of ids.split(',')){ await api('DELETE','/api/electives/'+id); } toast('Removed '+nm); await loadStudents(); }
+// master review list — EVERY class's combined periods, grouped, for recheck
+function allCombinesHTML(){
+  if(!ALLCOMB.length) return `<div class="small" style="color:#5c6580">No combined periods yet in any class.</div>`;
+  const byClass={};
+  ALLCOMB.forEach(e=>{ (byClass[e.class_id]=byClass[e.class_id]||[]).push(e); });
+  const order=classes.map(c=>c.id).filter(id=>byClass[id]);
+  return order.map(cid=>{
+    const cname=(classes.find(c=>c.id===+cid)||{}).name||('Class '+cid);
+    const g={};
+    byClass[cid].forEach(e=>{ const k=e.name+'|'+e.period_index; if(!g[k]) g[k]={name:e.name,pi:e.period_index,slots:[],opts:e.options||[]}; g[k].slots.push(e); if((e.options||[]).length>g[k].opts.length) g[k].opts=e.options; });
+    const lines=Object.values(g).sort((a,b)=>a.pi-b.pi).map(gr=>{
+      const daysSet=new Set(gr.slots.map(s=>s.day_of_week));
+      const isAll=WD().length&&WD().every(d=>daysSet.has(d));
+      const daysTxt=isAll?'All week':[...daysSet].sort((a,b)=>a-b).map(d=>DD()[d]).join(', ');
+      const opts=gr.opts.map(o=>sesc(o.label)+(o.teacher_id?'→'+sesc(tName(o.teacher_id)):'')).join(' · ');
+      const ids=gr.slots.map(s=>s.id).join(',');
+      return `<div class="row" style="justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f1f1"><div class="small"><b>🧩 ${sesc(gr.name)}</b> <span class="tag" style="background:#dbeafe">P${gr.pi+1}</span> <span class="tag" style="background:#dcfce7">${daysTxt}</span> <span style="color:#5c6580">${opts}</span></div><button class="ghost red mini" onclick="delElectiveGroup('${ids}','${sesc(gr.name).replace(/'/g,'')}')">🗑</button></div>`;
+    }).join('');
+    return `<div style="margin:8px 0"><div style="font-weight:700;color:#1e293b;background:#f1f5f9;padding:4px 8px;border-radius:6px">🏫 ${sesc(cname)}</div>${lines}</div>`;
+  }).join('');
+}
 function combineBuilder(){
-  const AC='background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700';
-  // subjects as a wrapping grid (no scroll) — ~3 per row
   const subGrid=subjects.map(s=>{
     const on=!!(cbSubs[s.id]&&cbSubs[s.id].on);
     return `<label style="display:flex;gap:8px;align-items:center;cursor:pointer;flex:0 0 30%;min-width:130px;padding:4px 0"><input type="checkbox" ${on?'checked':''} onclick="cbToggleSub(${s.id})" style="width:18px;height:18px;flex:none"><b>${sesc(s.name)}</b></label>`;
   }).join('')||'<span class="small" style="color:#5c6580">No subjects yet</span>';
-  // teacher picker per ticked subject — only that subject's teachers
-  const chosenSubs=subjects.filter(s=>cbSubs[s.id]&&cbSubs[s.id].on);
-  const tpick=chosenSubs.map(s=>{
-    let caps=subTeachers(s.id), note='';
-    if(!caps.length){ caps=teachers; note=` <span style="color:#c0392b">(none linked to ${sesc(s.name)} — showing all)</span>`; }
-    const tsel=cbSubs[s.id].teacher;
-    const btns=caps.map(x=>`<button class="ghost mini" style="${tsel===x.id?AC:''}" onclick="cbSetTeacher(${s.id},${x.id},this)">${sesc(x.name)}</button>`).join('')||'<span class="small" style="color:#c0392b">No teachers — add in Teachers screen</span>';
-    return `<div style="margin:6px 0"><div class="small" style="color:#5c6580;margin-bottom:2px">👩‍🏫 Teacher for <b>${sesc(s.name)}</b>${note}</div><div class="row" style="gap:4px;flex-wrap:wrap">${btns}</div></div>`;
-  }).join('');
   const allOn=WD().length&&WD().every(i=>cbDays.has(i));
-  const dayBoxes=`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${allOn?'checked':''} onclick="cbAllWeek()" style="width:17px;height:17px"><b>🗓 All week</b></label>`+WD().map(i=>`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${cbDays.has(i)?'checked':''} onclick="cbToggleDay(${i})" style="width:17px;height:17px">${DD()[i]}</label>`).join('');
+  const dayBoxes=`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="cbAllWeekBox" ${allOn?'checked':''} onclick="cbAllWeek()" style="width:17px;height:17px"><b>🗓 All week</b></label>`+WD().map(i=>`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" data-cbday="${i}" ${cbDays.has(i)?'checked':''} onclick="cbToggleDay(${i})" style="width:17px;height:17px">${DD()[i]}</label>`).join('');
   const maxP=maxTeachPeriods();
   const perBoxes=Array.from({length:maxP},(_,i)=>`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${cbPeriods.has(i)?'checked':''} onclick="cbTogglePeriod(${i})" style="width:17px;height:17px">P${i+1}</label>`).join('');
-  const chosen=chosenSubs.map(s=>s.name).join(' / ');
   return `<div style="margin-top:12px;border-top:2px solid #ece7fb;padding-top:12px">
     <div style="font-weight:800;color:#4c1d95;margin-bottom:4px">🧩 Quick combine builder</div>
-    <div class="small" style="color:#5c6580;margin-bottom:8px">Tick the parallel subjects, pick a teacher for each, tick the days &amp; period(s), then Create. No name typing needed.</div>
-    <div class="small" style="color:#5c6580;margin:2px 0 3px;font-weight:700">1 · Subjects to combine ${chosen?`<span class="tag">${sesc(chosen)}</span>`:''}</div>
+    <div class="small" style="color:#5c6580;margin-bottom:8px">Tick the parallel subjects, pick a teacher for each, tick the days &amp; period(s), then Create. No name typing.</div>
+    <div class="small" style="color:#5c6580;margin:2px 0 3px;font-weight:700">1 · Subjects to combine <span id="cbNamePreview"></span></div>
     <div style="display:flex;flex-wrap:wrap;gap:2px 12px;border:1px solid #eee;border-radius:8px;padding:8px 12px">${subGrid}</div>
-    ${tpick?`<div style="margin-top:6px">${tpick}</div>`:''}
+    <div id="cbTeachers" style="margin-top:6px">${cbTeachersHTML()}</div>
     <div class="small" style="color:#5c6580;margin:10px 0 3px;font-weight:700">2 · Days</div>
     <div class="row" style="gap:14px;flex-wrap:wrap">${dayBoxes}</div>
     <div class="small" style="color:#5c6580;margin:10px 0 3px;font-weight:700">3 · Period(s)</div>
     <div class="row" style="gap:14px;flex-wrap:wrap">${perBoxes}</div>
-    <button class="green" style="margin-top:12px" onclick="cbCreate()">✅ Create combined period</button>
+    <button class="green" style="margin-top:12px;font-size:15px;padding:10px 20px" onclick="cbCreate()">✅ Create combined period</button>
   </div>`;
 }
 async function delElective(id){ if(!confirm(t('elec_confirm_del')))return; await api('DELETE','/api/electives/'+id); toast(); await loadStudents(); }
@@ -2723,14 +2750,25 @@ function studentsView(){
     return `<div class="hours-row" style="align-items:center;flex-wrap:wrap;gap:6px"><div style="min-width:150px"><b>${sesc(e.name)}</b> <span class="tag">${DD()[e.day_of_week]} · P${e.period_index+1}</span></div><div class="row" style="gap:4px;flex-wrap:wrap">${optBtns}</div></div>`;
   }).join('')+'</div>':`<div class="small" style="color:#5c6580">${curStudent?t('elec_none'):t('stu_pick_first')}</div>`;
   const bar=subTabBar([['list','👪 '+t('students_title')],['choices','🎯 '+t('choices_title')],['timetable','🗓 '+t('stu_timetable')]],stuTab,'setStuTab');
-  const head=`<div class="card"><h2>👪 ${t('students_title')}</h2><div class="desc">${t('students_desc')}</div>
-    <div class="row" style="margin-bottom:4px"><div style="flex:1"><label>${L('class')||t('nav_class')}</label>${classSel}${classChips}</div></div></div>`;
-  const secList=`<div class="row" style="gap:14px;align-items:flex-start;flex-wrap:wrap">
-    <div class="card" style="flex:1;min-width:280px"><h2>${t('stu_list')}</h2>${stuRows}
-      <div class="row" style="margin-top:10px;gap:6px"><input id="stu_name" placeholder="${t('stu_name_ph')}" style="flex:1;min-width:120px"><input id="stu_roll" placeholder="${t('stu_roll_ph')}" style="width:90px"><button onclick="addStudent()">${t('add')}</button></div></div>
-    <div class="card" style="flex:1;min-width:300px"><h2>${t('elec_title')}</h2><div class="desc">${t('elec_desc')}</div>${elRows}
-      ${combineBuilder()}</div>
-  </div>`;
+  const head=`<div class="card" style="margin-bottom:12px"><h2>👪 ${t('students_title')}</h2><div class="desc">${t('students_desc')}</div></div>`;
+  const curName=curSClass?sesc((classes.find(c=>c.id===curSClass)||{}).name||''):'—';
+  const secList=`
+    <div class="card">
+      <div style="font-weight:800;color:#4c1d95;margin-bottom:2px">${L('class')||t('nav_class')} — <span style="color:#1e293b">${curName}</span></div>
+      ${classChips}
+      <div style="border-top:1px solid #eee;margin:10px 0"></div>
+      ${elRows}
+      ${combineBuilder()}
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">📋 All combined periods — all classes</h2>
+      <div class="desc">Recheck everything here. 🗑 removes that combine from all its days.</div>
+      ${allCombinesHTML()}
+    </div>
+    <div class="card">
+      <h2>${t('stu_list')}</h2><div class="desc">Only needed for per-student elective choices (optional).</div>${stuRows}
+      <div class="row" style="margin-top:10px;gap:6px"><input id="stu_name" placeholder="${t('stu_name_ph')}" style="flex:1;min-width:120px"><input id="stu_roll" placeholder="${t('stu_roll_ph')}" style="width:90px"><button onclick="addStudent()">${t('add')}</button></div>
+    </div>`;
   const secChoices=`<div class="card"><h2>${t('choices_title')}</h2><div class="desc">${t('choices_desc')}</div>
     <div class="row" style="margin-bottom:10px"><div><label>${t('student')}</label>${stuSel||'<span class="small" style="color:#5c6580">'+t('stu_none')+'</span>'}</div></div>
     ${choiceRows}</div>`;
