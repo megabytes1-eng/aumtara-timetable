@@ -2565,6 +2565,7 @@ function splitAt(cid,di,pi){ return (ALLELECTIVES||[]).find(e=>e.class_id===cid&
 function splitCellHTML(sp){ const opts=(sp.options||[]).map(o=>`<div style="border-top:1px dashed #e6e1f7;padding:2px 0"><b style="font-size:11.5px">${sesc(o.label)}</b> <span style="font-size:11px;color:#475569">${sesc(sName(o.subject_id)||'')}${o.teacher_id?' · '+sesc(tName(o.teacher_id)):''}${o.room_id?' · '+sesc(rName(o.room_id)):''}</span></div>`).join('')||`<div class="small" style="color:#94a3b8">${t('opt_none2')}</div>`;
   return `<td style="background:#faf8ff;vertical-align:top" title="${t('split_title')}"><div class="small" style="color:#7c3aed;font-weight:700">⧉ ${sesc(sp.name||'')}</div>${opts}</td>`; }
 function elecOption(e,oid){ return (e.options||[]).find(o=>o.id===oid); }
+function pickSClass(id){ curSClass=+id; curStudent=null; loadStudents(); }
 async function loadStudents(){
   const cls=filteredClasses();
   if(!curSClass||!cls.find(c=>c.id===curSClass)) curSClass=(cls[0]||classes[0]||{}).id||null;
@@ -2620,6 +2621,7 @@ function studentsView(){
   const cls=filteredClasses();
   if((!curSClass||!cls.find(c=>c.id===curSClass))&&cls[0]) curSClass=cls[0].id;
   const classSel=`<select onchange="curSClass=+this.value;curStudent=null;loadStudents()">${cls.map(c=>`<option value="${c.id}" ${c.id===curSClass?'selected':''}>${sesc(c.name)}</option>`).join('')}</select>`;
+  const classChips=cls.length?`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${cls.map(c=>`<button class="ghost" style="${c.id===curSClass?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pickSClass(${c.id})">${sesc(c.name)}</button>`).join('')}</div>`:'';
   const stuRows=STUDENTS.length?'<div class="stugrid">'+STUDENTS.map(s=>`<div class="sturow"><b>${sesc(s.name)}</b>${s.roll?`<span class="tag">${sesc(s.roll)}</span>`:''}<button class="ghost red mini" onclick="delStudent(${s.id})">🗑</button></div>`).join('')+'</div>':`<div class="small" style="color:#5c6580">${t('stu_none')}</div>`;
   const maxP=maxTeachPeriods();
   const dayOpts=WD().map(i=>`<option value="${i}">${DD()[i]}</option>`).join('');
@@ -2633,7 +2635,7 @@ function studentsView(){
   }).join('')+'</div>':`<div class="small" style="color:#5c6580">${curStudent?t('elec_none'):t('stu_pick_first')}</div>`;
   const bar=subTabBar([['list','👪 '+t('students_title')],['choices','🎯 '+t('choices_title')],['timetable','🗓 '+t('stu_timetable')]],stuTab,'setStuTab');
   const head=`<div class="card"><h2>👪 ${t('students_title')}</h2><div class="desc">${t('students_desc')}</div>
-    <div class="row" style="margin-bottom:10px"><div><label>${L('class')||t('nav_class')}</label>${classSel}</div></div></div>`;
+    <div class="row" style="margin-bottom:4px"><div style="flex:1"><label>${L('class')||t('nav_class')}</label>${classSel}${classChips}</div></div></div>`;
   const secList=`<div class="row" style="gap:14px;align-items:flex-start;flex-wrap:wrap">
     <div class="card" style="flex:1;min-width:280px"><h2>${t('stu_list')}</h2>${stuRows}
       <div class="row" style="margin-top:10px;gap:6px"><input id="stu_name" placeholder="${t('stu_name_ph')}" style="flex:1;min-width:120px"><input id="stu_roll" placeholder="${t('stu_roll_ph')}" style="width:90px"><button onclick="addStudent()">${t('add')}</button></div></div>
