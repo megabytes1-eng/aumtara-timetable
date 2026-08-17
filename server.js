@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v30';
+const SW_JS = `const CACHE='aumtara-v31';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -1481,6 +1481,29 @@ app.get('/api/timetable/monitor', h(async (req,res)=>{
     out.push({class_id:c.id,name:c.name,status,text});
   }
   res.json({day,time:hhmm,classes:out});
+}));
+// live "who is free right now" — teachers with no class in the CURRENT period (present, not absent). For the principal's dashboard.
+app.get('/api/timetable/free-now', h(async (req,res)=>{
+  let day,hhmm; const p2=n=>String(n).padStart(2,'0');
+  if(req.query.day!=null&&req.query.time){ day=Number(req.query.day); hhmm=req.query.time; }
+  else{ const d=new Date(); day=(d.getDay()+6)%7; if(day>5)day=5; hhmm=p2(d.getHours())+':'+p2(d.getMinutes()); }
+  if(req.query.day==null && rotMode(req.sid)) day=todayRotDay(req.sid);
+  const sid=req.sid;
+  const slots=slotsForDay(day, sid);
+  let pi=0, status='closed', period=null;
+  for(const sl of slots){
+    if(hhmm>=sl.start && hhmm<sl.end){ if(sl.is_break){ status='break'; } else { status='running'; period=pi+1; } break; }
+    if(!sl.is_break) pi++;
+  }
+  const teachers=await q('SELECT id,name FROM tt_teacher WHERE school_id=? ORDER BY name',[sid]);
+  const absent=new Set(); (await q('SELECT teacher_id FROM tt_absence WHERE school_id=? AND day_of_week=?',[sid,day])).forEach(a=>absent.add(a.teacher_id));
+  let free=[], busyCount=0;
+  if(status==='running'){
+    const busy=new Set();
+    (await q(`SELECT DISTINCT teacher_id FROM tt_timetable WHERE school_id=? AND day_of_week=? AND period_index=? AND week_index=${curCycleIdx(sid)} AND teacher_id IS NOT NULL`,[sid,day,pi])).forEach(r=>busy.add(r.teacher_id));
+    teachers.forEach(tt=>{ if(absent.has(tt.id)) return; if(busy.has(tt.id)) busyCount++; else free.push({id:tt.id,name:tt.name}); });
+  }
+  res.json({ day, time:hhmm, status, period, free, busyCount, absentCount:absent.size, totalTeachers:teachers.length });
 }));
 
 // ---------- TEACHER DIARY ----------
