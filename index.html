@@ -2586,6 +2586,56 @@ async function addStudent(){ const n=(document.getElementById('stu_name').value|
 async function delStudent(id){ if(!confirm(t('stu_confirm_del')))return; await api('DELETE','/api/students/'+id); toast(); if(curStudent===id)curStudent=null; await loadStudents(); }
 async function addElective(){ if(!curSClass){showErr('Select a class first');return;} const n=(document.getElementById('el_name').value||'').trim(); if(!n){showErr(t('elec_need_name'));return;} const pi=elPeriod||0; const days=(elDay==='ALL')?WD():[(elDay==null?(WD()[0]||0):elDay)]; let ok=0; for(const di of days){ const r=await api('POST','/api/electives',{class_id:curSClass,name:n,day_of_week:di,period_index:pi,week_index:0}); if(!(r&&r.error)) ok++; } elDay=null;elPeriod=0; if(ok>1) toast(ok+' slots added — whole week'); else if(ok) toast(); await loadStudents(); }
 async function copyOptWeek(eid){ const e=ELECTIVES.find(x=>x.id===eid); if(!e||!(e.options||[]).length){ showErr('Add options to this slot first'); return; } const targets=ELECTIVES.filter(x=>x.id!==eid && x.period_index===e.period_index); if(!targets.length){ showErr('No other same-period slots this week — use "All week" when adding'); return; } for(const tg of targets){ for(const o of (tg.options||[])) await api('DELETE','/api/elective-options/'+o.id); for(const o of (e.options||[])) await api('POST','/api/elective-options',{elective_id:tg.id,label:o.label,subject_id:o.subject_id,teacher_id:o.teacher_id,room_id:o.room_id}); } toast(targets.length+' slots updated'); await loadStudents(); }
+let cbSubs={}, cbDays=new Set(), cbPeriods=new Set();
+function cbToggleSub(sid){ const c=cbSubs[sid]=cbSubs[sid]||{on:false}; c.on=!c.on; render(); }
+function cbSetTeacher(sid,tid,btn){ (cbSubs[sid]=cbSubs[sid]||{on:true}).teacher=tid; _chipHL(btn); }
+function cbToggleDay(di){ if(cbDays.has(di))cbDays.delete(di); else cbDays.add(di); render(); }
+function cbAllWeek(){ const all=WD().every(i=>cbDays.has(i)); WD().forEach(i=>{ if(all)cbDays.delete(i); else cbDays.add(i); }); render(); }
+function cbTogglePeriod(pi){ if(cbPeriods.has(pi))cbPeriods.delete(pi); else cbPeriods.add(pi); render(); }
+async function cbCreate(){
+  const subs=subjects.filter(s=>cbSubs[s.id]&&cbSubs[s.id].on);
+  if(!curSClass){ showErr('Select a class first'); return; }
+  if(subs.length<2){ showErr('Tick at least 2 subjects to combine'); return; }
+  if(!cbDays.size){ showErr('Tick at least one day'); return; }
+  if(!cbPeriods.size){ showErr('Tick at least one period'); return; }
+  const name=subs.map(s=>s.name).join(' / ');
+  let slots=0;
+  for(const di of [...cbDays]){ for(const pi of [...cbPeriods]){
+    const r=await api('POST','/api/electives',{class_id:curSClass,name:name,day_of_week:di,period_index:pi,week_index:0});
+    if(r&&r.error) continue; slots++;
+    for(const s of subs){ const c=cbSubs[s.id]; await api('POST','/api/elective-options',{elective_id:r.id,label:s.name,subject_id:s.id,teacher_id:(c&&c.teacher)||null,room_id:null}); }
+  }}
+  cbSubs={}; cbDays=new Set(); cbPeriods=new Set();
+  toast(slots+' combined slot'+(slots===1?'':'s')+' created');
+  await loadStudents();
+}
+function combineBuilder(){
+  const AC='background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700';
+  const subList=subjects.map(s=>{
+    const on=!!(cbSubs[s.id]&&cbSubs[s.id].on);
+    let inner='';
+    if(on){ const tsel=cbSubs[s.id].teacher;
+      const tchBtns=teachers.map(x=>`<button class="ghost mini" style="${tsel===x.id?AC:''}" onclick="cbSetTeacher(${s.id},${x.id},this)">${sesc(x.name)}</button>`).join('')||'<span class="small" style="color:#c0392b">No teachers — add in Teachers</span>';
+      inner=`<div style="margin:2px 0 8px 26px"><div class="small" style="color:#5c6580;margin-bottom:2px">👩‍🏫 Teacher for <b>${sesc(s.name)}</b></div><div class="row" style="gap:4px;flex-wrap:wrap;max-height:90px;overflow:auto">${tchBtns}</div></div>`; }
+    return `<label class="row" style="gap:8px;align-items:center;cursor:pointer;padding:3px 0"><input type="checkbox" ${on?'checked':''} onclick="cbToggleSub(${s.id})" style="width:18px;height:18px;flex:none"><b>${sesc(s.name)}</b></label>${inner}`;
+  }).join('')||'<span class="small" style="color:#5c6580">No subjects yet</span>';
+  const allOn=WD().length&&WD().every(i=>cbDays.has(i));
+  const dayBoxes=`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${allOn?'checked':''} onclick="cbAllWeek()" style="width:17px;height:17px"><b>🗓 All week</b></label>`+WD().map(i=>`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${cbDays.has(i)?'checked':''} onclick="cbToggleDay(${i})" style="width:17px;height:17px">${DD()[i]}</label>`).join('');
+  const maxP=maxTeachPeriods();
+  const perBoxes=Array.from({length:maxP},(_,i)=>`<label class="row" style="gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${cbPeriods.has(i)?'checked':''} onclick="cbTogglePeriod(${i})" style="width:17px;height:17px">P${i+1}</label>`).join('');
+  const chosen=subjects.filter(s=>cbSubs[s.id]&&cbSubs[s.id].on).map(s=>s.name).join(' / ');
+  return `<div style="margin-top:12px;border-top:2px solid #ece7fb;padding-top:12px">
+    <div style="font-weight:800;color:#4c1d95;margin-bottom:4px">🧩 Quick combine builder</div>
+    <div class="small" style="color:#5c6580;margin-bottom:8px">Tick the parallel subjects, pick a teacher for each, tick the days &amp; period(s), then Create. No name typing needed.</div>
+    <div class="small" style="color:#5c6580;margin:2px 0 3px;font-weight:700">1 · Subjects to combine ${chosen?`<span class="tag">${sesc(chosen)}</span>`:''}</div>
+    <div style="max-height:220px;overflow:auto;border:1px solid #eee;border-radius:8px;padding:6px 10px">${subList}</div>
+    <div class="small" style="color:#5c6580;margin:10px 0 3px;font-weight:700">2 · Days</div>
+    <div class="row" style="gap:14px;flex-wrap:wrap">${dayBoxes}</div>
+    <div class="small" style="color:#5c6580;margin:10px 0 3px;font-weight:700">3 · Period(s)</div>
+    <div class="row" style="gap:14px;flex-wrap:wrap">${perBoxes}</div>
+    <button class="green" style="margin-top:12px" onclick="cbCreate()">✅ Create combined period</button>
+  </div>`;
+}
 async function delElective(id){ if(!confirm(t('elec_confirm_del')))return; await api('DELETE','/api/electives/'+id); toast(); await loadStudents(); }
 async function addOption(eid){ const lab=(document.getElementById('op_lab_'+eid).value||'').trim(); if(!lab){showErr(t('opt_need_label'));return;} const sel=OPTSEL[eid]||{}; const r=await api('POST','/api/elective-options',{elective_id:eid,label:lab,subject_id:sel.sub||null,teacher_id:sel.tch||null,room_id:sel.rm||null}); if(r&&r.error){showErr(r.error);return;} OPTSEL[eid]=null; toast(); await loadStudents(); }
 async function delOption(id){ await api('DELETE','/api/elective-options/'+id); toast(); await loadStudents(); }
@@ -2649,10 +2699,7 @@ function studentsView(){
     <div class="card" style="flex:1;min-width:280px"><h2>${t('stu_list')}</h2>${stuRows}
       <div class="row" style="margin-top:10px;gap:6px"><input id="stu_name" placeholder="${t('stu_name_ph')}" style="flex:1;min-width:120px"><input id="stu_roll" placeholder="${t('stu_roll_ph')}" style="width:90px"><button onclick="addStudent()">${t('add')}</button></div></div>
     <div class="card" style="flex:1;min-width:300px"><h2>${t('elec_title')}</h2><div class="desc">${t('elec_desc')}</div>${elRows}
-      <div style="margin-top:10px"><input id="el_name" placeholder="${t('elec_name_ph')}" style="width:150px">
-        <div class="small" style="color:#5c6580;margin:7px 0 3px">${t('day')}</div><div class="row" style="gap:4px;flex-wrap:wrap">${dayChips}</div>
-        <div class="small" style="color:#5c6580;margin:7px 0 3px">${t('period_word')}</div><div class="row" style="gap:4px;flex-wrap:wrap">${perChips}</div>
-        <button style="margin-top:8px" onclick="addElective()">➕ ${t('add')}</button></div></div>
+      ${combineBuilder()}</div>
   </div>`;
   const secChoices=`<div class="card"><h2>${t('choices_title')}</h2><div class="desc">${t('choices_desc')}</div>
     <div class="row" style="margin-bottom:10px"><div><label>${t('student')}</label>${stuSel||'<span class="small" style="color:#5c6580">'+t('stu_none')+'</span>'}</div></div>
