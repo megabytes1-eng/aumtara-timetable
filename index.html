@@ -2566,6 +2566,11 @@ function splitCellHTML(sp){ const opts=(sp.options||[]).map(o=>`<div style="bord
   return `<td style="background:#faf8ff;vertical-align:top" title="${t('split_title')}"><div class="small" style="color:#7c3aed;font-weight:700">⧉ ${sesc(sp.name||'')}</div>${opts}</td>`; }
 function elecOption(e,oid){ return (e.options||[]).find(o=>o.id===oid); }
 function pickSClass(id){ curSClass=+id; curStudent=null; loadStudents(); }
+let elDay=null, elPeriod=0, OPTSEL={};
+function _chipHL(btn){ [...btn.parentElement.children].forEach(b=>{ if(b.tagName==='BUTTON'){ b.style.background='';b.style.color='';b.style.borderColor='';b.style.fontWeight=''; } }); btn.style.background='#7c3aed';btn.style.color='#fff';btn.style.borderColor='#7c3aed';btn.style.fontWeight='700'; }
+function pickElDay(di,btn){ elDay=di; _chipHL(btn); }
+function pickElPeriod(pi,btn){ elPeriod=pi; _chipHL(btn); }
+function pickOpt(eid,field,val,btn){ (OPTSEL[eid]=OPTSEL[eid]||{})[field]=val; _chipHL(btn); }
 async function loadStudents(){
   const cls=filteredClasses();
   if(!curSClass||!cls.find(c=>c.id===curSClass)) curSClass=(cls[0]||classes[0]||{}).id||null;
@@ -2579,26 +2584,27 @@ async function loadChoices(){ SCHOICES={}; if(!curStudent)return; const rows=awa
 async function pickStudent(id){ curStudent=id?+id:null; await loadChoices(); render(); }
 async function addStudent(){ const n=(document.getElementById('stu_name').value||'').trim(); if(!n){showErr(t('stu_need_name'));return;} const roll=(document.getElementById('stu_roll').value||'').trim(); const r=await api('POST','/api/students',{class_id:curSClass,name:n,roll}); if(r&&r.error){showErr(r.error);return;} toast(); await loadStudents(); }
 async function delStudent(id){ if(!confirm(t('stu_confirm_del')))return; await api('DELETE','/api/students/'+id); toast(); if(curStudent===id)curStudent=null; await loadStudents(); }
-async function addElective(){ const n=(document.getElementById('el_name').value||'').trim(); if(!n){showErr(t('elec_need_name'));return;} const di=+document.getElementById('el_day').value; const pi=+document.getElementById('el_period').value; const r=await api('POST','/api/electives',{class_id:curSClass,name:n,day_of_week:di,period_index:pi,week_index:0}); if(r&&r.error){showErr(r.error);return;} toast(); await loadStudents(); }
+async function addElective(){ const n=(document.getElementById('el_name').value||'').trim(); if(!n){showErr(t('elec_need_name'));return;} const di=(elDay==null?(WD()[0]||0):elDay); const pi=elPeriod||0; const r=await api('POST','/api/electives',{class_id:curSClass,name:n,day_of_week:di,period_index:pi,week_index:0}); if(r&&r.error){showErr(r.error);return;} elDay=null;elPeriod=0; toast(); await loadStudents(); }
 async function delElective(id){ if(!confirm(t('elec_confirm_del')))return; await api('DELETE','/api/electives/'+id); toast(); await loadStudents(); }
-async function addOption(eid){ const lab=(document.getElementById('op_lab_'+eid).value||'').trim(); if(!lab){showErr(t('opt_need_label'));return;} const sub=document.getElementById('op_sub_'+eid).value; const tch=document.getElementById('op_tch_'+eid).value; const rm=document.getElementById('op_rm_'+eid).value; const r=await api('POST','/api/elective-options',{elective_id:eid,label:lab,subject_id:sub||null,teacher_id:tch||null,room_id:rm||null}); if(r&&r.error){showErr(r.error);return;} toast(); await loadStudents(); }
+async function addOption(eid){ const lab=(document.getElementById('op_lab_'+eid).value||'').trim(); if(!lab){showErr(t('opt_need_label'));return;} const sel=OPTSEL[eid]||{}; const r=await api('POST','/api/elective-options',{elective_id:eid,label:lab,subject_id:sel.sub||null,teacher_id:sel.tch||null,room_id:sel.rm||null}); if(r&&r.error){showErr(r.error);return;} OPTSEL[eid]=null; toast(); await loadStudents(); }
 async function delOption(id){ await api('DELETE','/api/elective-options/'+id); toast(); await loadStudents(); }
 async function setChoice(eid,oid){ await api('POST','/api/student-choices',{student_id:curStudent,elective_id:eid,option_id:oid||null}); SCHOICES[eid]=oid?+oid:undefined; toast(); render(); }
 function electiveCard(e){
   const dayName=DD()[e.day_of_week]||('D'+e.day_of_week);
   const opts=(e.options||[]).map(o=>`<div class="hours-row" style="align-items:center;padding:5px 0"><div><b>${sesc(o.label)}</b> — ${sesc(sName(o.subject_id)||'—')}<span class="small" style="color:#5c6580">${o.teacher_id?' · '+sesc(tName(o.teacher_id)):''}${o.room_id?' · '+sesc(rName(o.room_id)):''}</span></div><button class="ghost red mini" onclick="delOption(${o.id})">✕</button></div>`).join('')||`<div class="small" style="color:#5c6580">${t('opt_none2')}</div>`;
-  const subOpts=`<option value="">${t('subject')}</option>`+subjects.map(s=>`<option value="${s.id}">${sesc(s.name)}</option>`).join('');
-  const tchOpts=`<option value="">${t('teacher')}</option>`+teachers.map(x=>`<option value="${x.id}">${sesc(x.name)}</option>`).join('');
-  const rmOpts=`<option value="">${t('opt_room')}</option>`+rooms.map(r=>`<option value="${r.id}">${sesc(r.name)}</option>`).join('');
+  const subChips=subjects.map(s=>`<button class="ghost mini" onclick="pickOpt(${e.id},'sub',${s.id},this)">${sesc(s.name)}</button>`).join('')||`<span class="small" style="color:#5c6580">—</span>`;
+  const tchChips=teachers.map(x=>`<button class="ghost mini" onclick="pickOpt(${e.id},'tch',${x.id},this)">${sesc(x.name)}</button>`).join('')||`<span class="small" style="color:#5c6580">—</span>`;
+  const rmChips=rooms.map(r=>`<button class="ghost mini" onclick="pickOpt(${e.id},'rm',${r.id},this)">${sesc(r.name)}</button>`).join('')||`<span class="small" style="color:#5c6580">—</span>`;
   return `<div class="card" style="background:#faf8ff;border:1px solid #ece7fb;margin:8px 0">
     <div class="row" style="justify-content:space-between;align-items:center"><div><b>${sesc(e.name)}</b> <span class="tag">${dayName} · P${e.period_index+1}</span></div><button class="ghost red mini" onclick="delElective(${e.id})">🗑</button></div>
     ${opts}
-    <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center">
-      <input id="op_lab_${e.id}" placeholder="${t('opt_label_ph')}" style="width:120px">
-      <select id="op_sub_${e.id}">${subOpts}</select>
-      <select id="op_tch_${e.id}">${tchOpts}</select>
-      <select id="op_rm_${e.id}">${rmOpts}</select>
-      <button onclick="addOption(${e.id})">${t('add')}</button>
+    <div style="margin-top:8px;border-top:1px dashed #ddd6f5;padding-top:8px">
+      <div class="small" style="color:#5c6580;margin-bottom:3px">${t('opt_label_ph')}</div>
+      <input id="op_lab_${e.id}" placeholder="${t('opt_label_ph')}" style="width:160px">
+      <div class="small" style="color:#5c6580;margin:7px 0 3px">${t('subject')}</div><div class="row" style="gap:4px;flex-wrap:wrap;max-height:98px;overflow:auto">${subChips}</div>
+      <div class="small" style="color:#5c6580;margin:7px 0 3px">${t('teacher')}</div><div class="row" style="gap:4px;flex-wrap:wrap;max-height:98px;overflow:auto">${tchChips}</div>
+      <div class="small" style="color:#5c6580;margin:7px 0 3px">${t('opt_room')}</div><div class="row" style="gap:4px;flex-wrap:wrap;max-height:82px;overflow:auto">${rmChips}</div>
+      <button style="margin-top:8px" onclick="addOption(${e.id})">➕ ${t('add')}</button>
     </div></div>`;
 }
 function studentGrid(){
@@ -2624,14 +2630,16 @@ function studentsView(){
   const classChips=cls.length?`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${cls.map(c=>`<button class="ghost" style="${c.id===curSClass?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pickSClass(${c.id})">${sesc(c.name)}</button>`).join('')}</div>`:'';
   const stuRows=STUDENTS.length?'<div class="stugrid">'+STUDENTS.map(s=>`<div class="sturow"><b>${sesc(s.name)}</b>${s.roll?`<span class="tag">${sesc(s.roll)}</span>`:''}<button class="ghost red mini" onclick="delStudent(${s.id})">🗑</button></div>`).join('')+'</div>':`<div class="small" style="color:#5c6580">${t('stu_none')}</div>`;
   const maxP=maxTeachPeriods();
-  const dayOpts=WD().map(i=>`<option value="${i}">${DD()[i]}</option>`).join('');
-  const perOpts=Array.from({length:maxP},(_,i)=>`<option value="${i}">P${i+1}</option>`).join('');
+  const AC='background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700';
+  const _dsel=(elDay==null?(WD()[0]||0):elDay);
+  const dayChips=WD().map(i=>`<button class="ghost mini" style="${i===_dsel?AC:''}" onclick="pickElDay(${i},this)">${DD()[i]}</button>`).join('');
+  const perChips=Array.from({length:maxP},(_,i)=>`<button class="ghost mini" style="${i===(elPeriod||0)?AC:''}" onclick="pickElPeriod(${i},this)">P${i+1}</button>`).join('');
   const elRows=ELECTIVES.length?ELECTIVES.map(e=>electiveCard(e)).join(''):`<div class="small" style="color:#5c6580">${t('elec_none')}</div>`;
   // choices for current student
-  const stuSel=STUDENTS.length?`<select onchange="pickStudent(this.value)">${STUDENTS.map(s=>`<option value="${s.id}" ${s.id===curStudent?'selected':''}>${sesc(s.name)}${s.roll?' ('+sesc(s.roll)+')':''}</option>`).join('')}</select>`:'';
+  const stuSel=STUDENTS.length?`<div class="row" style="gap:4px;flex-wrap:wrap">${STUDENTS.map(s=>`<button class="ghost mini" style="${s.id===curStudent?AC:''}" onclick="pickStudent(${s.id})">${sesc(s.name)}${s.roll?' ('+sesc(s.roll)+')':''}</button>`).join('')}</div>`:'';
   const choiceRows=(curStudent&&ELECTIVES.length)?'<div class="choicegrid">'+ELECTIVES.map(e=>{
-    const sel=`<option value="">${t('elec_pick')}</option>`+(e.options||[]).map(o=>`<option value="${o.id}" ${SCHOICES[e.id]===o.id?'selected':''}>${sesc(o.label)} — ${sesc(sName(o.subject_id)||'')}</option>`).join('');
-    return `<div class="hours-row" style="align-items:center"><div><b>${sesc(e.name)}</b> <span class="tag">${DD()[e.day_of_week]} · P${e.period_index+1}</span></div><select onchange="setChoice(${e.id},this.value)">${sel}</select></div>`;
+    const optBtns=`<button class="ghost mini" style="${!SCHOICES[e.id]?AC:''}" onclick="setChoice(${e.id},'')">${t('elec_pick')}</button>`+(e.options||[]).map(o=>`<button class="ghost mini" style="${SCHOICES[e.id]===o.id?AC:''}" onclick="setChoice(${e.id},${o.id})">${sesc(o.label)}${o.subject_id?' · '+sesc(sName(o.subject_id)||''):''}</button>`).join('');
+    return `<div class="hours-row" style="align-items:center;flex-wrap:wrap;gap:6px"><div style="min-width:150px"><b>${sesc(e.name)}</b> <span class="tag">${DD()[e.day_of_week]} · P${e.period_index+1}</span></div><div class="row" style="gap:4px;flex-wrap:wrap">${optBtns}</div></div>`;
   }).join('')+'</div>':`<div class="small" style="color:#5c6580">${curStudent?t('elec_none'):t('stu_pick_first')}</div>`;
   const bar=subTabBar([['list','👪 '+t('students_title')],['choices','🎯 '+t('choices_title')],['timetable','🗓 '+t('stu_timetable')]],stuTab,'setStuTab');
   const head=`<div class="card"><h2>👪 ${t('students_title')}</h2><div class="desc">${t('students_desc')}</div>
@@ -2640,7 +2648,10 @@ function studentsView(){
     <div class="card" style="flex:1;min-width:280px"><h2>${t('stu_list')}</h2>${stuRows}
       <div class="row" style="margin-top:10px;gap:6px"><input id="stu_name" placeholder="${t('stu_name_ph')}" style="flex:1;min-width:120px"><input id="stu_roll" placeholder="${t('stu_roll_ph')}" style="width:90px"><button onclick="addStudent()">${t('add')}</button></div></div>
     <div class="card" style="flex:1;min-width:300px"><h2>${t('elec_title')}</h2><div class="desc">${t('elec_desc')}</div>${elRows}
-      <div class="row" style="margin-top:10px;gap:6px;flex-wrap:wrap;align-items:center"><input id="el_name" placeholder="${t('elec_name_ph')}" style="width:150px"><select id="el_day">${dayOpts}</select><select id="el_period">${perOpts}</select><button onclick="addElective()">${t('add')}</button></div></div>
+      <div style="margin-top:10px"><input id="el_name" placeholder="${t('elec_name_ph')}" style="width:150px">
+        <div class="small" style="color:#5c6580;margin:7px 0 3px">${t('day')}</div><div class="row" style="gap:4px;flex-wrap:wrap">${dayChips}</div>
+        <div class="small" style="color:#5c6580;margin:7px 0 3px">${t('nav_periods')||'Period'}</div><div class="row" style="gap:4px;flex-wrap:wrap">${perChips}</div>
+        <button style="margin-top:8px" onclick="addElective()">➕ ${t('add')}</button></div></div>
   </div>`;
   const secChoices=`<div class="card"><h2>${t('choices_title')}</h2><div class="desc">${t('choices_desc')}</div>
     <div class="row" style="margin-bottom:10px"><div><label>${t('student')}</label>${stuSel||'<span class="small" style="color:#5c6580">'+t('stu_none')+'</span>'}</div></div>
