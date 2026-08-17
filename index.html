@@ -2597,7 +2597,7 @@ async function editCombine(ids,cid){
   (slots[0].options||[]).forEach(o=>{ if(o.subject_id) cbSubs[o.subject_id]={on:true,teacher:o.teacher_id||undefined}; });
   slots.forEach(s=>cbDays.add(s.day_of_week)); cbPeriods.add(slots[0].period_index);
   cbEditIds=idset; render();
-  const el=document.getElementById('cbNamePreview'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
+  const el=document.getElementById('cbNamePreview'); if(el){ try{ el.scrollIntoView({block:'start'}); }catch(e){} }
   showOk('✏ Editing — change subjects/teachers/days, then press Update');
 }
 function scrollStuTop(){
@@ -2607,9 +2607,9 @@ function scrollStuTop(){
     let a=n; while(a){ try{ if(a.scrollHeight>a.clientHeight+2) a.scrollTop=0; }catch(e){} a=a.parentElement; }
     try{ if(document.scrollingElement) document.scrollingElement.scrollTop=0; }catch(e){}
     try{ document.documentElement.scrollTop=0; document.body.scrollTop=0; window.scrollTo(0,0); }catch(e){}
-    if(n){ try{ n.scrollIntoView({block:'start'}); }catch(e){} }
   }catch(e){} };
-  doIt(); try{ requestAnimationFrame(doIt); }catch(e){ setTimeout(doIt,60); }
+  // fire now + over the next ~0.5s to beat re-layout, scroll-anchoring, and any lingering animation
+  doIt(); try{ requestAnimationFrame(doIt); }catch(e){} setTimeout(doIt,120); setTimeout(doIt,300); setTimeout(doIt,500);
 }
 function cancelEdit(){ cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; render(); scrollStuTop(); }
 async function refreshStudents(){ cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; await loadStudents(); scrollStuTop(); toast('Refreshed'); }
