@@ -120,6 +120,7 @@
       <button id="t_dash" class="active" onclick="tab('dash')">Dashboard</button>
       <button id="t_schools" onclick="tab('schools')">Schools</button>
       <button id="t_pay" onclick="tab('pay')">Payments</button>
+      <button id="t_pkg" onclick="tab('pkg')">Packages</button>
       <button id="t_set" onclick="tab('set')">Settings</button>
       <button id="t_prof" onclick="tab('prof')">Profile</button>
     </div>
@@ -183,6 +184,23 @@
       <div style="overflow:auto"><table><thead><tr><th>When</th><th>School</th><th>Amount</th><th>Method</th><th>Note</th></tr></thead><tbody id="ledger"></tbody></table></div>
     </div>
 
+    <!-- PACKAGES -->
+    <div id="s_pkg" class="sec">
+      <h3 class="head">Module packages</h3>
+      <p class="sub">Build a package by ticking the modules it includes. Then in <b>Schools → Modules</b> you can apply a package to a school in one click (it turns the ticked modules ON and the rest OFF).</p>
+      <div style="overflow:auto"><table><thead><tr><th>Package</th><th>Price ₹</th><th>Modules</th><th></th></tr></thead><tbody id="pkgBody"></tbody></table></div>
+      <hr>
+      <h3 class="head" id="pkgFormTitle">Create a package</h3>
+      <div class="grid" style="max-width:520px">
+        <div class="field"><label>Package name *</label><input id="pk_name" placeholder="e.g. Basic / Advance / Full"></div>
+        <div class="field"><label>Price ₹ (optional)</label><input id="pk_price" placeholder="e.g. 499"></div>
+      </div>
+      <p class="mini" style="margin:14px 0 6px">Modules in this package:</p>
+      <div id="pk_modules" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px"></div>
+      <div style="margin-top:14px"><button class="btn btn-primary btn-sm" onclick="savePkg()">Save package</button> <button class="btn btn-ghost btn-sm" onclick="resetPkgForm()">Clear</button></div>
+      <div id="pkgMsg" class="msg"></div>
+    </div>
+
     <!-- SETTINGS -->
     <div id="s_set" class="sec">
       <h3 class="head">Payment / Buy settings</h3>
@@ -238,8 +256,22 @@
 </div>
 <div id="toast"></div>
 
+<!-- PER-SCHOOL MODULES MODAL -->
+<div id="modModal" style="position:fixed;inset:0;z-index:99998;background:rgba(20,27,46,.6);display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;max-width:470px;width:100%;max-height:92vh;overflow:auto;padding:24px">
+    <h3 class="head" id="modTitle">School modules</h3>
+    <p class="sub" style="margin:2px 0 12px">Tick a module to turn it ON for this school; unticked = hidden for that school. Core tabs (timetable, master, hours…) always stay on.</p>
+    <div class="field" style="margin-bottom:14px"><label>Apply a package</label><select id="modPkg" onchange="applyPkgToModal()"><option value="">— apply a package —</option></select></div>
+    <div id="modList" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+    <div style="margin-top:16px;display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="saveModules()">Save modules</button><button class="btn btn-ghost btn-sm" onclick="closeModules()">Cancel</button></div>
+    <div id="modMsg" class="msg"></div>
+  </div>
+</div>
+
 <script>
-  var TOKEN=null, SCHOOLS=[];
+  var TOKEN=null, SCHOOLS=[], PACKAGES=[], PKG_EDIT=-1, MOD_SID=null;
+  // toggleable modules (must match the app's OWNER_MODULES keys); core tabs always stay on
+  var MODULES=[['reports','Reports'],['diary','Teacher Diary'],['students','Students'],['sub','Substitution'],['notify','Notifications'],['monitor','Live Monitor'],['optimizer','Optimizer'],['insights','Insights'],['versions','Versions'],['usage','Usage'],['avail','Availability']];
   function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function rup(n){ return '₹'+Math.round(n||0).toLocaleString('en-IN'); }
   function api(m,p,b){ var h={'Content-Type':'application/json'}; if(TOKEN)h['Authorization']='Bearer '+TOKEN;
@@ -259,12 +291,12 @@
         if(!o.ok){ TOKEN=null; msg(m,'Could not open the panel.','err'); return; }
         document.getElementById('loginView').style.display='none';
         document.getElementById('app').style.display='block';
-        renderSchools(o.data); loadPayments(); fillPay(); loadEnq(); loadMe();
+        renderSchools(o.data); loadPayments(); fillPay(); loadEnq(); loadMe(); loadPackages();
       });
     }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
   }
   function logout(){ TOKEN=null; SCHOOLS=[]; document.getElementById('app').style.display='none'; document.getElementById('loginView').style.display='block'; document.getElementById('l_pw').value=''; }
-  function tab(t){ ['dash','schools','pay','set','prof'].forEach(function(x){ document.getElementById('s_'+x).classList.toggle('show',x===t); document.getElementById('t_'+x).classList.toggle('active',x===t); }); }
+  function tab(t){ ['dash','schools','pay','pkg','set','prof'].forEach(function(x){ document.getElementById('s_'+x).classList.toggle('show',x===t); document.getElementById('t_'+x).classList.toggle('active',x===t); }); }
 
   // ---------- SCHOOLS ----------
   function loadAll(){ api('GET','/api/owner/overview').then(function(o){ if(o.ok) renderSchools(o.data); }); }
@@ -288,6 +320,7 @@
         '<td>'+paidP+'</td><td>'+actP+'</td>'+
         '<td><input type="date" style="width:150px" value="'+esc(s.valid_till||'')+'" onchange="setExpiry('+s.id+',this.value)"><div class="mini '+ei.cls+'">'+ei.label+'</div></td>'+
         '<td><div class="rowact"><button class="link" onclick="renew('+s.id+')">Renew +1yr</button>'+
+        '<button class="link" onclick="openModules('+s.id+')">Modules</button>'+
         '<button class="link" onclick="openSchool('+s.id+',\''+nm+'\')">Open</button>'+
         '<button class="link" onclick="payFor('+s.id+')">Record ₹</button>'+
         '<button class="link" onclick="resetPw('+s.id+',\''+nm+'\')">Reset pw</button>'+
@@ -393,6 +426,46 @@
     }).join('') || '<tr><td colspan="7" class="mini">No enquiries yet.</td></tr>';
   }
   function markEnq(id){ api('PUT','/api/enquiry/'+id,{handled:1}).then(loadEnq); }
+
+  // ---------- PACKAGES ----------
+  function loadPackages(){ api('GET','/api/owner/packages').then(function(o){ PACKAGES=(o.ok&&Array.isArray(o.data))?o.data:[]; renderPackages(); renderPkgForm([]); }); }
+  function modName(k){ var m=MODULES.filter(function(x){return x[0]===k;})[0]; return m?m[1]:k; }
+  function renderPackages(){
+    document.getElementById('pkgBody').innerHTML=PACKAGES.map(function(p,i){
+      var mods=(p.modules||[]).map(modName).join(', ')||'—';
+      return '<tr><td><b>'+esc(p.name)+'</b></td><td>'+(p.price?('₹'+esc(p.price)):'—')+'</td><td class="mini">'+esc(mods)+'</td>'+
+        '<td class="rowact"><button class="link" onclick="editPkg('+i+')">Edit</button><button class="del" onclick="delPkg('+i+')">🗑</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="mini">No packages yet — create one below.</td></tr>';
+  }
+  function renderPkgForm(sel){ sel=sel||[]; document.getElementById('pk_modules').innerHTML=MODULES.map(function(m){ var on=sel.indexOf(m[0])>=0;
+    return '<label class="mini" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer"><input type="checkbox" data-pm="'+m[0]+'" '+(on?'checked':'')+' style="width:auto;margin:0">'+esc(m[1])+'</label>'; }).join(''); }
+  function editPkg(i){ var p=PACKAGES[i]; PKG_EDIT=i; document.getElementById('pk_name').value=p.name||''; document.getElementById('pk_price').value=p.price||''; renderPkgForm(p.modules||[]); document.getElementById('pkgFormTitle').textContent='Edit package'; document.getElementById('pk_name').scrollIntoView({block:'center'}); }
+  function resetPkgForm(){ PKG_EDIT=-1; document.getElementById('pk_name').value=''; document.getElementById('pk_price').value=''; renderPkgForm([]); document.getElementById('pkgFormTitle').textContent='Create a package'; var m=document.getElementById('pkgMsg'); m.className='msg'; m.textContent=''; }
+  function collectPkgMods(){ var a=[]; [].forEach.call(document.querySelectorAll('#pk_modules input[data-pm]'),function(c){ if(c.checked) a.push(c.getAttribute('data-pm')); }); return a; }
+  function savePkg(){ var m=document.getElementById('pkgMsg'); var name=document.getElementById('pk_name').value.trim(); if(!name){ msg(m,'Package name is required.','err'); return; }
+    var obj={name:name,price:document.getElementById('pk_price').value.trim()||null,modules:collectPkgMods()};
+    var arr=PACKAGES.slice(); if(PKG_EDIT>=0) arr[PKG_EDIT]=obj; else arr.push(obj);
+    msg(m,'Saving…','ok');
+    api('PUT','/api/owner/packages',arr).then(function(r){ if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not save.','err'); return; } PACKAGES=r.data.packages||arr; renderPackages(); resetPkgForm(); toast('✓ Package saved'); });
+  }
+  function delPkg(i){ if(!confirm('Delete package "'+((PACKAGES[i]||{}).name||'')+'"?')) return; var arr=PACKAGES.slice(); arr.splice(i,1);
+    api('PUT','/api/owner/packages',arr).then(function(r){ if(r.ok){ PACKAGES=r.data.packages||arr; renderPackages(); toast('Deleted'); } }); }
+
+  // ---------- PER-SCHOOL MODULES ----------
+  function openModules(id){ MOD_SID=id; var s=SCHOOLS.filter(function(x){return x.id===id;})[0]||{};
+    var off=String(s.modules_off||'').split(',').map(function(x){return x.trim();}).filter(Boolean);
+    document.getElementById('modTitle').textContent='Modules — '+(s.name||'');
+    document.getElementById('modList').innerHTML=MODULES.map(function(m){ var on=off.indexOf(m[0])<0;
+      return '<label class="mini" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer"><input type="checkbox" data-mk="'+m[0]+'" '+(on?'checked':'')+' style="width:auto;margin:0">'+esc(m[1])+'</label>'; }).join('');
+    var sel=document.getElementById('modPkg'); sel.innerHTML='<option value="">— apply a package —</option>'+PACKAGES.map(function(p,i){return '<option value="'+i+'">'+esc(p.name)+(p.price?(' (₹'+esc(p.price)+')'):'')+'</option>';}).join('');
+    var mm=document.getElementById('modMsg'); mm.className='msg'; mm.textContent='';
+    document.getElementById('modModal').style.display='flex';
+  }
+  function closeModules(){ document.getElementById('modModal').style.display='none'; }
+  function applyPkgToModal(){ var v=document.getElementById('modPkg').value; if(v==='') return; var p=PACKAGES[+v]; if(!p) return; var on=p.modules||[];
+    [].forEach.call(document.querySelectorAll('#modList input[data-mk]'),function(c){ c.checked=on.indexOf(c.getAttribute('data-mk'))>=0; }); }
+  function saveModules(){ var off=[]; [].forEach.call(document.querySelectorAll('#modList input[data-mk]'),function(c){ if(!c.checked) off.push(c.getAttribute('data-mk')); });
+    api('PUT','/api/schools/'+MOD_SID,{modules_off:off.join(',')}).then(function(r){ if(r.ok){ toast('✓ Modules saved'); closeModules(); loadAll(); } else msg(document.getElementById('modMsg'),(r.data&&r.data.error)||'Could not save','err'); }); }
 
   // ---------- PROFILE ----------
   function loadMe(){ api('GET','/api/me').then(function(r){ if(!r.ok)return; var u=r.data||{};

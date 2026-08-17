@@ -506,6 +506,17 @@ app.get('/api/owner/payments', h(async (req,res)=>{ if(!requireOwner(req,res)) r
   const month=await q1("SELECT COALESCE(SUM(amount),0)::float total FROM tt_payment WHERE substr(ts,1,7)=to_char(now(),'YYYY-MM')");
   res.json({ payments:rows, byMethod, total:tot.total, count:tot.n, month:month.total });
 }));
+// owner-only: module packages (named sets of enabled modules) stored in tt_appmeta 'packages'
+app.get('/api/owner/packages', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  let p=[]; try{ const raw=await getMeta('packages'); p=raw?JSON.parse(raw):[]; }catch(_){ p=[]; }
+  res.json(Array.isArray(p)?p:[]);
+}));
+app.put('/api/owner/packages', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const arr=Array.isArray(req.body)?req.body:((req.body&&req.body.packages)||[]);
+  const clean=arr.filter(x=>x&&x.name).map(x=>({ name:String(x.name).trim().slice(0,40), price:(x.price==null||x.price==='')?null:String(x.price), modules:Array.isArray(x.modules)?x.modules.map(String):[] }));
+  await setMeta('packages', JSON.stringify(clean));
+  res.json({ ok:true, packages:clean });
+}));
 // owner-only: reset a school's admin login password (for support)
 app.post('/api/owner/school/:id/reset-password', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
   const sid=Number(req.params.id); const pw=String((req.body||{}).password||'');
