@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v33';
+const SW_JS = `const CACHE='aumtara-v34';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -1064,7 +1064,9 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
       await cq('INSERT INTO tt_timetable(class_id,day_of_week,period_index,subject_id,teacher_id,room_id,school_id,week_index) VALUES(?,?,?,?,?,?,?,?)', r);
   });
   const n=(await q1('SELECT COUNT(*)::int AS n FROM tt_timetable WHERE school_id=?',[sid])).n;
-  res.json({ok:true, cells:n});
+  // subjects that got scheduled but have NO teacher assigned in the master → those periods run teacher-less
+  const unstaffed=(await q(`SELECT DISTINCT s.name FROM tt_timetable tt JOIN tt_subject s ON s.id=tt.subject_id WHERE tt.school_id=? AND tt.teacher_id IS NULL AND tt.subject_id IS NOT NULL ORDER BY s.name`,[sid])).map(r=>r.name);
+  res.json({ok:true, cells:n, unstaffed});
 }));
 function shuffleStable(arr, seed){ // deterministic light shuffle so subjects spread out
   const a=arr.slice(); let s=seed*9301+49297;
