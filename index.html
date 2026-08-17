@@ -3145,6 +3145,28 @@ const HELPSECTIONS=[
   intro:"Use the app in your language, install it, and work offline.",
   steps:["Pick your language from the dropdown at the top (12 languages).","Install: use your browser or phone Add to Home Screen to install the app.","Once installed it works offline for viewing."],
   tip:"Any failed action now shows a red banner at the top with the reason."},
+ {id:"fields",icon:"📋",title:"Every field explained — what to type",who:"Admin / Principal",where:"Each setup screen",
+  intro:"A quick what-to-fill for every box, with an example. Best setup order: Academic Hours → Classes → Subjects → Teachers → Rooms → Weekly Quota → Auto-generate.",
+  steps:[
+   "<b>Academic Hours ▸ Timings</b> — School name (e.g. <i>R.N. Naik High School</i>); Session (<i>2025-26</i>); tick Working days (Mon–Sat); Weekday start/end (<i>10:30 / 17:00</i>); Period minutes (<i>35</i>); Number of periods (blank = auto); Lunch after period (<i>4</i>) &amp; Lunch minutes (<i>30</i>); Short break after (<i>2</i>) &amp; minutes (<i>10</i>). Saturday has its own block if Sat is a working day.",
+   "<b>Classes</b> — Name (<i>Class 9 A</i>); Standard (<i>9</i>); Section (<i>A</i>); Medium (<i>English</i>); Board (<i>State</i>); Class teacher (pick from list); tick <i>CT first period</i> to pin the class teacher to Period 1.",
+   "<b>Subjects</b> — Name (<i>Mathematics</i>); Medium (<i>English</i>); <i>Active</i> tick = in use (untick to archive, not delete); <i>Double</i> tick = a lab / two-periods-in-a-row subject (<i>Computer Lab</i>).",
+   "<b>🧩 Combine Subjects</b> (group-split) — pick the Class; tick the two parallel subjects (<i>Computer + PT</i>); for each pick a teacher; tick Days (or All week) and Period(s) (<i>P3</i>); press Create. The name builds itself (<i>Computer / PT</i>).",
+   "<b>Teachers</b> — Name (<i>Alka Shah</i>); Qualification (<i>B.Ed</i>); Designation (<i>Asst. Teacher</i>); Main subject (their primary); Weekly load = periods/week (<i>30</i>); <i>Can substitute</i> tick; ⚙ More → Sanctioned load, Max per day (<i>6</i>), Max consecutive (<i>3</i>); <i>+ Can teach</i> = every subject they can take (drag ▲▼ for priority); <i>Give login</i> = create their user ID + role.",
+   "<b>Rooms</b> — Name (<i>Room 12</i> / <i>Computer Lab</i>); Capacity (optional, <i>40</i>).",
+   "<b>Weekly Quota</b> — pick a Class, then type periods-per-week for each subject (<i>Maths 6, English 5</i>). Total must not exceed the week’s free slots (turns red if over). <i>Subject rules</i> tab: e.g. Maths <i>not same day</i> as Science, or <i>not consecutive</i>.",
+   "<b>Availability</b> — choose Teacher / Class / Room, pick who, then click day×period cells to block them (red = never schedule here). Use for a teacher who leaves early on <i>Sat P6</i>.",
+   "<b>Students</b> — add Name + Roll per class; <i>Choices</i> tab sets which elective group each student picked (only needed for per-student timetables).",
+   "<b>Auto Set (grid)</b> — pick Day; each cell has Subject + Teacher + Room dropdowns; 🔒 locks a cell so Auto-generate won’t change it; drag ⠿ to swap. Press Auto-generate to fill the rest.",
+   "<b>Auto Set ▸ Combined classes</b> — join 2+ classes into ONE shared lesson (<i>Assembly, Games</i>): Name, Subject, Teacher, Room, Day, Period, then tick the classes. (This is different from 🧩 Combine Subjects.)",
+   "<b>Optimizer</b> — just tick the preferences you want before Auto-generate: spread across week, balance teacher load, heavy subjects in the morning, fewer teacher gaps.",
+   "<b>Substitution ▸ Leave</b> — Teacher, From/To date, Leave type, Reason → Apply; approving a leave auto-fills proxies. <i>Date cover</i>: pick teacher + dates → Fetch → assign a free teacher per period (⭐ = best subject match).",
+   "<b>Teacher Diary</b> — Teacher + Date; per period fill Lesson/chapter, Topic, Learning outcome, Assessment, Homework, Teaching aids → Save.",
+   "<b>Reports ▸ Inspection / Patrak header</b> — fill School address, code, UDISE, District, Mobile, Email, registration / inspection ref, Officer name once; then every Patrak / Format prints with it.",
+   "<b>Versions</b> — type a Version name (<i>Final – Term 1</i>) and Save version to keep a snapshot you can restore later.",
+   "<b>Users</b> — Name, Login ID, Role (Admin / Principal / Supervisor / Teacher), Mobile, Email, Password → Add. A Teacher’s name should match their teacher record so diary and leave link up."
+  ],
+  tip:"A full field-by-field Excel manual (with examples) is also available from your admin — the Aumtara User Manual file."},
 ];
 const HELP_UI={
  en:{title:"Help Center",lead:"A step-by-step guide to every screen. Tap the ? next to Logout on any screen to open help for that screen. Jump to a topic:",where:"Where:",tip:"Tip:",status:"Status colours on the live board:",live:"teaching now",free:"free",proxy:"proxy cover",thispage:"This Page",fullguide:"Full Guide"},
