@@ -2885,14 +2885,7 @@ function studentsView(){
     <div class="card">
       <div class="row" style="justify-content:space-between;align-items:center"><div style="font-weight:800;color:#4c1d95;margin-bottom:2px">${L('class')||t('nav_class')} — <span style="color:#1e293b">${curName}</span></div><button class="ghost mini" onclick="refreshStudents()">↻ Refresh</button></div>
       ${classChips}
-      <div style="border-top:1px solid #eee;margin:10px 0"></div>
-      ${elRows}
-      ${combineBuilder()}
-    </div>
-    <div class="card">
-      <h2 style="margin-top:0">📋 All combined periods — all classes</h2>
-      <div class="desc">Recheck everything here. 🗑 removes that combine from all its days.</div>
-      ${allCombinesHTML()}
+      <div class="note" style="margin-top:10px;font-size:12.5px">💡 To create parallel/combined periods (half class one subject, half another), use the <b>🧩 Combine Subjects</b> tab in the Master menu.</div>
     </div>
     <div class="card">
       <h2>${t('stu_list')}</h2><div class="desc">Only needed for per-student elective choices (optional).</div>${stuRows}
