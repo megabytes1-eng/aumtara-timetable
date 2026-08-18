@@ -1004,7 +1004,13 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   // compute the assignment in memory, then persist in one transaction
   let totalSlots=0; dayList.forEach(di=>totalSlots+=teachingSlots(di, sid).length);
   const remaining={}, daySubs={}, prevSub={};   // per class: pool left; per class+day: subjects placed + previous subject
-  function pickSubject(cid,di,pi){
+  // can this class+subject actually get a teacher in THIS slot right now? (pinned teacher, or any qualified free teacher)
+  function canStaffNow(cid, subjId, di, pi, usedT){
+    const pinned=pinT[cid+'_'+subjId];
+    if(pinned!=null) return !usedT.has(pinned) && !(absent[pinned]&&absent[pinned].has(di)) && !blocked(teacherBlock,pinned,di,pi) && capOk(pinned,di,pi);
+    return teachersForSubject(subjId).some(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&!blocked(teacherBlock,t,di,pi)&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
+  }
+  function pickSubject(cid,di,pi,usedT){
     const rem=remaining[cid]; if(!rem.length) return null;
     const R=clsRules[cid]; const ds=daySubs[cid+'_'+di]; const prev=prevSub[cid+'_'+di];
     const ruleOk=(s)=>{ if(ds){ for(const x of ds){ if(R.sameDay.has(rkey(s,x))){ return false; } } }
@@ -1013,6 +1019,8 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     const cand=[]; for(let i=0;i<rem.length;i++){ if(ruleOk(rem[i])) cand.push(i); }
     let pool=cand;
     if(optSpread && cand.length){ const fresh=cand.filter(i=>!(ds&&ds.has(rem[i]))); if(fresh.length) pool=fresh; }
+    // ⭐ prefer subjects whose teacher is FREE this slot — stops a single-teacher subject (e.g. Drawing→only Dharmesh) being chosen for two classes in the same slot → far fewer unstaffed cells
+    if(usedT && pool.length){ const staffable=pool.filter(i=>canStaffNow(cid,rem[i],di,pi,usedT)); if(staffable.length) pool=staffable; }
     let idx;
     if(optMorning && pool.length){   // heavier (higher-quota) subjects earlier, lighter later
       const w=subjWeight[cid]||{}; const n=slotCount[di]||8; const early=pi < n/2;
@@ -1051,7 +1059,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
           }
           if(lockSlot.has(wk+'_'+c.id+'_'+di+'_'+pi)) return;   // fixed/locked cell → keep as-is, don't reschedule
           if(blocked(classBlock,c.id,di,pi)) return;   // class marked unavailable this slot → leave empty
-          const subjId=pickSubject(c.id,di,pi);
+          const subjId=pickSubject(c.id,di,pi,usedT);
           if(subjId==null) return;   // class has no schedulable subjects
           let t;
           const pinned=pinT[c.id+'_'+subjId];
