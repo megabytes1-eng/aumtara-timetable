@@ -1041,9 +1041,10 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
           if(subjId==null) return;   // class has no schedulable subjects
           let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&!blocked(teacherBlock,t,di,pi)&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
           opts.sort((a,b)=>{
-            const sp=(tsubSeq[a+'_'+subjId]??99)-(tsubSeq[b+'_'+subjId]??99); if(sp) return sp;   // teacher's own subject priority (1st subject first)
-            if(optBalance){ const d=(load[a]||0)-(load[b]||0); if(d) return d; }        // least-loaded first
-            if(optGap){ const ga=(lastPi[a+'_'+di]===pi-1?0:1), gb=(lastPi[b+'_'+di]===pi-1?0:1); if(ga!==gb) return ga-gb; }  // prefer contiguous → fewer gaps
+            // LEAST-LOADED FIRST → a subject shared by many teachers (e.g. PT by Dharmesh & Bharat) is spread evenly instead of dumped on one.
+            const d=(load[a]||0)-(load[b]||0); if(d) return d;
+            const sp=(tsubSeq[a+'_'+subjId]??99)-(tsubSeq[b+'_'+subjId]??99); if(sp) return sp;   // tie → prefer the teacher whose higher-priority (main) subject it is
+            if(optGap){ const ga=(lastPi[a+'_'+di]===pi-1?0:1), gb=(lastPi[b+'_'+di]===pi-1?0:1); if(ga!==gb) return ga-gb; }  // then fewer gaps
             return 0;
           });
           let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
