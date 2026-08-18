@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v62';
+const SW_JS = `const CACHE='aumtara-v63';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -771,9 +771,14 @@ app.delete('/api/terms/:id', h(async (req,res)=>{ await run('DELETE FROM tt_term
 app.get('/api/quota', h(async (req,res)=>res.json(await q('SELECT * FROM tt_quota WHERE class_id=? AND school_id=?',[req.query.class_id, req.sid]))));
 app.put('/api/quota', h(async (req,res)=>{
   const {class_id, subject_id, per_week}=req.body;
-  await run(`INSERT INTO tt_quota(class_id,subject_id,per_week,school_id) VALUES(?,?,?,?)
-     ON CONFLICT(class_id,subject_id) DO UPDATE SET per_week=excluded.per_week`,[class_id,subject_id,per_week, req.sid]);
+  const teacher_id = (req.body.teacher_id===undefined||req.body.teacher_id===''||req.body.teacher_id===null) ? null : +req.body.teacher_id;
+  await run(`INSERT INTO tt_quota(class_id,subject_id,per_week,teacher_id,school_id) VALUES(?,?,?,?,?)
+     ON CONFLICT(class_id,subject_id) DO UPDATE SET per_week=excluded.per_week, teacher_id=excluded.teacher_id`,[class_id,subject_id,per_week,teacher_id, req.sid]);
   res.json({ok:true});
+}));
+// Teacher workload from PINNED quota rows (teacher-wise bifurcation): per teacher → subject/class breakdown across ALL classes
+app.get('/api/teacher-workload', h(async (req,res)=>{
+  res.json(await q('SELECT teacher_id, subject_id, class_id, per_week FROM tt_quota WHERE school_id=? AND teacher_id IS NOT NULL AND per_week>0',[req.sid]));
 }));
 
 // ---------- GRID ----------
@@ -977,6 +982,8 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   // ignored entirely (not counted, not placed) so extra/unstaffed subjects never leave blank cells.
   const staffedSet=new Set(tmap.map(m=>m.subject_id));
   const staffedSubjects=subjects.filter(s=>staffedSet.has(s.id));
+  // TEACHER PIN (teacher-wise bifurcation): a quota row can name a specific teacher → that class+subject's periods MUST use that teacher (never auto-balanced onto someone else). Blank = auto.
+  const pinT={}; quotas.forEach(x=>{ if(x.teacher_id!=null) pinT[x.class_id+'_'+x.subject_id]=x.teacher_id; });
   // build per-class subject pool honouring quota (fallback: even rotation) — staffed subjects only
   function poolFor(cid, totalSlots){
     const qs=quotas.filter(x=>x.class_id===cid && activeSet.has(x.subject_id) && staffedSet.has(x.subject_id));
@@ -1039,15 +1046,22 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
           if(blocked(classBlock,c.id,di,pi)) return;   // class marked unavailable this slot → leave empty
           const subjId=pickSubject(c.id,di,pi);
           if(subjId==null) return;   // class has no schedulable subjects
-          let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&!blocked(teacherBlock,t,di,pi)&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
-          opts.sort((a,b)=>{
-            // LEAST-LOADED FIRST → a subject shared by many teachers (e.g. PT by Dharmesh & Bharat) is spread evenly instead of dumped on one.
-            const d=(load[a]||0)-(load[b]||0); if(d) return d;
-            const sp=(tsubSeq[a+'_'+subjId]??99)-(tsubSeq[b+'_'+subjId]??99); if(sp) return sp;   // tie → prefer the teacher whose higher-priority (main) subject it is
-            if(optGap){ const ga=(lastPi[a+'_'+di]===pi-1?0:1), gb=(lastPi[b+'_'+di]===pi-1?0:1); if(ga!==gb) return ga-gb; }  // then fewer gaps
-            return 0;
-          });
-          let t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
+          let t;
+          const pinned=pinT[c.id+'_'+subjId];
+          if(pinned!=null){
+            // teacher-wise bifurcation: force the pinned teacher. Use them if free this slot (not double-booked, not absent, not blocked, within day/consecutive caps). If busy, leave the cell unstaffed rather than substituting someone else — it shows in the Generate Log so the user can adjust the split.
+            t=(!usedT.has(pinned)&&!(absent[pinned]&&absent[pinned].has(di))&&!blocked(teacherBlock,pinned,di,pi)&&capOk(pinned,di,pi))?pinned:null;
+          } else {
+            let opts=teachersForSubject(subjId).filter(t=>!usedT.has(t)&&!(absent[t]&&absent[t].has(di))&&!blocked(teacherBlock,t,di,pi)&&(load[t]||0)<maxLoad[t]&&capOk(t,di,pi));
+            opts.sort((a,b)=>{
+              // LEAST-LOADED FIRST → a subject shared by many teachers (e.g. PT by Dharmesh & Bharat) is spread evenly instead of dumped on one.
+              const d=(load[a]||0)-(load[b]||0); if(d) return d;
+              const sp=(tsubSeq[a+'_'+subjId]??99)-(tsubSeq[b+'_'+subjId]??99); if(sp) return sp;   // tie → prefer the teacher whose higher-priority (main) subject it is
+              if(optGap){ const ga=(lastPi[a+'_'+di]===pi-1?0:1), gb=(lastPi[b+'_'+di]===pi-1?0:1); if(ga!==gb) return ga-gb; }  // then fewer gaps
+              return 0;
+            });
+            t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
+          }
           const room=rooms.find(r=>!usedR.has(r.id)&&!blocked(roomBlock,r.id,di,pi));
           // start a consecutive double period when this subject wants one and the next teaching period is free for this class
           const canDbl = dblSet.has(subjId) && (pi+1)<slots.length

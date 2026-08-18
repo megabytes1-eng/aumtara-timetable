@@ -225,6 +225,7 @@ async function init() {
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS double_period INTEGER DEFAULT 0`); // 1=schedule as consecutive double periods (labs / lock-together)
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS medium TEXT`); // optional medium tag (English / Gujarati …) so subjects can be filtered per medium
   await run(`ALTER TABLE tt_subject ADD COLUMN IF NOT EXISTS color TEXT`); // optional custom cell colour (hex); blank = auto palette colour by id
+  await run(`ALTER TABLE tt_quota ADD COLUMN IF NOT EXISTS teacher_id INTEGER`); // optional: pin a specific teacher to this class+subject's periods (blank = auto-balance)
   // Teacher daily / consecutive period caps (0 or NULL = no cap)
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS max_per_day INTEGER`);      // max periods a teacher can take in one day
   await run(`ALTER TABLE tt_teacher ADD COLUMN IF NOT EXISTS max_consecutive INTEGER`);  // max back-to-back periods in a day

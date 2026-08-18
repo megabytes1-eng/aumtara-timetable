@@ -37,10 +37,11 @@ header h1{font-size:18px;margin:0;} header .sub{font-size:12.5px;opacity:.92;}
 .hb-in{font-size:14px;color:#3d4663;line-height:1.45;flex:1;}
 .hb-wh{font-size:12px;color:#616a86;margin-top:10px;font-weight:600;}
 @media(max-width:640px){.helpgrid{grid-template-columns:1fr;}}
-.quotagrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:8px 12px;max-width:1000px;margin:6px 0;}
-.qcell{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f9fe;border:1px solid #e6ebf5;border-radius:8px;padding:7px 11px;font-size:13.5px;}
-.qcell .qname{font-weight:600;color:#1F3864;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.qcell input{width:62px;flex:0 0 auto;text-align:center;padding:5px 6px;}
+.quotagrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px 14px;max-width:1100px;margin:6px 0;}
+.qcell{display:flex;align-items:center;gap:8px;background:#f7f9fe;border:1px solid #e6ebf5;border-radius:8px;padding:7px 11px;font-size:13.5px;}
+.qcell .qname{font-weight:600;color:#1F3864;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;min-width:56px;}
+.qcell input{width:52px;flex:0 0 auto;text-align:center;padding:5px 6px;}
+.qcell .qtsel{flex:0 0 auto;max-width:132px;font-size:12px;padding:4px 6px;color:#4a5670;background:#fff;}
 .qtotal{margin-top:12px;font-weight:700;color:#1F3864;font-size:14.5px;}
 @media(max-width:520px){.quotagrid{grid-template-columns:1fr 1fr;}}
 .hlp-sec{border:1px solid #e6eaf3;border-radius:12px;padding:13px 15px;margin:12px 0;background:#fff;scroll-margin-top:74px;}
@@ -3004,13 +3005,40 @@ async function toggleAvail(di,pi){ if(!availEntity)return; const key=di+'_'+pi; 
 }
 function renderQuota(){ const box=document.getElementById('quotabox'); if(!box)return;
   let totalSlots=0; DAYS.forEach((_,di)=>totalSlots+=slotsFor(di).filter(s=>!s.brk).length);
-  const q={}; quotaData.forEach(x=>q[x.subject_id]=x.per_week);
+  const q={},qt={}; quotaData.forEach(x=>{q[x.subject_id]=x.per_week; qt[x.subject_id]=x.teacher_id;});
   let sum=Object.values(q).reduce((a,b)=>a+(+b||0),0);
-  box.innerHTML=`<div class="quotagrid">${actSubs().map(s=>`<label class="qcell" title="${s.name}"><span class="qname">${s.name}</span>
-     <input type="number" min="0" value="${q[s.id]||0}" onchange="setQuota(${s.id},+this.value)"></label>`).join('')}</div>
-     <div class="qtotal" style="${sum>totalSlots?'color:#991b1b':''}">${t('total_assigned')}: ${t('weekly_slots',{sum,total:totalSlots})}${sum>totalSlots?' <span style="font-weight:800">— '+t('err_over_slots')+'</span>':''}</div>`;
+  box.innerHTML=`<div class="quotagrid">${actSubs().map(s=>{
+     const tid=qt[s.id]; const cans=subTeachers(s.id);
+     const tsel=`<select class="qtsel" id="qt_${s.id}" title="Teacher for ${sesc(s.name)} in this class (⚙ Auto = app decides)" onchange="saveQuotaRow(${s.id})"><option value="">⚙ Auto</option>${cans.map(tt=>`<option value="${tt.id}" ${tid===tt.id?'selected':''}>${sesc(tt.name)}</option>`).join('')}</select>`;
+     return `<label class="qcell" title="${s.name}"><span class="qname">${s.name}</span>
+       <input id="qn_${s.id}" type="number" min="0" value="${q[s.id]||0}" onchange="saveQuotaRow(${s.id})">${tsel}</label>`;
+   }).join('')}</div>
+     <div class="qtotal" style="${sum>totalSlots?'color:#991b1b':''}">${t('total_assigned')}: ${t('weekly_slots',{sum,total:totalSlots})}${sum>totalSlots?' <span style="font-weight:800">— '+t('err_over_slots')+'</span>':''}</div>
+     <div id="quotaWorkload" style="margin-top:14px"></div>`;
+  loadWorkload();
+}
+async function saveQuotaRow(subject_id){
+  const per_week=+((document.getElementById('qn_'+subject_id)||{}).value)||0;
+  const tv=(document.getElementById('qt_'+subject_id)||{}).value;
+  await api('PUT','/api/quota',{class_id:curClass,subject_id,per_week,teacher_id:tv?+tv:null}); toast(); await loadQuota();
 }
 async function setQuota(subject_id,per_week){ await api('PUT','/api/quota',{class_id:curClass,subject_id,per_week}); toast(); await loadQuota(); }
+async function loadWorkload(){
+  const box=document.getElementById('quotaWorkload'); if(!box)return;
+  let rows; try{rows=await api('GET','/api/teacher-workload');}catch(e){box.innerHTML='';return;}
+  if(!Array.isArray(rows)||!rows.length){ box.innerHTML='<div class="note" style="font-size:12.5px">💡 Teacher-wise bifurcation: har subject ke aage ⚙ Auto ke bajaye ek teacher chuno — us class ka wo subject sirf usi teacher ko milega. Kisi teacher ko pin karte hi uska total (sab classes milakar) yahan dikhega.</div>'; return; }
+  const byT={}; rows.forEach(r=>{ const b=byT[r.teacher_id]=byT[r.teacher_id]||{total:0,subs:{}}; b.total+=(+r.per_week||0); b.subs[r.subject_id]=(b.subs[r.subject_id]||0)+(+r.per_week||0); });
+  const sn=id=>{const s=subjects.find(x=>x.id===id);return s?s.name:'#'+id;};
+  const tn=id=>{const x=teachers.find(y=>y.id===id);return x?x.name:'#'+id;};
+  const cards=Object.keys(byT).map(k=>{ const tid=+k, b=byT[tid]; const cap=(teachers.find(y=>y.id===tid)||{}).max_load;
+     const over=cap&&b.total>cap; const capStr=cap?(' / '+cap):'';
+     const subLine=Object.keys(b.subs).map(sid=>`<span class="tag" style="background:#eef2ff;color:#1F3864">${sesc(sn(+sid))} ${b.subs[sid]}</span>`).join(' ');
+     return `<div style="border:1px solid #e5e7fb;border-radius:8px;padding:7px 11px;background:#fff;margin-bottom:6px">
+       <b>${sesc(tn(tid))}</b> — <b style="color:${over?'#991b1b':'#0e7c56'}">${b.total}${capStr} period/week</b>${over?' <span style="color:#991b1b;font-weight:700">⚠ load cap se zyada</span>':''}
+       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px">${subLine}</div></div>`;
+  }).join('');
+  box.innerHTML=`<div style="font-weight:800;color:#1F3864;margin-bottom:6px">📊 Teacher workload — pinned (all classes)</div>${cards}<div class="note" style="font-size:12px;margin-top:2px">Yeh sirf un rows ko ginta hai jinme aapne teacher pin kiya hai. Total = sab classes milakar. Auto-generate in teachers ko unke pinned periods pe hi lagayega.</div>`;
+}
 
 // ---------- IMPORT / EXPORT ----------
 function dataView(){
