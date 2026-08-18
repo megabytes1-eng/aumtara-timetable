@@ -2938,8 +2938,8 @@ function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=
    ${weekBar()}${hlBar()}<div id="ttwrap" style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
 
 // ---------- QUOTA ----------
-let quotaData=[];
-async function loadQuota(){ if(!curClass)return; quotaData=await api('GET','/api/quota?class_id='+curClass); renderQuota(); }
+let quotaData=[], quotaElecs=[];
+async function loadQuota(){ if(!curClass)return; quotaData=await api('GET','/api/quota?class_id='+curClass); try{quotaElecs=await api('GET','/api/electives?class_id='+curClass);}catch(e){quotaElecs=[];} renderQuota(); }
 function quotaView(){
   const bar=subTabBar([['quota','🎯 '+t('quota_title')],['rules','📏 '+t('rules_title')]],qTab,'setQTab');
   const secQuota=`<div class="card"><div class="desc" style="font-weight:700;color:#1F3864;margin-top:2px">${t('quota_desc')}</div>
@@ -3006,16 +3006,29 @@ async function toggleAvail(di,pi){ if(!availEntity)return; const key=di+'_'+pi; 
 function renderQuota(){ const box=document.getElementById('quotabox'); if(!box)return;
   let totalSlots=0; DAYS.forEach((_,di)=>totalSlots+=slotsFor(di).filter(s=>!s.brk).length);
   const q={},qt={}; quotaData.forEach(x=>{q[x.subject_id]=x.per_week; qt[x.subject_id]=x.teacher_id;});
-  let sum=Object.values(q).reduce((a,b)=>a+(+b||0),0);
+  // Combined (group-split / student-choice) subjects in THIS class share one slot for two subjects, so they must NOT also be counted in Weekly Quota (that double-counts).
+  const combSubj=new Set(); const groups={}; (quotaElecs||[]).forEach(e=>{ groups[e.name]=(groups[e.name]||0)+1; (e.options||[]).forEach(o=>{ if(o.subject_id!=null) combSubj.add(o.subject_id); }); });
+  const combSlots=(quotaElecs||[]).length;
+  let regSum=0; const dblWarn=[];
+  actSubs().forEach(s=>{ const pw=+q[s.id]||0; if(combSubj.has(s.id)){ if(pw>0) dblWarn.push(s); } else regSum+=pw; });
+  const realTotal=regSum+combSlots; const over=realTotal>totalSlots;
   box.innerHTML=`<div class="quotagrid">${actSubs().map(s=>{
-     const tid=qt[s.id]; const cans=subTeachers(s.id);
+     const tid=qt[s.id]; const cans=subTeachers(s.id); const inC=combSubj.has(s.id); const pw=+q[s.id]||0; const bad=inC&&pw>0;
      const tsel=`<select class="qtsel" id="qt_${s.id}" title="Teacher for ${sesc(s.name)} in this class (⚙ Auto = app decides)" onchange="saveQuotaRow(${s.id})"><option value="">⚙ Auto</option>${cans.map(tt=>`<option value="${tt.id}" ${tid===tt.id?'selected':''}>${sesc(tt.name)}</option>`).join('')}</select>`;
-     return `<label class="qcell" title="${s.name}"><span class="qname">${s.name}</span>
-       <input id="qn_${s.id}" type="number" min="0" value="${q[s.id]||0}" onchange="saveQuotaRow(${s.id})">${tsel}</label>`;
+     return `<label class="qcell" title="${s.name}${inC?' — 🧩 combine me hai; yahan quota mat do':''}" style="${bad?'border-color:#f3c4c0;background:#fff5f5':''}"><span class="qname">${inC?'🧩 ':''}${s.name}</span>
+       <input id="qn_${s.id}" type="number" min="0" value="${pw}" onchange="saveQuotaRow(${s.id})">${tsel}</label>`;
    }).join('')}</div>
-     <div class="qtotal" style="${sum>totalSlots?'color:#991b1b':''}">${t('total_assigned')}: ${t('weekly_slots',{sum,total:totalSlots})}${sum>totalSlots?' <span style="font-weight:800">— '+t('err_over_slots')+'</span>':''}</div>
+     <div class="qtotal" style="${over?'color:#991b1b':''}">Total: ${realTotal} / ${totalSlots} slots <span class="small" style="font-weight:500;color:#5c6580">(regular ${regSum} + 🧩 combined ${combSlots})</span>${over?' <span style="font-weight:800">— OVER slots!</span>':''}</div>
+     ${combSlots?`<div class="note" style="font-size:12.5px;margin-top:6px">🧩 <b>Combined periods in this class (${combSlots} slots):</b> ${Object.keys(groups).map(n=>sesc(n)+' '+groups[n]).join(' · ')}. Har slot me class do groups me batti hai (dono subject ek hi period me) — isliye ye ⬆ 🧩 wale subjects Weekly Quota me alag se <b>nahi</b> gine jaate.</div>`:''}
+     ${dblWarn.length?`<div class="card" style="background:#fff5f5;border:1px solid #f3c4c0;margin-top:8px;padding:9px 12px"><b style="color:#b4443a">⚠ Ye subject combine me bhi hain aur Weekly Quota me bhi (double count):</b> ${dblWarn.map(s=>sesc(s.name)).join(', ')}. <div style="margin-top:6px">Inhe 0 kar do — combine already inhe schedule kar raha hai. <button class="green mini" onclick="zeroCombineQuota()">✓ In sabko 0 karo</button></div></div>`:''}
      <div id="quotaWorkload" style="margin-top:14px"></div>`;
   loadWorkload();
+}
+async function zeroCombineQuota(){
+  const combSubj=new Set(); (quotaElecs||[]).forEach(e=>(e.options||[]).forEach(o=>{ if(o.subject_id!=null) combSubj.add(o.subject_id); }));
+  const toZero=quotaData.filter(x=>combSubj.has(x.subject_id)&&(+x.per_week||0)>0);
+  for(const x of toZero){ await api('PUT','/api/quota',{class_id:curClass,subject_id:x.subject_id,per_week:0,teacher_id:x.teacher_id||null}); }
+  toast(); await loadQuota();
 }
 async function saveQuotaRow(subject_id){
   const per_week=+((document.getElementById('qn_'+subject_id)||{}).value)||0;
