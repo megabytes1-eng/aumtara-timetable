@@ -1036,7 +1036,7 @@ function onboardCard(){
   const steps=[['hours',hoursOk,t('ob_s_hours')],['mclasses',classes.length>0,t('ob_s_class')],['msubjects',subjects.length>0,t('ob_s_subject')],['mteachers',teachers.length>0,t('ob_s_teacher')],['mrooms',rooms.length>0,t('ob_s_room')],['build',genOk,t('ob_s_gen')]];
   const done=steps.filter(function(s){return s[1];}).length,all=done===steps.length;
   const items=steps.map(function(s){return `<div class="obitem${s[1]?' done':''}" onclick="setTab('${s[0]}')"><span class="obck">${s[1]?'✓':'○'}</span><span>${s[2]}</span></div>`;}).join('');
-  return `<div class="card obcard"><div class="obhead"><b>🚀 ${t('ob_title')} — ${done}/${steps.length}</b><button class="ghost mini" onclick="obDismiss()">${t('ob_hide')}</button></div><div class="desc" style="margin:2px 0 8px">${all?t('ob_done'):t('ob_sub')}</div><div class="obgrid">${items}</div></div>`;
+  return `<div class="card obcard"><div class="obhead" style="align-items:baseline;flex-wrap:wrap;gap:6px"><b>🚀 ${t('ob_title')} — ${done}/${steps.length}</b><span class="small" style="flex:1;color:#5c6580;text-decoration:underline">(${all?t('ob_done'):t('ob_sub')})</span><button class="ghost mini" onclick="obDismiss()">${t('ob_hide')}</button></div><div class="obgrid" style="margin-top:8px">${items}</div></div>`;
 }
 function obDismiss(){try{localStorage.setItem('tt_onboard','off');}catch(e){}try{track('onboarding_dismissed',{});}catch(e){}render();}
 // ---------- USAGE ANALYTICS VIEW (admin) ----------
@@ -1289,8 +1289,8 @@ function dash(){const _cf=conflictCount(); const _un=(LAST_GEN&&LAST_GEN.unstaff
    <div class="kpi p" onclick="setTab('class')" title="${t('kpi_completed')}"><div class="n">${completed()}/${classes.length}</div><div class="l">${t('kpi_completed')}</div></div>
    <div class="kpi ${_cf?'r':'g'}" onclick="setTab('build')" title="Conflicts"><div class="n">${_cf}</div><div class="l">Conflicts</div></div>
    ${LAST_GEN?`<div class="kpi ${_un?'r':'g'}" onclick="setTab('genlog')" title="Periods with no teacher"><div class="n">${_un}</div><div class="l">Unstaffed</div></div>`:''}</div>
-   <div class="card"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0;flex:1">🟢 ${t('freenow_title')}</h2><button class="ghost" style="padding:7px 14px;font-size:13px" onclick="loadFreeNow(true)">↻ ${t('freenow_refresh')}</button></div><div class="desc">${t('freenow_desc')}</div><div id="freenow" class="small">…</div></div>
-   <div class="card"><h2>${t('dash_title')}</h2><div class="desc">${t('dash_desc',{rooms:rooms.length,n:conflictCount()})}</div>
+   <div class="card"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 style="margin:0">🟢 ${t('freenow_title')}</h2><span class="small" style="flex:1;color:#5c6580">— ${t('freenow_desc')}</span><button class="ghost" style="padding:6px 13px;font-size:13px" onclick="loadFreeNow(true)">↻ ${t('freenow_refresh')}</button></div><div id="freenow" class="small" style="margin-top:6px">…</div></div>
+   <div class="card"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px"><h2 style="margin:0">${t('dash_title')}</h2><span class="small" style="color:#5c6580">— ${t('dash_desc',{rooms:rooms.length,n:conflictCount()})}</span></div>
    <div class="row"><button class="green" onclick="autoGen()">${t('btn_autogen')}</button>
      <button onclick="setTab('mclasses')">${t('btn_manage')}</button>
      <button class="amber" onclick="setTab('build')">${t('btn_build')}</button>
