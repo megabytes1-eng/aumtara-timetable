@@ -1279,7 +1279,7 @@ const NAVGROUPS=[
 ];
 
 // ---------- DASHBOARD ----------
-function dash(){return `${onboardCard()}<div class="kpis">
+function dash(){return `${genReportCard()}${onboardCard()}<div class="kpis">
    <div class="kpi" onclick="setTab('class')" title="${t('kpi_classrooms')}"><div class="n">${classes.length}</div><div class="l">${t('kpi_classrooms')}</div></div>
    <div class="kpi g" onclick="setTab('msubjects')" title="${t('kpi_subjects')}"><div class="n">${subjects.length}</div><div class="l">${t('kpi_subjects')}</div></div>
    <div class="kpi a" onclick="setTab('teacher')" title="${t('kpi_teachers')}"><div class="n">${teachers.length}</div><div class="l">${t('kpi_teachers')}</div></div>
@@ -1923,7 +1923,23 @@ async function loadReadiness(){const box=document.getElementById('readybox');if(
   const items=r.steps.map(s=>{const lbl=t(LB[s.key]||s.key);const cnt=(s.count!=null?' <span style="color:#2f5fd0;font-size:16px;font-weight:800">('+s.count+')</span>':'');const opt=s.optional?` <span style="color:#5c6580;font-size:12.5px">${t('optional_word')}</span>`:'';return `<div style="padding:6px 2px;display:flex;align-items:center;gap:10px;font-size:15px"><span style="font-size:19px">${s.done?'✅':(s.optional?'⚪':'⬜')}</span><span style="${s.done?'color:#1f2b57':'color:#57608a'};font-weight:600">${lbl}${cnt}${opt}</span></div>`;}).join('');
   const grid=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 30px">${items}</div>`;
   box.innerHTML=`<div style="font-size:25px;font-weight:800;color:${r.pct>=100?'#1a9d6b':'#1f2b57'};margin-bottom:2px">${r.pct}% ${t('ready_word')}</div>${bar}${grid}<div style="margin-top:10px;color:#5c6580;font-size:13px">${t('readiness_hint')}</div>`;}
-async function autoGen(){const b=event&&event.target;if(b){b.disabled=true;b.dataset.txt=b.textContent;b.textContent=t('btn_generating');}const r=await api('POST','/api/timetable/auto-generate');try{track('timetable_generate',{cells:(r&&r.cells)||0});}catch(e){}await loadAll();setTab('class');toast(t('toast_generated',{n:(r&&r.cells)||0}));if(r&&r.unstaffed&&r.unstaffed.length){try{showErr(t('gen_unstaffed',{subs:r.unstaffed.join(', ')}));}catch(e){}}if(b){b.disabled=false;b.textContent=b.dataset.txt;}}
+let LAST_GEN=null, GEN_HIDDEN=false;
+try{ const _lg=localStorage.getItem('tt_lastgen'); if(_lg) LAST_GEN=JSON.parse(_lg); }catch(e){}
+function genReportCard(){
+  if(!LAST_GEN||GEN_HIDDEN) return '';
+  const u=LAST_GEN.unstaffed||[]; let when=''; try{ when=LAST_GEN.ts? new Date(LAST_GEN.ts).toLocaleString():''; }catch(e){}
+  if(!u.length) return `<div class="card" style="background:#ecfdf5;border:1px solid #bfe6d4"><div class="row" style="justify-content:space-between;align-items:center"><div style="color:#0e7c56;font-weight:700">✅ Last Auto-generate: every period got a teacher.${when?` <span class="small" style="color:#5c6580">(${when})</span>`:''}</div><button class="ghost mini" onclick="GEN_HIDDEN=true;render()">✕</button></div></div>`;
+  return `<div class="card" style="background:#fff5f5;border:1px solid #f3c4c0">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
+      <div style="flex:1;min-width:0"><div style="color:#b4443a;font-weight:800;font-size:15px">⚠ Last Auto-generate — ${u.length} subject(s) have periods with NO teacher</div>
+      <div class="small" style="color:#5c6580;margin:3px 0 8px">Number = how many periods stayed empty. Fix: Master → Teachers add another teacher who can teach that subject, OR lower its Weekly Quota, then Auto-generate again.${when?` <span style="color:#94a3b8">· ${when}</span>`:''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${u.map(x=>`<span class="tag" style="background:#fee2e2;color:#991b1b;font-weight:700;font-size:12.5px">${sesc(x)}</span>`).join('')}</div></div>
+      <button class="ghost mini" title="Dismiss" onclick="GEN_HIDDEN=true;render()">✕</button>
+    </div></div>`;
+}
+async function autoGen(){const b=event&&event.target;if(b){b.disabled=true;b.dataset.txt=b.textContent;b.textContent=t('btn_generating');}const r=await api('POST','/api/timetable/auto-generate');try{track('timetable_generate',{cells:(r&&r.cells)||0});}catch(e){}
+  LAST_GEN={ts:new Date().toISOString(),cells:(r&&r.cells)||0,unstaffed:(r&&r.unstaffed)||[]}; GEN_HIDDEN=false; try{localStorage.setItem('tt_lastgen',JSON.stringify(LAST_GEN));}catch(e){}
+  await loadAll();setTab('class');toast(t('toast_generated',{n:(r&&r.cells)||0}));if(b){b.disabled=false;b.textContent=b.dataset.txt;}}
 
 // ---------- SETUP (CRUD) ----------
 // ---- Master data: Classes / Subjects / Teachers / Rooms — each its own full-page view ----
@@ -2485,7 +2501,7 @@ function builder(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=slo
    <div class="small" style="color:#5c6580;margin:-4px 0 10px">🔒 ${t('lock_hint')} &nbsp;·&nbsp; ⠿ ${t('drag_hint')}</div>
    ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;
   const body=bTab==='combine'?combineCard():gridCard;
-  return bar+body;}
+  return genReportCard()+bar+body;}
 function combineCard(){
   const per=maxTeachPeriods();
   const iv=v=>(v||'').replace(/"/g,'&quot;');
@@ -2567,7 +2583,7 @@ function classView(){const slots0=slotsFor(firstWD());
     return `<tr>${cells}</tr>`;}).join("");
   const curCls=classes.find(c=>c.id===curClass)||{};
   const ctName=curCls.class_teacher_id?tName(curCls.class_teacher_id):'';
-  return `<div class="card"><h2>${t('class_title')}</h2>${ctName?`<div class="desc">👤 ${t('class_teacher')}: <b>${ctName}</b></div>`:''}
+  return genReportCard()+`<div class="card"><h2>${t('class_title')}</h2>${ctName?`<div class="desc">👤 ${t('class_teacher')}: <b>${ctName}</b></div>`:''}
    <div class="row" style="margin-bottom:12px;align-items:flex-end;gap:8px;flex-wrap:wrap">${filterSelectsHTML()}
      <div><label>${t('class_')}</label><select id="clsSel" onchange="curClass=+this.value;render()">${filteredClasses().map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join("")}</select></div>
      <button class="ghost" onclick="printDoc(t('print_class_title')+' '+document.getElementById('clsSel').selectedOptions[0].text,'Aumtara')">${t('print_pdf')}</button>
