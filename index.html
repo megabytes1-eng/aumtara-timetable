@@ -122,6 +122,10 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .avtable td.avcell:hover{background:#dcefe0;} .avtable td.avcell.blk{background:#fdecec;}
 .avtable td.avnil{background:#f4f6fa;}
 .free{color:#8b90a0;font-style:italic;}
+/* Highlight-teacher mode: dim everything, glow the selected teacher's boxes */
+#ttwrap.hlmode td{opacity:.24;filter:grayscale(.5);}
+#ttwrap.hlmode td.ph,#ttwrap.hlmode th{opacity:1;filter:none;}
+#ttwrap.hlmode td.hl-on{opacity:1;filter:none;outline:3px solid #f59e0b;outline-offset:-3px;box-shadow:0 0 0 3px #fde68a inset;font-weight:800;}
 .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:700;}
 .pill.live{background:#d1fae5;color:#065f46;}.pill.break{background:#fef3c7;color:#92400e;}.pill.idle{background:#e5e7eb;color:#374151;}.pill.proxy{background:#ede9fe;color:#5b21b6;}
 .mon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
@@ -1165,6 +1169,7 @@ function render(){
   if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary"&&dTab==='diary')loadDiary(); if(tab==="dash"){loadReadiness();loadFreeNow();} if(tab==="notify"&&!PUSH._init){PUSH._init=true;initPush().then(()=>render());} if(tab==="versions")loadVersions(); if(tab==="build"&&bTab==='combine')loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="owner")loadOwner(); if(tab==="students")loadStudents(); if(tab==="gsplit")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
   document.body.classList.toggle('wide-view', tab==='build');   // Auto Set shows full-width
   paintBoxes();
+  if(HLT&&(tab==='class'||tab==='school'))hlApply(HLT);   // keep teacher-highlight after re-render
 }
 // Give every box on a page its own soft light colour (cards, KPI tiles, dropdowns & inputs). Boxes that set their own background keep it; timetable-grid cells are left alone.
 const BOXPAL=[['#eef4ff','#cdddf5'],['#eafaf0','#c7ead6'],['#fff7e8','#f3e4bf'],['#f6efff','#e4d4f5'],['#fff0f1','#f7d4d8'],['#eafcff','#c8ebf0'],['#f2fae2','#dbe9bd'],['#fdf0f8','#f4d2e4'],['#eef7ff','#cfe0f5'],['#fef6ec','#f2e0c2']];
@@ -1992,6 +1997,7 @@ function mSubjectsView(){
      <input class="smed" list="medlist" title="${t('ph_medium')}" style="width:78px" value="${(s.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('subjects',${s.id},{medium:this.value})">
      <label class="chk" title="${t('subj_active_hint')}"><input type="checkbox" ${off?'':'checked'} onchange="upd('subjects',${s.id},{active:this.checked?1:0})">${off?t('subj_inactive'):t('subj_active')}</label>
      <label class="chk" title="${t('dbl_hint')}"><input type="checkbox" ${+s.double_period===1?'checked':''} onchange="upd('subjects',${s.id},{double_period:this.checked?1:0})">${t('dbl_label')}</label>
+     <span class="chk" title="Timetable box colour (blank = auto)" style="gap:4px"><input type="color" value="${s.color||subjCol(s.id).ac}" onchange="upd('subjects',${s.id},{color:this.value})" style="width:30px;height:24px;padding:0;border:1px solid var(--line);border-radius:6px;cursor:pointer;vertical-align:middle"><button class="ghost mini" title="Auto colour" onclick="upd('subjects',${s.id},{color:''})">↺</button></span>
      <button class="ghost mini red" style="margin-left:auto" onclick="del('subjects',${s.id})">✕</button></div>`;}).join('');
   // medium dropdown only when at least one medium actually exists (else it looks like it does nothing)
   const medFilter=medOpts.length?`<div class="row" style="gap:6px;align-items:center">
@@ -2533,12 +2539,27 @@ async function setTea(c,d,p,v){await saveCell(c,d,p,{teacher_id:v||null});}
 async function setRoom(c,d,p,v){await saveCell(c,d,p,{room_id:v||null});}
 
 // ---------- CLASS VIEW ----------
+// ---------- SUBJECT COLOURS + HIGHLIGHT-TEACHER ----------
+const SUBPAL=[['#e0f2fe','#0369a1'],['#dcfce7','#15803d'],['#fef9c3','#a16207'],['#ede9fe','#6d28d9'],['#ffe4e6','#be123c'],['#cffafe','#0e7490'],['#fee2e2','#b91c1c'],['#e9fbe5','#166534'],['#fae8ff','#a21caf'],['#ffedd5','#c2410c'],['#e0e7ff','#3730a3'],['#d1fae5','#047857'],['#fce7f3','#9d174b'],['#ecfccb','#4d7c0f'],['#e2e8f0','#334155'],['#fff1f2','#9f1239']];
+function _hexLight(hex){ hex=String(hex||'').replace('#',''); if(hex.length===3)hex=hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); if(isNaN(n))return '#eef2f7'; let r=(n>>16)&255,g=(n>>8)&255,b=n&255,m=0.80; r=Math.round(r+(255-r)*m);g=Math.round(g+(255-g)*m);b=Math.round(b+(255-b)*m); return 'rgb('+r+','+g+','+b+')'; }
+function subjCol(sid){ const s=subjects.find(x=>x.id===sid); if(s&&s.color){ return {bg:_hexLight(s.color),ac:s.color}; } const i=subjects.findIndex(x=>x.id===sid); const p=SUBPAL[(i<0?0:i)%SUBPAL.length]; return {bg:p[0],ac:p[1]}; }
+function cellStyleAttr(sid,tid){ if(sid==null) return ''; const c=subjCol(sid); return ` style="background:${c.bg};border-left:5px solid ${c.ac}"`+(tid?` data-tch="${tid}"`:''); }
+let HLT='';
+function hlApply(txt){ HLT=String(txt||''); const q=HLT.trim().toLowerCase(); const wrap=document.getElementById('ttwrap'); if(!wrap)return;
+  if(!q){ wrap.classList.remove('hlmode'); wrap.querySelectorAll('td.hl-on').forEach(td=>td.classList.remove('hl-on')); return; }
+  const ids=new Set(teachers.filter(tt=>String(tt.name).toLowerCase().includes(q)).map(tt=>tt.id));
+  wrap.classList.add('hlmode');
+  wrap.querySelectorAll('td[data-tch]').forEach(td=>td.classList.toggle('hl-on', ids.has(+td.getAttribute('data-tch'))));
+  wrap.querySelectorAll('td[data-tchs]').forEach(td=>{ const arr=(td.getAttribute('data-tchs')||'').split(',').map(Number); td.classList.toggle('hl-on', arr.some(x=>ids.has(x))); });
+}
+function hlClear(){ const i=document.getElementById('hlInp'); if(i)i.value=''; hlApply(''); }
+function hlBar(){ return `<div class="row" style="align-items:center;gap:8px;margin:2px 0 12px;flex-wrap:wrap"><span class="small" style="font-weight:800;color:#4c1d95">🔍 Highlight teacher</span><input id="hlInp" placeholder="type a teacher name…" oninput="hlApply(this.value)" value="${sesc(HLT)}" style="min-width:190px"><button class="ghost mini" onclick="hlClear()">✕ clear</button><span class="small" style="color:#5c6580">their boxes glow, rest fade</span></div>`; }
 function classView(){const slots0=slotsFor(firstWD());
   let head=`<th>${t('day')}</th>`+slots0.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}</th>`).join("");
   let rows=WD().map((di)=>{const slots=slotsFor(di);let pi=0,cells=`<td class="ph">${DD()[di]}</td>`;
     slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}const cc=cell(curClass,di,pi);const sp=splitAt(curClass,di,pi);pi++;
       if(sp){ cells+=splitCellHTML(sp); }
-      else cells+=cc&&cc.subject_id?`<td${cc&&+cc.locked?' style="background:#fffbeb"':''}><div class="subj">${sName(cc.subject_id)}${cc&&+cc.locked?' 🔒':''}</div><div class="tch">${tName(cc.teacher_id)||'—'}</div>${cc.room_id?`<div class="rm">${rName(cc.room_id)}</div>`:''}</td>`:`<td class="free">—</td>`;});
+      else cells+=cc&&cc.subject_id?`<td${cellStyleAttr(cc.subject_id,cc.teacher_id)}><div class="subj">${sName(cc.subject_id)}${cc&&+cc.locked?' 🔒':''}</div><div class="tch">${tName(cc.teacher_id)||'—'}</div>${cc.room_id?`<div class="rm">${rName(cc.room_id)}</div>`:''}</td>`:`<td class="free">—</td>`;});
     return `<tr>${cells}</tr>`;}).join("");
   const curCls=classes.find(c=>c.id===curClass)||{};
   const ctName=curCls.class_teacher_id?tName(curCls.class_teacher_id):'';
@@ -2551,7 +2572,8 @@ function classView(){const slots0=slotsFor(firstWD());
      <button class="ghost" onclick="shareClass()">🔗 ${t('share_link')}</button></div>
    ${weekBar()}<div id="sharebox"></div>
    ${(ALLELECTIVES||[]).some(e=>e.class_id===curClass)?`<div class="small" style="color:#7c3aed;margin:2px 0 8px">${t('split_hint')}</div>`:''}
-   <div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
+   ${hlBar()}
+   <div id="ttwrap" style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
 async function shareClass(){ if(!curClass)return; const box=document.getElementById('sharebox');
   const r=await api('POST','/api/sharelinks',{target_id:curClass}); if(r&&r.error){showErr(r.error);return;}
   const url=location.origin+'/share/'+r.token;
@@ -2563,8 +2585,9 @@ function sesc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;',
 function maxTeachPeriods(){ let m=1; WD().forEach(di=>{ m=Math.max(m, slotsFor(di).filter(s=>!s.brk).length); }); return m; }
 function electiveAt(di,pi){ return ELECTIVES.find(e=>e.day_of_week===di&&e.period_index===pi&&(e.week_index||0)===0); }
 function splitAt(cid,di,pi){ return (ALLELECTIVES||[]).find(e=>e.class_id===cid&&e.day_of_week===di&&e.period_index===pi&&(e.week_index||0)===(ttWeek||0)); }
-function splitCellHTML(sp){ const opts=(sp.options||[]).map(o=>`<div style="border-top:1px dashed #e6e1f7;padding:2px 0"><b style="font-size:11.5px">${sesc(o.label)}</b> <span style="font-size:11px;color:#475569">${sesc(sName(o.subject_id)||'')}${o.teacher_id?' · '+sesc(tName(o.teacher_id)):''}${o.room_id?' · '+sesc(rName(o.room_id)):''}</span></div>`).join('')||`<div class="small" style="color:#94a3b8">${t('opt_none2')}</div>`;
-  return `<td style="background:#faf8ff;vertical-align:top" title="${t('split_title')}"><div class="small" style="color:#7c3aed;font-weight:700">⧉ ${sesc(sp.name||'')}</div>${opts}</td>`; }
+function splitCellHTML(sp){ const opts=(sp.options||[]).map(o=>{ const c=subjCol(o.subject_id); return `<div style="background:${c.bg};border-left:5px solid ${c.ac};padding:3px 6px"><b style="font-size:11.5px">${sesc(o.label)}</b> <span style="font-size:11px;color:#475569">${sesc(sName(o.subject_id)||'')}${o.teacher_id?' · '+sesc(tName(o.teacher_id)):''}${o.room_id?' · '+sesc(rName(o.room_id)):''}</span></div>`; }).join('')||`<div class="small" style="color:#94a3b8">${t('opt_none2')}</div>`;
+  const tchs=(sp.options||[]).map(o=>o.teacher_id).filter(Boolean).join(',');
+  return `<td${tchs?` data-tchs="${tchs}"`:''} style="vertical-align:top;padding:0;overflow:hidden" title="${t('split_title')}"><div class="small" style="color:#7c3aed;font-weight:700;padding:2px 6px">⧉ ${sesc(sp.name||'')}</div>${opts}</td>`; }
 function elecOption(e,oid){ return (e.options||[]).find(o=>o.id===oid); }
 function pickSClass(id){ curSClass=+id; curStudent=null; cbSubs={}; cbDays=new Set(); cbPeriods=new Set(); cbEditIds=[]; cbPrevClass=null; loadStudents(); }
 let elDay=null, elPeriod=0, OPTSEL={};
@@ -2836,7 +2859,7 @@ function teacherView(){const slots0=slotsFor(firstWD());let load=0;
   let rows=WD().map((di)=>{const slots=slotsFor(di);let pi=0,cells=`<td class="ph">${DD()[di]}${absentDay(curTeacher).includes(di)?' <span class="pill proxy">'+t('absent')+'</span>':''}</td>`;
     slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}
       let f=null;classes.forEach(c=>{const cc=cell(c.id,di,pi);if(cc&&cc.teacher_id===curTeacher)f={cls:c.name,s:cc.subject_id};});pi++;
-      if(f){load++;cells+=`<td><div class="subj">${sName(f.s)}</div><div class="tch">${f.cls}</div></td>`;}else cells+=`<td class="free">${t('free')}</td>`;});
+      if(f){load++;cells+=`<td${cellStyleAttr(f.s,curTeacher)}><div class="subj">${sName(f.s)}</div><div class="tch">${f.cls}</div></td>`;}else cells+=`<td class="free">${t('free')}</td>`;});
     return `<tr>${cells}</tr>`;}).join("");
   return `${(ME&&ME.role==='teacher')?myLeaveCard():''}<div class="card"><h2>${t('teacher_title')}</h2><div class="row" style="margin-bottom:12px">
      <div><label>${t('teacher')}</label><select onchange="curTeacher=+this.value;render()">${teachers.map(t2=>`<option value="${t2.id}" ${t2.id===curTeacher?'selected':''}>${t2.name}</option>`).join("")}</select></div>
@@ -2857,13 +2880,13 @@ function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=
   let head=`<th>${t('th_class_period')}</th>`+slots.map(s=>`<th>${s.brk?(s.kind==='lunch'?'🍽':'☕'):s.label}<br><span style="font-weight:400;font-size:11.5px">${s.start}</span></th>`).join("");
   let rows=filteredClasses().map(c=>{let pi=0,cells=`<td class="ph">${c.name}</td>`;
     slots.forEach(sl=>{if(sl.brk){cells+=`<td style="background:#fff7e6" title="${sl.label}">${sl.kind==='lunch'?'🍽':'☕'}</td>`;return;}const cc=cell(c.id,di,pi);pi++;
-      cells+=cc&&cc.subject_id?`<td><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}${cc.room_id?' · '+rName(cc.room_id):''}</div></td>`:`<td class="free">—</td>`;});
+      cells+=cc&&cc.subject_id?`<td${cellStyleAttr(cc.subject_id,cc.teacher_id)}><div class="subj">${sName(cc.subject_id)}</div><div class="tch">${tName(cc.teacher_id)||'—'}${cc.room_id?' · '+rName(cc.room_id):''}</div></td>`:`<td class="free">—</td>`;});
     return `<tr>${cells}</tr>`;}).join("");
   return `<div class="card">
    <div class="row" style="margin-bottom:12px;align-items:flex-end;gap:12px;flex-wrap:wrap"><div style="flex:1 1 200px;min-width:170px"><h2 style="margin:0;font-size:20px">${t('school_title')}</h2><div class="desc" style="margin:2px 0 0">${t('school_desc')}</div></div>${filterSelectsHTML()}<div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <button class="ghost" onclick="printDoc(t('print_school_title')+' '+DD()[buildDay],'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="dl('/api/export/timetable.xlsx')">${t('excel_all')}</button></div>
-   ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
+   ${weekBar()}${hlBar()}<div id="ttwrap" style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
 
 // ---------- QUOTA ----------
 let quotaData=[];

@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v51';
+const SW_JS = `const CACHE='aumtara-v52';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -628,7 +628,7 @@ function simpleCrud(route, tbl, cols){
   app.delete('/api/'+route+'/:id', h(async (req,res)=>{ await run(`DELETE FROM ${tbl} WHERE id=? AND school_id=?`, [req.params.id, req.sid]); res.json({ok:true}); }));
 }
 simpleCrud('classes','tt_class',['name','class_teacher_id','board','medium','standard','section','ct_first_period']);
-simpleCrud('subjects','tt_subject',['name','active','double_period','medium']);
+simpleCrud('subjects','tt_subject',['name','active','double_period','medium','color']);
 simpleCrud('rooms','tt_room',['name','capacity']);
 
 // ---------- SETUP READINESS (checklist %) ----------
