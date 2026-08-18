@@ -156,9 +156,9 @@ th{background:var(--navy);color:#fff;} td.ph{background:#eef2fb;font-weight:700;
 .clsrow input,.clsrow select{min-width:0;}
 .clsrow input,.clsrow select{font-size:12.5px;padding:4px 6px;}
 .clsrow .cn{width:104px;font-weight:600;}
-.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:6px 14px;margin-top:4px;max-width:1120px;margin-left:auto;margin-right:auto;}
-.subrow{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;padding:5px 7px;border:1px solid #eef1f6;border-radius:8px;background:#fafbfe;overflow:hidden;}
-.subrow>input:first-child{flex:1 1 70px;min-width:46px;max-width:150px;font-size:13px;font-weight:600;padding:4px 6px;}
+.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:6px 14px;margin-top:4px;}
+.subrow{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;padding:5px 8px;border:1px solid #eef1f6;border-radius:8px;background:#fafbfe;}
+.subrow>input:first-child{flex:1 1 120px;min-width:70px;font-size:13.5px;font-weight:600;padding:5px 8px;}
 .subrow .chk{flex:0 0 auto;}.subrow .smed{flex:0 0 auto;}.subrow>button{flex:0 0 auto;}
 .subrow .smed{flex:0 0 auto;font-size:12px;font-weight:400;color:#4a5670;padding:4px 6px;background:#fff;}
 .subrow .chk{font-size:11.5px;white-space:nowrap;}
@@ -2046,7 +2046,7 @@ function mSubjectsView(){
   const shown=subjMed?subjects.filter(s=>(s.medium||'').trim()===subjMed):subjects;   // filter to selected medium, else all
   const medlist=`<datalist id="medlist">${M.all.map(m=>`<option value="${m.replace(/"/g,'&quot;')}">`).join('')}</datalist>`;
   const subList=shown.map(s=>{const off=+s.active===0;return `<div class="subrow" style="${off?'opacity:.55':''}"><input value="${(s.name||'').replace(/"/g,'&quot;')}" onchange="upd('subjects',${s.id},{name:this.value})">
-     <input class="smed" list="medlist" title="${t('ph_medium')}" style="width:78px" value="${(s.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('subjects',${s.id},{medium:this.value})">
+     <input class="smed" list="medlist" title="${t('ph_medium')}" style="width:56px" value="${(s.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('subjects',${s.id},{medium:this.value})">
      <label class="chk" title="${t('subj_active_hint')}"><input type="checkbox" ${off?'':'checked'} onchange="upd('subjects',${s.id},{active:this.checked?1:0})">${off?t('subj_inactive'):t('subj_active')}</label>
      <label class="chk" title="${t('dbl_hint')}"><input type="checkbox" ${+s.double_period===1?'checked':''} onchange="upd('subjects',${s.id},{double_period:this.checked?1:0})">${t('dbl_label')}</label>
      <button class="ghost mini" title="Timetable box colour — click to change" onclick="colorEditId=(colorEditId===${s.id}?null:${s.id});render()" style="background:${subjCol(s.id).bg};border:1px solid var(--line);border-left:6px solid ${subjCol(s.id).ac};font-weight:700">🎨</button>
