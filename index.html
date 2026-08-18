@@ -1997,8 +1997,8 @@ function mSubjectsView(){
      <input class="smed" list="medlist" title="${t('ph_medium')}" style="width:78px" value="${(s.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('subjects',${s.id},{medium:this.value})">
      <label class="chk" title="${t('subj_active_hint')}"><input type="checkbox" ${off?'':'checked'} onchange="upd('subjects',${s.id},{active:this.checked?1:0})">${off?t('subj_inactive'):t('subj_active')}</label>
      <label class="chk" title="${t('dbl_hint')}"><input type="checkbox" ${+s.double_period===1?'checked':''} onchange="upd('subjects',${s.id},{double_period:this.checked?1:0})">${t('dbl_label')}</label>
-     <span class="chk" title="Timetable box colour (blank = auto)" style="gap:4px"><input type="color" value="${s.color||subjCol(s.id).ac}" onchange="upd('subjects',${s.id},{color:this.value})" style="width:30px;height:24px;padding:0;border:1px solid var(--line);border-radius:6px;cursor:pointer;vertical-align:middle"><button class="ghost mini" title="Auto colour" onclick="upd('subjects',${s.id},{color:''})">↺</button></span>
-     <button class="ghost mini red" style="margin-left:auto" onclick="del('subjects',${s.id})">✕</button></div>`;}).join('');
+     <button class="ghost mini" title="Timetable box colour — click to change" onclick="colorEditId=(colorEditId===${s.id}?null:${s.id});render()" style="background:${subjCol(s.id).bg};border:1px solid var(--line);border-left:6px solid ${subjCol(s.id).ac};font-weight:700">🎨</button>
+     <button class="ghost mini red" style="margin-left:auto" onclick="del('subjects',${s.id})">✕</button></div>${colorEditId===s.id?colorPalette(s.id):''}`;}).join('');
   // medium dropdown only when at least one medium actually exists (else it looks like it does nothing)
   const medFilter=medOpts.length?`<div class="row" style="gap:6px;align-items:center">
        <span class="small" style="color:#5c6580;font-weight:700">${t('ph_medium')}:</span>
@@ -2540,9 +2540,13 @@ async function setRoom(c,d,p,v){await saveCell(c,d,p,{room_id:v||null});}
 
 // ---------- CLASS VIEW ----------
 // ---------- SUBJECT COLOURS + HIGHLIGHT-TEACHER ----------
-const SUBPAL=[['#e0f2fe','#0369a1'],['#dcfce7','#15803d'],['#fef9c3','#a16207'],['#ede9fe','#6d28d9'],['#ffe4e6','#be123c'],['#cffafe','#0e7490'],['#fee2e2','#b91c1c'],['#e9fbe5','#166534'],['#fae8ff','#a21caf'],['#ffedd5','#c2410c'],['#e0e7ff','#3730a3'],['#d1fae5','#047857'],['#fce7f3','#9d174b'],['#ecfccb','#4d7c0f'],['#e2e8f0','#334155'],['#fff1f2','#9f1239']];
-function _hexLight(hex){ hex=String(hex||'').replace('#',''); if(hex.length===3)hex=hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); if(isNaN(n))return '#eef2f7'; let r=(n>>16)&255,g=(n>>8)&255,b=n&255,m=0.80; r=Math.round(r+(255-r)*m);g=Math.round(g+(255-g)*m);b=Math.round(b+(255-b)*m); return 'rgb('+r+','+g+','+b+')'; }
-function subjCol(sid){ const s=subjects.find(x=>x.id===sid); if(s&&s.color){ return {bg:_hexLight(s.color),ac:s.color}; } const i=subjects.findIndex(x=>x.id===sid); const p=SUBPAL[(i<0?0:i)%SUBPAL.length]; return {bg:p[0],ac:p[1]}; }
+const SUBPAL=['#0369a1','#15803d','#a16207','#6d28d9','#be123c','#0e7490','#b91c1c','#166534','#a21caf','#c2410c','#3730a3','#047857','#9d174b','#4d7c0f','#334155','#0891b2','#7c3aed','#ea580c'];
+function _hexLight(hex,m){ if(m==null)m=0.58; hex=String(hex||'').replace('#',''); if(hex.length===3)hex=hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); if(isNaN(n))return '#eef2f7'; let r=(n>>16)&255,g=(n>>8)&255,b=n&255; r=Math.round(r+(255-r)*m);g=Math.round(g+(255-g)*m);b=Math.round(b+(255-b)*m); return 'rgb('+r+','+g+','+b+')'; }
+function subjCol(sid){ const s=subjects.find(x=>x.id===sid); const ac=(s&&s.color)? s.color : SUBPAL[(Math.max(0,subjects.findIndex(x=>x.id===sid)))%SUBPAL.length]; return {bg:_hexLight(ac), ac:ac}; }
+let colorEditId=null;
+async function setSubColor(id,hex){ colorEditId=null; await upd('subjects',id,{color:hex}); }
+function colorPalette(id){ const sw=SUBPAL.map(hex=>`<button title="${hex}" onclick="setSubColor(${id},'${hex}')" style="width:30px;height:26px;border-radius:6px;border:1px solid #cbd5e1;border-left:6px solid ${hex};background:${_hexLight(hex)};cursor:pointer"></button>`).join('');
+  return `<div class="subrow" style="background:#f8fafc;gap:6px;flex-wrap:wrap;align-items:center;padding:9px 11px;border:1px dashed #dbe1ee;border-radius:9px;margin:2px 0 8px"><span class="small" style="font-weight:800;color:#4c1d95">🎨 Pick a colour</span>${sw}<button class="ghost mini" onclick="setSubColor(${id},'')">↺ Auto</button><span class="small" style="display:inline-flex;align-items:center;gap:5px;color:#5c6580">or custom <input type="color" onchange="setSubColor(${id},this.value)" style="width:32px;height:24px;padding:0;border:1px solid #cbd5e1;border-radius:6px;vertical-align:middle"></span></div>`; }
 function cellStyleAttr(sid,tid){ if(sid==null) return ''; const c=subjCol(sid); return ` style="background:${c.bg};border-left:5px solid ${c.ac}"`+(tid?` data-tch="${tid}"`:''); }
 let HLT='';
 function hlApply(txt){ HLT=String(txt||''); const q=HLT.trim().toLowerCase(); const wrap=document.getElementById('ttwrap'); if(!wrap)return;
