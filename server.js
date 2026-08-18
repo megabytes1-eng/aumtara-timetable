@@ -973,13 +973,17 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const subjWeight={};
   classes.forEach(c=>{ const w={}; quotas.filter(x=>x.class_id===c.id).forEach(x=>{ w[x.subject_id]=(w[x.subject_id]||0)+(+x.per_week||0); }); subjWeight[c.id]=w; });
 
-  // build per-class subject pool honouring quota (fallback: even rotation)
+  // A subject is only scheduled if it has at least one teacher connected. Subjects with NO teacher are
+  // ignored entirely (not counted, not placed) so extra/unstaffed subjects never leave blank cells.
+  const staffedSet=new Set(tmap.map(m=>m.subject_id));
+  const staffedSubjects=subjects.filter(s=>staffedSet.has(s.id));
+  // build per-class subject pool honouring quota (fallback: even rotation) — staffed subjects only
   function poolFor(cid, totalSlots){
-    const qs=quotas.filter(x=>x.class_id===cid && activeSet.has(x.subject_id));
+    const qs=quotas.filter(x=>x.class_id===cid && activeSet.has(x.subject_id) && staffedSet.has(x.subject_id));
     let pool=[];
     if(qs.length){ qs.forEach(x=>{ for(let i=0;i<x.per_week;i++) pool.push(x.subject_id); }); }
-    if(!subjects.length) return [];   // no active subjects → nothing to schedule
-    if(pool.length<totalSlots){ let i=0; while(pool.length<totalSlots){ pool.push(subjects[i%subjects.length].id); i++; } }
+    if(!staffedSubjects.length) return pool.slice(0,totalSlots);   // no staffed subjects → don't fabricate cells
+    if(pool.length<totalSlots){ let i=0; while(pool.length<totalSlots){ pool.push(staffedSubjects[i%staffedSubjects.length].id); i++; } }
     return pool.slice(0,totalSlots);
   }
 
