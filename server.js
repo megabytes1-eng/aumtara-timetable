@@ -1027,7 +1027,10 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
       idx=pool.reduce((best,i)=>{ const wi=w[rem[i]]||0, wb=w[rem[best]]||0; return (early? wi>wb : wi<wb) ? i : best; }, pool[0]);
     } else { idx = pool.length ? pool[0] : -1; }
     if(idx<0) idx=0;   // nothing satisfies the rules → take next to avoid leaving a gap
-    const s=rem.splice(idx,1)[0];
+    return {s:rem[idx], idx, staffable: (usedT?canStaffNow(cid,rem[idx],di,pi,usedT):true)};   // PEEK only — caller commits (or defers to a later slot if it can't be staffed now)
+  }
+  function commitPick(cid,di,idx){   // actually consume the peeked subject + record it for spread/rule tracking
+    const rem=remaining[cid]; const s=rem.splice(idx,1)[0];
     (daySubs[cid+'_'+di]=daySubs[cid+'_'+di]||new Set()).add(s);
     prevSub[cid+'_'+di]=s;
     return s;
@@ -1059,8 +1062,9 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
           }
           if(lockSlot.has(wk+'_'+c.id+'_'+di+'_'+pi)) return;   // fixed/locked cell → keep as-is, don't reschedule
           if(blocked(classBlock,c.id,di,pi)) return;   // class marked unavailable this slot → leave empty
-          const subjId=pickSubject(c.id,di,pi,usedT);
-          if(subjId==null) return;   // class has no schedulable subjects
+          const pick=pickSubject(c.id,di,pi,usedT);
+          if(pick==null) return;   // class has no schedulable subjects
+          const subjId=pick.s;
           let t;
           const pinned=pinT[c.id+'_'+subjId];
           if(pinned!=null){
@@ -1077,6 +1081,9 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
             });
             t=opts[0] ?? teachersForSubject(subjId).find(x=>!usedT.has(x)&&!blocked(teacherBlock,x,di,pi)&&(load[x]||0)<maxLoad[x]&&capOk(x,di,pi)) ?? null;
           }
+          // ⭐ DEFER unstaffable picks: keep the subject in the pool for a LATER slot where a teacher is free, instead of dumping it here as an unstaffed cell. Every pool subject has ≥1 qualified teacher (poolFor only adds staffed subjects), so t==null just means "teachers busy this slot". Genuine leftovers that never find a free slot are placed as unstaffed in a final pass (below) so they stay visible in the Generate Log. This spreads a single-teacher subject (Drawing→only Dharmesh) across the week instead of clustering it.
+          if(t==null) return;
+          commitPick(c.id,di,pick.idx);
           const room=rooms.find(r=>!usedR.has(r.id)&&!blocked(roomBlock,r.id,di,pi));
           // start a consecutive double period when this subject wants one and the next teaching period is free for this class
           const canDbl = dblSet.has(subjId) && (pi+1)<slots.length
@@ -1094,6 +1101,18 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
           }
         });
       });
+    });
+    // FINAL PASS: subjects that could not be staffed in ANY slot this week are still in the pool → drop them into each class's remaining EMPTY teaching slots as unstaffed cells, so a genuine shortage stays visible in the Generate Log (deferring above only stops PREMATURE unstaffed cells; it must not hide a real shortage).
+    classes.forEach(c=>{ const rem=remaining[c.id]; if(!rem||!rem.length) return;
+      const occupied=new Set(weekRows.filter(r=>r.cid===c.id).map(r=>r.di+'_'+r.pi));
+      for(const di of dayList){ const dslots=teachingSlots(di, sid);
+        for(let pi=0; pi<dslots.length && rem.length; pi++){ const key=di+'_'+pi;
+          if(occupied.has(key)) continue;
+          if(lockSlot.has(wk+'_'+c.id+'_'+di+'_'+pi)) continue;
+          if(blocked(classBlock,c.id,di,pi)) continue;
+          const s=rem.shift(); weekRows.push({cid:c.id,di,pi,subject_id:s,teacher_id:null,room_id:null}); occupied.add(key);
+        }
+      }
     });
     if(optSolver){ const fixedT={},fixedR={}; for(const k in lockUseAt){ const p=k.split('_'); if(+p[0]===wk){ const sk=p[1]+'_'+p[2]; (fixedT[sk]=fixedT[sk]||new Set()); lockUseAt[k].T.forEach(x=>fixedT[sk].add(x)); (fixedR[sk]=fixedR[sk]||new Set()); lockUseAt[k].R.forEach(x=>fixedR[sk].add(x)); } }
       optimizeWeek(weekRows, {teacherBlock,roomBlock,absent,capCons,subjWeight,clsRules,rkey,fixedT,fixedR}); }   // deep local-search improvement pass (locked cells kept busy)
