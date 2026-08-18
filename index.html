@@ -950,8 +950,8 @@ function showUserChip(){if(!ME)return;let c=document.getElementById('userchip');
   c.innerHTML=`<span>👤 ${nm} · <b>${t('role_'+ME.role)}</b></span><button class="helpbtn" id="helpbtn" onclick="openHelp()" title="Help Center" aria-label="Help">?</button><button class="ghost mini" style="background:#2c4a7c;color:#fff;border-color:#3f5f95" onclick="doLogout()">${t('logout')}</button>`;}
 // role → which tabs are visible
 const ROLE_TABS={
-  principal:['dash','mclasses','msubjects','gsplit','mteachers','mrooms','hours','quota','avail','build','optimizer','class','students','teacher','diary','school','insights','sub','monitor','notify','reports','versions','data','help'],
-  supervisor:['dash','class','students','gsplit','teacher','school','insights','sub','monitor','notify','reports','diary','help'],
+  principal:['dash','mclasses','msubjects','gsplit','mteachers','mrooms','hours','quota','avail','build','genlog','optimizer','class','students','teacher','diary','school','insights','sub','monitor','notify','reports','versions','data','help'],
+  supervisor:['dash','class','students','gsplit','teacher','genlog','school','insights','sub','monitor','notify','reports','diary','help'],
   teacher:['dash','class','teacher','diary','notify','reports','help'],
 };
 function allowedTabs(){const r=(ME&&ME.role)||'master';const owner=!!(ME&&ME.is_owner);
@@ -1150,7 +1150,7 @@ const absentDay=tid=>absence.filter(a=>a.teacher_id===tid).map(a=>a.day_of_week)
 const conflictCount=()=>conflicts.teacher.length+conflicts.room.length;
 
 function L(ent){ const c=config&&config['label_'+ent]; return (c&&(''+c).trim())?(''+c):''; }  // custom entity label or ''
-const TABKEYS=[["dash","nav_dash"],["mclasses","setup_classes"],["msubjects","setup_subjects"],["gsplit","nav_gsplit"],["mteachers","setup_teachers"],["mrooms","setup_rooms"],["hours","nav_hours"],["quota","nav_quota"],["avail","nav_avail"],["build","nav_build"],["optimizer","opt_title"],["class","nav_class"],["students","nav_students"],["teacher","nav_teacher"],["diary","nav_diary"],["school","nav_school"],["insights","nav_insights"],["sub","nav_sub"],["monitor","nav_monitor"],["notify","push_title"],["reports","nav_reports"],["versions","nav_versions"],["data","nav_data"],["usage","nav_usage"],["owner","nav_owner"],["schools","nav_schools"],["users","nav_users"],["help","nav_help"]];
+const TABKEYS=[["dash","nav_dash"],["mclasses","setup_classes"],["msubjects","setup_subjects"],["gsplit","nav_gsplit"],["mteachers","setup_teachers"],["mrooms","setup_rooms"],["hours","nav_hours"],["quota","nav_quota"],["avail","nav_avail"],["build","nav_build"],["genlog","nav_genlog"],["optimizer","opt_title"],["class","nav_class"],["students","nav_students"],["teacher","nav_teacher"],["diary","nav_diary"],["school","nav_school"],["insights","nav_insights"],["sub","nav_sub"],["monitor","nav_monitor"],["notify","push_title"],["reports","nav_reports"],["versions","nav_versions"],["data","nav_data"],["usage","nav_usage"],["owner","nav_owner"],["schools","nav_schools"],["users","nav_users"],["help","nav_help"]];
 function render(){
   if(loggedOut||!ME)return;
   const allow=allowedTabs();
@@ -1158,14 +1158,14 @@ function render(){
   const allowSet=new Set(allow.map(([k])=>k)), TABLABEL=Object.fromEntries(TABKEYS);
   const seen=new Set();
   let navHtml=NAVGROUPS.map(g=>{const items=g.tabs.filter(k=>allowSet.has(k));items.forEach(k=>seen.add(k));if(!items.length)return"";
-    const itemHtml=items.map(k=>{const lbl=(k==='class'&&L('class'))||(k==='teacher'&&L('teacher'))||(k==='gsplit'&&'🧩 Combine Subjects')||t(TABLABEL[k]);return `<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${lbl}</div>`;}).join("");
+    const itemHtml=items.map(k=>{const lbl=(k==='class'&&L('class'))||(k==='teacher'&&L('teacher'))||(k==='gsplit'&&'🧩 Combine Subjects')||(k==='genlog'&&'📋 Generate Log')||t(TABLABEL[k]);return `<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${lbl}</div>`;}).join("");
     if(!g.key)return itemHtml;// standalone (dash / bottom items) — no pulldown
     const collapsed=!!GRPCOLL[g.key];// click the heading to open/close
     return `<div class="navgrp ${collapsed?'collapsed':''}" onclick="toggleGrp('${g.key}')">${t(g.key)}<span class="car">▾</span></div><div class="navsec"${collapsed?' style="display:none"':''}>${itemHtml}</div>`;}).join("");
   const extra=allow.filter(([k])=>!seen.has(k));// any allowed tab not placed in a group
   if(extra.length)navHtml+=extra.map(([k,lk])=>`<div class="tab ${k===tab?'active':''}" onclick="setTab('${k}')">${t(lk)}</div>`).join("");
   document.getElementById("tabs").innerHTML=navHtml;
-  document.getElementById("view").innerHTML=({dash,mclasses:mClassesView,msubjects:mSubjectsView,gsplit:combineView,mteachers:mTeachersView,mrooms:mRoomsView,hours,quota:quotaView,avail:availView,build:builder,optimizer:optimizerCard,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,notify:pushCard,reports:reportsView,versions:versionsView,data:dataView,usage:usageView,owner:ownerView,schools:schoolsView,users:usersView,help}[tab])();
+  document.getElementById("view").innerHTML=({dash,mclasses:mClassesView,msubjects:mSubjectsView,gsplit:combineView,genlog:genLogView,mteachers:mTeachersView,mrooms:mRoomsView,hours,quota:quotaView,avail:availView,build:builder,optimizer:optimizerCard,class:classView,students:studentsView,teacher:teacherView,diary:diaryView,school:schoolView,insights:insightsView,sub:subView,monitor,notify:pushCard,reports:reportsView,versions:versionsView,data:dataView,usage:usageView,owner:ownerView,schools:schoolsView,users:usersView,help}[tab])();
   if(tab==="monitor")refreshMonitor(); if(tab==="sub"){loadCover();loadLeaves();loadLeaveTypes();} if(tab==="quota"){loadQuota();loadRules();} if(tab==="avail")loadAvail(); if(tab==="diary"&&dTab==='diary')loadDiary(); if(tab==="dash"){loadReadiness();loadFreeNow();} if(tab==="notify"&&!PUSH._init){PUSH._init=true;initPush().then(()=>render());} if(tab==="versions")loadVersions(); if(tab==="build"&&bTab==='combine')loadCombines(); if(tab==="users")loadUsers(); if(tab==="schools")loadSchools(); if(tab==="owner")loadOwner(); if(tab==="students")loadStudents(); if(tab==="gsplit")loadStudents(); if(tab==="insights")loadInsights(); if(tab==="teacher"&&ME&&ME.role==='teacher'){loadMyLeaves();loadLeaveTypes();}
   document.body.classList.toggle('wide-view', tab==='build');   // Auto Set shows full-width
   paintBoxes();
@@ -1272,7 +1272,7 @@ try{const _sp=localStorage.getItem('tt_sidenav');if(_sp==='off'||(_sp===null&&wi
 const NAVGROUPS=[
   {key:null, tabs:['dash']},
   {key:'grp_master', tabs:['mclasses','msubjects','gsplit','mteachers','mrooms','hours','students','quota','avail']},   // define the school + constraints
-  {key:'grp_build', tabs:['build','optimizer','class','teacher','school','insights','reports','versions']},   // build → view → insights → report → save
+  {key:'grp_build', tabs:['build','genlog','optimizer','class','teacher','school','insights','reports','versions']},   // build → view → insights → report → save
   {key:'grp_daily', tabs:['sub','monitor','diary','notify']},   // day-to-day operations
   {key:'grp_admin', tabs:['owner','data','usage','schools','users']},   // back-office (owner = SaaS panel, owner-only)
   {key:null, tabs:['help']},
@@ -1936,6 +1936,35 @@ function genReportCard(){
       <div style="display:flex;gap:6px;flex-wrap:wrap">${u.map(x=>`<span class="tag" style="background:#fee2e2;color:#991b1b;font-weight:700;font-size:12.5px">${sesc(x)}</span>`).join('')}</div></div>
       <button class="ghost mini" title="Dismiss" onclick="GEN_HIDDEN=true;render()">✕</button>
     </div></div>`;
+}
+function genLogView(){
+  let when=''; try{ when=LAST_GEN&&LAST_GEN.ts? new Date(LAST_GEN.ts).toLocaleString():''; }catch(e){}
+  const head=`<div class="card"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h2 style="margin:0">📋 Generate Log</h2>
+      <div class="row" style="gap:8px">
+        <button class="green" onclick="autoGen()">${t('btn_autogen')}</button>
+        ${LAST_GEN?`<button class="ghost mini red" onclick="if(confirm('Clear this log?')){LAST_GEN=null;try{localStorage.removeItem('tt_lastgen')}catch(e){};render();}">🗑 Clear</button>`:''}
+      </div></div>
+    <div class="small" style="color:#5c6580;margin-top:4px">Yaha pichhle Auto-generate ka poora result rehta hai — jitni baar bhi dekhna ho khol sakte ho. Har baar Auto-generate chalane par ye apne aap update ho jaata hai.</div></div>`;
+  if(!LAST_GEN){
+    return head+`<div class="card" style="background:#f6f8ff;border:1px solid #d6e0f5"><div style="color:#57608a">Abhi tak koi Auto-generate nahi chalaya gaya (ya log clear ho gaya). Upar <b>▶ Auto-generate</b> dabao — result yaha aa jaayega.</div></div>`;
+  }
+  const u=LAST_GEN.unstaffed||[]; const cells=LAST_GEN.cells||0;
+  const meta=`<div class="card"><div class="row" style="gap:18px;flex-wrap:wrap;font-size:14px">
+      <div><span class="small" style="color:#8891a6">Kab chalaya</span><br><b>${when||'—'}</b></div>
+      <div><span class="small" style="color:#8891a6">Periods bhare gaye</span><br><b style="color:#0e7c56">${cells}</b></div>
+      <div><span class="small" style="color:#8891a6">Bina teacher wale subject</span><br><b style="color:${u.length?'#b4443a':'#0e7c56'}">${u.length}</b></div>
+    </div></div>`;
+  let body;
+  if(!u.length){
+    body=`<div class="card" style="background:#ecfdf5;border:1px solid #bfe6d4"><div style="color:#0e7c56;font-weight:700;font-size:15px">✅ Har period ko teacher mil gaya — koi subject khali nahi raha.</div></div>`;
+  }else{
+    body=`<div class="card" style="background:#fff5f5;border:1px solid #f3c4c0">
+      <div style="color:#b4443a;font-weight:800;font-size:15px">⚠ ${u.length} subject ke kuchh period bina teacher reh gaye</div>
+      <div class="small" style="color:#5c6580;margin:4px 0 10px">Number = kitne period khali reh gaye. Theek karne ke liye: <b>Master → Teachers</b> me us subject ka doosra teacher add karo, YA uska <b>Weekly Quota</b> kam karo, phir dobara Auto-generate chalao.</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">${u.map(x=>`<span class="tag" style="background:#fee2e2;color:#991b1b;font-weight:700;font-size:13px">${sesc(x)}</span>`).join('')}</div></div>`;
+  }
+  return head+meta+body;
 }
 async function autoGen(){const b=event&&event.target;if(b){b.disabled=true;b.dataset.txt=b.textContent;b.textContent=t('btn_generating');}const r=await api('POST','/api/timetable/auto-generate');try{track('timetable_generate',{cells:(r&&r.cells)||0});}catch(e){}
   LAST_GEN={ts:new Date().toISOString(),cells:(r&&r.cells)||0,unstaffed:(r&&r.unstaffed)||[]}; GEN_HIDDEN=false; try{localStorage.setItem('tt_lastgen',JSON.stringify(LAST_GEN));}catch(e){}
