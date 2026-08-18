@@ -988,9 +988,16 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   function poolFor(cid, totalSlots){
     const qs=quotas.filter(x=>x.class_id===cid && activeSet.has(x.subject_id) && staffedSet.has(x.subject_id));
     let pool=[];
-    if(qs.length){ qs.forEach(x=>{ for(let i=0;i<x.per_week;i++) pool.push(x.subject_id); }); }
-    if(!staffedSubjects.length) return pool.slice(0,totalSlots);   // no staffed subjects → don't fabricate cells
-    if(pool.length<totalSlots){ let i=0; while(pool.length<totalSlots){ pool.push(staffedSubjects[i%staffedSubjects.length].id); i++; } }
+    if(qs.length){
+      // Class HAS a Weekly Quota → respect it EXACTLY. Do NOT pad the rest of the week with random subjects
+      // (that used to fill leftover slots with subjects whose teachers are busy → fake "unstaffed" cells).
+      // Leftover slots (quota + combines < week) stay FREE. Combines are reserved separately.
+      qs.forEach(x=>{ for(let i=0;i<x.per_week;i++) pool.push(x.subject_id); });
+      return pool.slice(0,totalSlots);
+    }
+    if(!staffedSubjects.length) return pool;   // no staffed subjects → don't fabricate cells
+    // Class has NO quota at all → auto-fill the week evenly ("leave 0 to let it fill automatically").
+    let i=0; while(pool.length<totalSlots){ pool.push(staffedSubjects[i%staffedSubjects.length].id); i++; }
     return pool.slice(0,totalSlots);
   }
 
