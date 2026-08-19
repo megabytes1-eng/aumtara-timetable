@@ -920,17 +920,15 @@ function showSchoolBar(){const hdr=document.querySelector('header');let el=docum
   const logo=cur.logo?`<img src="${cur.logo}" style="height:26px;max-width:60px;border-radius:5px;background:#fff;padding:1px;vertical-align:middle">`:'🏫';
   const selStyle='background:#2c4a7c;color:#fff;border:1px solid #3f5f95;border-radius:8px;padding:5px 8px;font-size:13px;font-weight:600';
   const isMaster=ME&&ME.role==='master';
-  const insts=schoolInstitutions();const keys=Object.keys(insts);const curKey=schoolGroupKey(cur);const inst=insts[curKey];
-  let html=logo+' ';
-  if(isMaster&&keys.length>1){
-    html+=`<select title="${t('inst_word')}" onchange="switchInstitution(this.value)" style="${selStyle}">${keys.map(k=>`<option value="${k}" ${k===curKey?'selected':''}>${esc(insts[k].name)}</option>`).join('')}</select>`;
-  } else { html+=`<span style="opacity:.92;font-weight:600">${esc(inst?inst.name:cur.name)}</span>`; }
-  if(inst){
-    const addOpt=isMaster?`<option value="__add__">＋ ${t('add_section')}</option>`:'';
-    html+=` <span style="opacity:.55">▸</span> <select title="${t('section_word')}" onchange="onSectionPick(this.value)" style="${selStyle}">${inst.sections.map(s=>`<option value="${s.id}" ${String(s.id)===String(SCHOOL)?'selected':''}>${esc(s.section_name||s.name)}</option>`).join('')}${addOpt}</select>`;
+  // Section shows as a label (not a dropdown) — it auto-follows whichever school is selected.
+  const secLabel=String(cur.section_name||'').trim();
+  const secChip=secLabel?` <span style="background:#1e3a68;border:1px solid #3f5f95;border-radius:8px;padding:4px 10px;font-weight:600;font-size:12.5px">${esc(secLabel)}</span>`:'';
+  if(isMaster&&SCHOOLS.length>1){
+    el.innerHTML=`${logo} <select title="${t('switch_school')}" onchange="switchSchool(this.value)" style="${selStyle}">${SCHOOLS.map(s=>`<option value="${s.id}" ${String(s.id)===String(SCHOOL)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>${secChip}`;
+  } else {
+    el.innerHTML=`${logo} <span style="opacity:.92;font-weight:600">${esc(cur.name)}</span>${secChip}`;
   }
-  el.innerHTML=html;}
-function onSectionPick(v){ if(v==='__add__'){ showSchoolBar(); setTab('schools'); return; } switchSchool(v); }
+}
 function switchInstitution(key){const cand=SCHOOLS.filter(s=>schoolGroupKey(s)===key);if(!cand.length)return;cand.sort((a,b)=>((a.section_order==null?999:a.section_order)-(b.section_order==null?999:b.section_order)));switchSchool(cand[0].id);}
 function switchSchool(id){SCHOOL=String(id);try{localStorage.setItem('tt_school',SCHOOL);}catch(e){}tab='dash';refreshModulesOff();showSchoolBar();loadAll();}
 function renderLogin(){loggedOut=false;const tb=document.getElementById('tabs');if(tb)tb.innerHTML='';const uc=document.getElementById('userchip');if(uc)uc.remove();const sb=document.getElementById('schoolbar');if(sb)sb.remove();
@@ -1736,23 +1734,17 @@ function ownerRenderLogs(){
 
 // ---------- SCHOOLS (multi-school management) ----------
 const MEDIUMS=['Gujarati','Hindi','Marathi','English','Semi-English','Tamil','Telugu','Bengali','Punjabi','Other'];
+const SECTIONS=['Pre-Primary','Primary','Upper Primary','High School','Higher Secondary','Commerce','BBA','BCA','Science','Arts','Other'];
+function sectionOptions(cur){cur=String(cur||'');const list=SECTIONS.slice();if(cur&&list.indexOf(cur)===-1)list.unshift(cur);return `<option value="">—</option>`+list.map(x=>`<option value="${x.replace(/"/g,'&quot;')}" ${x===cur?'selected':''}>${x}</option>`).join('');}
 let SCH_LIST=[];
 async function loadSchools(){try{SCH_LIST=await api('GET','/api/schools');}catch(e){SCH_LIST=[];}renderSchoolsBox();}
 function schoolsView(){return `<div class="card"><h2>${t('schools_title')}</h2><div class="desc">${t('schools_desc')}</div><div id="schoolsbox">…</div></div>
-   <div class="card"><h2>🏛 ${t('create_inst')}</h2><div class="desc">${t('create_inst_desc')}</div>
-     <div class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:6px">
-       <div style="flex:1 1 220px;min-width:180px"><label>${t('inst_name_lbl')}</label><input id="inst_name" placeholder="e.g. R. N. Naik"></div>
-       <div><label>${t('section_word')} 1</label><input id="sec1" value="Pre-Primary" style="width:120px"></div>
-       <div><label>${t('section_word')} 2</label><input id="sec2" value="Primary" style="width:120px"></div>
-       <div><label>${t('section_word')} 3</label><input id="sec3" value="High School" style="width:120px"></div>
-       <div><label>${t('section_word')} 4</label><input id="sec4" value="Higher Secondary" style="width:140px"></div>
-       <button class="green" onclick="createInstitution()">${t('add')}</button></div>
-     <div class="small" style="color:#5c6580;margin-top:6px">${t('create_inst_note')}</div></div>
    <div class="card"><h2>${t('schools_add')}</h2>
      <div class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end">
        <div style="flex:1 1 260px;min-width:220px"><label>${t('su_school')}</label><input id="ns_name" style="width:100%"></div>
        <div><label>${t('su_board')}</label><select id="ns_board" style="width:120px"><option value="">—</option>${BOARDS.map(b=>`<option value="${b}">${b}</option>`).join('')}</select></div>
-       <div><label>${t('su_medium')}</label><select id="ns_medium" style="width:120px"><option value="">—</option>${MEDIUMS.map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div>
+       <div><label>${t('su_medium')}</label><select id="ns_medium" style="width:96px"><option value="">—</option>${MEDIUMS.map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div>
+       <div><label>${t('section_word')}</label><select id="ns_section" style="width:135px">${sectionOptions('')}</select></div>
        <div style="flex:1 1 240px;min-width:200px"><label>${t('deo_address')}</label><input id="ns_address" style="width:100%" placeholder="${t('deo_address_ph')}"></div>
        <div><label>${t('deo_school_code')}</label><input id="ns_code" style="width:120px"></div>
        <div><label>${t('lbl_mobile')}</label><input id="ns_mobile" style="width:130px"></div>
@@ -1760,13 +1752,12 @@ function schoolsView(){return `<div class="card"><h2>${t('schools_title')}</h2><
        <button class="green" onclick="addSchool()">${t('add')}</button></div></div>`;}
 function renderSchoolsBox(){const box=document.getElementById('schoolsbox');if(!box)return;const av=s=>String(s==null?'':s).replace(/"/g,'&quot;');
   if(!SCH_LIST.length){box.innerHTML='<span class="small">'+t('none')+'</span>';return;}
-  box.innerHTML=`<div style="overflow:auto"><table><tr><th>${t('su_school')}</th><th>${t('inst_word')}</th><th>${t('section_word')}</th><th>${t('logo_word')}</th><th>${t('su_board')}</th><th>${t('su_medium')}</th><th>${t('u_active')}</th><th></th></tr>${SCH_LIST.map(s=>{const cur=String(s.id)===String(SCHOOL);return `<tr${cur?' style="background:#f0f7ff"':''}>
+  box.innerHTML=`<div style="overflow:auto"><table><tr><th>${t('su_school')}</th><th>${t('section_word')}</th><th>${t('logo_word')}</th><th>${t('su_board')}</th><th>${t('su_medium')}</th><th>${t('u_active')}</th><th></th></tr>${SCH_LIST.map(s=>{const cur=String(s.id)===String(SCHOOL);return `<tr${cur?' style="background:#f0f7ff"':''}>
      <td><input value="${av(s.name)}" onchange="updSchool(${s.id},{name:this.value})" style="width:150px"></td>
-     <td><input value="${av(s.group_name)}" placeholder="—" onchange="updSchool(${s.id},{group_name:this.value})" style="width:120px"></td>
-     <td><input value="${av(s.section_name)}" placeholder="—" onchange="updSchool(${s.id},{section_name:this.value})" style="width:120px"></td>
+     <td><select onchange="updSchool(${s.id},{section_name:this.value})" style="width:135px">${sectionOptions(s.section_name)}</select></td>
      <td style="white-space:nowrap">${s.logo?`<img src="${s.logo}" style="height:28px;max-width:70px;border-radius:4px;vertical-align:middle;border:1px solid #e2e8f0">`:'<span class="small" style="color:#5c6580">—</span>'} <button class="ghost mini" onclick="pickLogo(${s.id})">${s.logo?t('logo_change'):t('logo_upload')}</button>${s.logo?` <button class="ghost mini red" onclick="removeLogo(${s.id})">${t('logo_remove')}</button>`:''}</td>
      <td><select onchange="updSchool(${s.id},{board:this.value})"><option value="">—</option>${BOARDS.map(b=>`<option value="${b}" ${s.board===b?'selected':''}>${b}</option>`).join('')}</select></td>
-     <td><select onchange="updSchool(${s.id},{medium:this.value})"><option value="">—</option>${MEDIUMS.map(m=>`<option value="${m}" ${s.medium===m?'selected':''}>${m}</option>`).join('')}</select></td>
+     <td><select onchange="updSchool(${s.id},{medium:this.value})" style="width:96px"><option value="" ${!s.medium?'selected':''}>—</option>${MEDIUMS.map(m=>`<option value="${m}" ${s.medium===m?'selected':''}>${m}</option>`).join('')}</select></td>
      <td style="text-align:center"><input type="checkbox" ${+s.active!==0?'checked':''} onchange="updSchool(${s.id},{active:this.checked?1:0})"></td>
      <td style="white-space:nowrap">${cur?('<span class="small" style="color:#1a9d6b">● '+t('current_word')+'</span>'):`<button class="ghost mini" onclick="switchSchool(${s.id})">${t('open_word')}</button>`} <button class="ghost mini red" onclick="delSchool(${s.id},'${av(s.name).replace(/'/g,"\\'")}')">✕</button></td></tr>`;}).join('')}</table></div>`;}
 function pickLogo(id){
@@ -2077,7 +2068,7 @@ function pickAndPost(url, filename, extra){
 }
 function fillTemplate(){ pickAndPost('/api/reports/template','filled-report.xlsx'); }
 function formatExcel(){ const ti=document.getElementById('fmt_title'); pickAndPost('/api/reports/format','formatted-report.xlsx',{title:(ti&&ti.value)||''}); }
-async function addSchool(){const g=id=>document.getElementById(id);const gv=id=>{const e=g(id);return e?e.value.trim():'';};const name=g('ns_name').value.trim();if(!name){toast(t('schools_need'));return;}const r=await api('POST','/api/schools',{name,board:g('ns_board').value,medium:g('ns_medium').value,address:gv('ns_address'),school_code:gv('ns_code'),mobile:gv('ns_mobile'),email:gv('ns_email')});if(r&&r.error){toast(r.error);return;}['ns_name','ns_address','ns_code','ns_mobile','ns_email'].forEach(id=>{const e=g(id);if(e)e.value='';});try{SCHOOLS=await api('GET','/api/schools');}catch(e){}showSchoolBar();toast(t('schools_added'));await loadSchools();}
+async function addSchool(){const g=id=>document.getElementById(id);const gv=id=>{const e=g(id);return e?e.value.trim():'';};const name=g('ns_name').value.trim();if(!name){toast(t('schools_need'));return;}const r=await api('POST','/api/schools',{name,board:g('ns_board').value,medium:g('ns_medium').value,section_name:gv('ns_section'),address:gv('ns_address'),school_code:gv('ns_code'),mobile:gv('ns_mobile'),email:gv('ns_email')});if(r&&r.error){toast(r.error);return;}['ns_name','ns_address','ns_code','ns_mobile','ns_email'].forEach(id=>{const e=g(id);if(e)e.value='';});try{SCHOOLS=await api('GET','/api/schools');}catch(e){}showSchoolBar();toast(t('schools_added'));await loadSchools();}
 async function createInstitution(){const g=id=>document.getElementById(id);
   const inst=(g('inst_name').value||'').trim(); if(!inst){toast(t('inst_need_name'));return;}
   const secs=['sec1','sec2','sec3','sec4'].map(id=>(g(id)?g(id).value:'').trim());
