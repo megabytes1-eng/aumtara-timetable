@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v85';
+const SW_JS = `const CACHE='aumtara-v86';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -362,10 +362,14 @@ app.get('/api/schools', h(async (req,res)=>{
   if (req.user.role === 'master') res.json(await q('SELECT * FROM tt_school ORDER BY id'));
   else res.json(await q('SELECT * FROM tt_school WHERE id=? ORDER BY id',[req.user.school_id]));
 }));
+const SCHOOL_LICENCE_LIMIT=4;   // max schools/sections per account on the current licence
 app.post('/api/schools', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
   const b=req.body||{}; const name=String(b.name||'').trim();
   if(!name){ res.status(400).json({error:'school name required'}); return; }
+  // Licence limit — block adding more than the allowed number of schools/sections.
+  const total=(await q1('SELECT COUNT(*)::int n FROM tt_school')).n;
+  if(total>=SCHOOL_LICENCE_LIMIT){ res.status(403).json({error:'Licence limit reached — you can have up to '+SCHOOL_LICENCE_LIMIT+' schools/sections. Please purchase a new licence to add more.'}); return; }
   const row=await q1('INSERT INTO tt_school(name,board,medium,active,created_at) VALUES(?,?,?,1,now()::text) RETURNING id',
     [name, b.board||null, b.medium||null]);
   for(const f of ['address','school_code','mobile','email','udise','district','principal_name','pin_code','work_phone','group_name','section_name','section_order']){   // optional profile fields captured at creation
