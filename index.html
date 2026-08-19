@@ -3094,10 +3094,23 @@ function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=
 // ---------- QUOTA ----------
 let quotaData=[], quotaElecs=[];
 async function loadQuota(){ if(!curClass)return; quotaData=await api('GET','/api/quota?class_id='+curClass); try{quotaElecs=await api('GET','/api/electives?class_id='+curClass);}catch(e){quotaElecs=[];} renderQuota(); }
+async function copyQuotaToStd(){
+  if(!curClass){ return; }
+  const cur=classes.find(c=>c.id===curClass); if(!cur){ return; }
+  const std=clsStd(cur);
+  const sibs=classes.filter(c=>c.id!==curClass && clsStd(c)===std);
+  if(!sibs.length){ toast('Standard '+(std||'?')+' me koi doosra section nahi mila.'); return; }
+  if(!confirm(`"${cur.name}" ka Weekly Quota (subjects + periods) in ${sibs.length} section me copy karna hai (Standard ${std}): ${sibs.map(c=>c.name).join(', ')}?\n\nInka current quota REPLACE ho jayega. Teacher pins copy nahi honge.`)) return;
+  const r=await api('POST','/api/quota/copy',{from_class_id:curClass, to_class_ids:sibs.map(c=>c.id)});
+  if(r&&r.error){ showErr(r.error); return; }
+  toast('✓ '+(r.copied||sibs.length)+' section me copy ho gaya');
+  await loadQuota();
+}
 function quotaView(){
   const bar=subTabBar([['quota','🎯 '+t('quota_title')],['rules','📏 '+t('rules_title')]],qTab,'setQTab');
   const secQuota=`<div class="card"><div class="desc" style="font-weight:700;color:#1F3864;margin-top:2px">${t('quota_desc')}</div>
-   <div class="row" style="margin-bottom:12px"><div><label>${t('class_')}</label><select onchange="curClass=+this.value;loadQuota()">${classes.map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join('')}</select></div>
+   <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;align-items:flex-end"><div><label>${t('class_')}</label><select onchange="curClass=+this.value;loadQuota()">${classes.map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join('')}</select></div>
+     <button class="ghost" onclick="copyQuotaToStd()" title="Copy this class's subjects &amp; periods to all other sections of the same standard">📋 Copy to same-std sections</button>
      <button class="green" onclick="autoGen()">${t('btn_autogen')}</button></div>
    <div id="quotabox">Loading…</div></div>`;
   const secRules=`<div class="card"><h2>${t('rules_title')}</h2><div class="desc">${t('rules_desc')}</div>

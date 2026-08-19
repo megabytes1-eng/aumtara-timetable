@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v75';
+const SW_JS = `const CACHE='aumtara-v79';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -801,6 +801,29 @@ app.put('/api/quota', h(async (req,res)=>{
      ON CONFLICT(class_id,subject_id) DO UPDATE SET per_week=excluded.per_week, teacher_id=excluded.teacher_id`,[class_id,subject_id,per_week,teacher_id, req.sid]);
   res.json({ok:true});
 }));
+// Copy one class's Weekly Quota to other classes (e.g. all sections of the same standard). Copies subject + per_week
+// only (NOT the teacher pin — each section usually has its own teacher), replacing the targets' existing quota.
+app.post('/api/quota/copy', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  const from=Number(req.body.from_class_id);
+  let to=Array.isArray(req.body.to_class_ids)?req.body.to_class_ids.map(Number).filter(x=>x&&x!==from):[];
+  to=[...new Set(to)];
+  if(!from||!to.length){ res.status(400).json({error:'from_class_id and to_class_ids required'}); return; }
+  const own=await q1('SELECT 1 FROM tt_class WHERE school_id=? AND id=?',[req.sid,from]);
+  if(!own){ res.status(403).json({error:'forbidden'}); return; }
+  const src=await q('SELECT subject_id,per_week FROM tt_quota WHERE class_id=? AND school_id=?',[from,req.sid]);
+  let done=0;
+  for(const tid of to){
+    const ok=await q1('SELECT 1 FROM tt_class WHERE school_id=? AND id=?',[req.sid,tid]);
+    if(!ok) continue;
+    await run('DELETE FROM tt_quota WHERE class_id=? AND school_id=?',[tid,req.sid]);
+    for(const r of src){
+      await run('INSERT INTO tt_quota(class_id,subject_id,per_week,teacher_id,school_id) VALUES(?,?,?,NULL,?)',[tid,r.subject_id,r.per_week,req.sid]);
+    }
+    done++;
+  }
+  res.json({ok:true, copied:done, subjects:src.length});
+}));
 // Teacher workload from PINNED quota rows (teacher-wise bifurcation): per teacher → subject/class breakdown across ALL classes
 app.get('/api/teacher-workload', h(async (req,res)=>{
   res.json(await q('SELECT teacher_id, subject_id, class_id, per_week FROM tt_quota WHERE school_id=? AND teacher_id IS NOT NULL AND per_week>0',[req.sid]));
@@ -1015,11 +1038,11 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     let pool=[];
     // Start with the class's Weekly Quota (its real curriculum)…
     if(qs.length){ qs.forEach(x=>{ for(let i=0;i<x.per_week;i++) pool.push(x.subject_id); }); }
-    if(!staffedSubjects.length) return pool.slice(0,totalSlots);   // no staffed subjects → don't fabricate cells
-    // …then FILL the rest of the week so the timetable is complete (no big blank gaps). The assignment loop
-    // DEFERS unstaffable picks to a free slot and only marks genuine shortages as unstaffed, so this padding
-    // no longer creates fake "no-teacher" cells. Quota'd subjects come first (front of pool) so they win the good slots.
-    if(pool.length<totalSlots){ let i=0; while(pool.length<totalSlots){ pool.push(staffedSubjects[i%staffedSubjects.length].id); i++; } }
+    // …then FILL the rest of the week using ONLY this class's OWN quota subjects — never school-wide
+    // subjects — so a class can never receive a subject outside its curriculum (e.g. Accountancy in a
+    // 9th-standard class). A class with no quota set stays blank (a clear signal to set its Weekly Quota).
+    const ownSubjects=[...new Set(qs.map(x=>x.subject_id))];
+    if(ownSubjects.length && pool.length<totalSlots){ let i=0; while(pool.length<totalSlots){ pool.push(ownSubjects[i%ownSubjects.length]); i++; } }
     return pool.slice(0,totalSlots);
   }
 
