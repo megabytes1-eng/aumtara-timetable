@@ -302,17 +302,16 @@
   function loadAll(){ api('GET','/api/owner/overview').then(function(o){ if(o.ok) renderSchools(o.data); }); }
   function renderSchools(d){
     SCHOOLS=d.schools||[];
-    var pend=SCHOOLS.filter(function(s){return +s.active===0;}).length;
-    var paid=SCHOOLS.filter(function(s){return +s.paid!==0;}).length;
-    var users=SCHOOLS.reduce(function(a,s){return a+(s.users||0);},0);
+    // Count by INSTITUTION (main login/signup) — grouped sections collapse to one "main" school; sections are NOT counted.
+    var _byGroup={};
+    SCHOOLS.forEach(function(s){ var g=String(s.group_name||'').trim(); var key=g?('g:'+g.toLowerCase()):('s:'+s.id); var cur=_byGroup[key]; var so=(s.section_order==null?999:s.section_order); if(!cur||so<(cur.section_order==null?999:cur.section_order)) _byGroup[key]=s; });
+    var MAIN=Object.keys(_byGroup).map(function(k){return _byGroup[k];});
+    var pend=MAIN.filter(function(s){return +s.active===0;}).length;
+    var paid=MAIN.filter(function(s){return +s.paid!==0;}).length;
+    var users=SCHOOLS.reduce(function(a,s){return a+(s.users||0);},0);   // real people across all sections
     var soon=0, expd=0;
-    SCHOOLS.forEach(function(s){ var e=expiryInfo(s.valid_till); if(e.days==null) return; if(e.days<0) expd++; else if(e.days<=30) soon++; });
-    // Count institutions (grouped sections = one school) — R.N.Naik High + Higher Secondary = 1.
-    var _grp={}; SCHOOLS.forEach(function(s){ var g=String(s.group_name||'').trim(); _grp[g?('g:'+g.toLowerCase()):('s:'+s.id)]=true; });
-    var instCount=Object.keys(_grp).length;
-    var kpiList=[['🏫','Schools',instCount,'g-purple']];
-    if(SCHOOLS.length!==instCount) kpiList.push(['🧩','Sections',SCHOOLS.length,'g-slate']);
-    kpiList=kpiList.concat([['🟢','Active',SCHOOLS.length-pend,'g-green'],['⏳','Pending',pend,'g-amber'],['💰','Paid',paid,'g-blue'],['⚠️','Unpaid',SCHOOLS.length-paid,'g-pink'],['👥','Total users',users,'g-teal'],['📆','Expiring ≤30d',soon,'g-orange'],['⛔','Expired',expd,'g-red']]);
+    MAIN.forEach(function(s){ var e=expiryInfo(s.valid_till); if(e.days==null) return; if(e.days<0) expd++; else if(e.days<=30) soon++; });
+    var kpiList=[['🏫','Schools',MAIN.length,'g-purple'],['🟢','Active',MAIN.length-pend,'g-green'],['⏳','Pending',pend,'g-amber'],['💰','Paid',paid,'g-blue'],['⚠️','Unpaid',MAIN.length-paid,'g-pink'],['👥','Total users',users,'g-teal'],['📆','Expiring ≤30d',soon,'g-orange'],['⛔','Expired',expd,'g-red']];
     document.getElementById('kpis').innerHTML=kpiList
       .map(function(k){return '<div class="kpi '+k[3]+'"><div class="ic">'+k[0]+'</div><b>'+k[2]+'</b><span>'+k[1]+'</span></div>';}).join('');
     document.getElementById('schoolBody').innerHTML=SCHOOLS.map(function(s){
