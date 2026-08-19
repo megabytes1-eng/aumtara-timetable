@@ -307,7 +307,13 @@
     var users=SCHOOLS.reduce(function(a,s){return a+(s.users||0);},0);
     var soon=0, expd=0;
     SCHOOLS.forEach(function(s){ var e=expiryInfo(s.valid_till); if(e.days==null) return; if(e.days<0) expd++; else if(e.days<=30) soon++; });
-    document.getElementById('kpis').innerHTML=[['🏫','Schools',SCHOOLS.length,'g-purple'],['🟢','Active',SCHOOLS.length-pend,'g-green'],['⏳','Pending',pend,'g-amber'],['💰','Paid',paid,'g-blue'],['⚠️','Unpaid',SCHOOLS.length-paid,'g-pink'],['👥','Total users',users,'g-teal'],['📆','Expiring ≤30d',soon,'g-orange'],['⛔','Expired',expd,'g-red']]
+    // Count institutions (grouped sections = one school) — R.N.Naik High + Higher Secondary = 1.
+    var _grp={}; SCHOOLS.forEach(function(s){ var g=String(s.group_name||'').trim(); _grp[g?('g:'+g.toLowerCase()):('s:'+s.id)]=true; });
+    var instCount=Object.keys(_grp).length;
+    var kpiList=[['🏫','Schools',instCount,'g-purple']];
+    if(SCHOOLS.length!==instCount) kpiList.push(['🧩','Sections',SCHOOLS.length,'g-slate']);
+    kpiList=kpiList.concat([['🟢','Active',SCHOOLS.length-pend,'g-green'],['⏳','Pending',pend,'g-amber'],['💰','Paid',paid,'g-blue'],['⚠️','Unpaid',SCHOOLS.length-paid,'g-pink'],['👥','Total users',users,'g-teal'],['📆','Expiring ≤30d',soon,'g-orange'],['⛔','Expired',expd,'g-red']]);
+    document.getElementById('kpis').innerHTML=kpiList
       .map(function(k){return '<div class="kpi '+k[3]+'"><div class="ic">'+k[0]+'</div><b>'+k[2]+'</b><span>'+k[1]+'</span></div>';}).join('');
     document.getElementById('schoolBody').innerHTML=SCHOOLS.map(function(s){
       var off=String(s.modules_off||'').split(',').map(function(x){return x.trim();}).filter(Boolean);
