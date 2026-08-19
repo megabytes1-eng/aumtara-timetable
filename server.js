@@ -525,6 +525,8 @@ app.put('/api/users/:id', h(async (req,res)=>{
   if(set.length) await run(`UPDATE tt_user SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
   if(b.login_id){ const login=String(b.login_id).trim(); if(login && !(await q1('SELECT 1 FROM tt_user WHERE lower(login_id)=lower(?) AND id<>?',[login,id]))) await run('UPDATE tt_user SET login_id=? WHERE id=?',[login,id]); }
   if(b.password!=null && String(b.password).length) await run('UPDATE tt_user SET password_hash=? WHERE id=?',[hashPw(b.password), id]);
+  // Master may reassign or detach a user's school (school_id=null = not tied to any school, e.g. the platform owner).
+  if(req.user.role==='master' && b.school_id!==undefined) await run('UPDATE tt_user SET school_id=? WHERE id=?',[(b.school_id===''||b.school_id==null)?null:Number(b.school_id), id]);
   res.json({ ok:true });
 }));
 app.delete('/api/users/:id', h(async (req,res)=>{
