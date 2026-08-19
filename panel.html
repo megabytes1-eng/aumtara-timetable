@@ -223,7 +223,7 @@
       <hr>
       <h3 class="head">Enquiries &amp; demo requests</h3>
       <p class="sub">Free-Demo requests and pending signups land here. Signup link to share: <code id="signupLink"></code> <button class="link" onclick="copyLink()">copy</button></p>
-      <div style="overflow:auto"><table><thead><tr><th>When</th><th>Name</th><th>School</th><th>Phone</th><th>Email</th><th>Plan</th><th></th></tr></thead><tbody id="enqBody"></tbody></table></div>
+      <div style="overflow:auto"><table><thead><tr><th>When</th><th>Name</th><th>School</th><th>Phone</th><th>Email</th><th>Plan</th><th>Payment / Ref</th><th></th></tr></thead><tbody id="enqBody"></tbody></table></div>
     </div>
 
     <!-- PROFILE -->
@@ -453,8 +453,9 @@
     document.getElementById('enqBody').innerHTML=(rows||[]).map(function(e){ var when=(e.ts||'').replace('T',' ').slice(0,16);
       var mk=+e.handled?'<span class="mini">✓ done</span>':'<button class="link" onclick="markEnq('+e.id+')">Mark done</button>';
       var mail=e.email?'<a class="link" title="Email signup link" href="mailto:'+esc(e.email)+'?subject='+encodeURIComponent('Your Aumtara Timetable login')+'&body='+encodeURIComponent('Hi '+(e.name||'')+',\n\nCreate your login here:\n'+link+'\n\n— Aumtara Timetable')+'">✉️</a> ':'';
-      return '<tr'+(+e.handled?' style="opacity:.5"':'')+'><td>'+when+'</td><td><b>'+esc(e.name)+'</b></td><td>'+esc(e.school||'—')+'</td><td>'+esc(e.phone)+'</td><td>'+esc(e.email||'—')+'</td><td>'+esc(e.plan||'—')+'</td><td>'+mail+mk+'</td></tr>';
-    }).join('') || '<tr><td colspan="7" class="mini">No enquiries yet.</td></tr>';
+      var pay=e.message?'<span class="mini" title="'+esc(e.message)+'">'+esc(e.message.length>42?e.message.slice(0,42)+'…':e.message)+'</span>':'<span class="mini">—</span>';
+      return '<tr'+(+e.handled?' style="opacity:.5"':'')+'><td>'+when+'</td><td><b>'+esc(e.name)+'</b></td><td>'+esc(e.school||'—')+'</td><td>'+esc(e.phone)+'</td><td>'+esc(e.email||'—')+'</td><td>'+esc(e.plan||'—')+'</td><td>'+pay+'</td><td>'+mail+mk+'</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="mini">No enquiries yet.</td></tr>';
   }
   function markEnq(id){ api('PUT','/api/enquiry/'+id,{handled:1}).then(loadEnq); }
 

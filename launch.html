@@ -318,11 +318,14 @@
     <div id="payOpts"></div>
     <div id="paidCta" style="display:none">
       <div class="pay-opt" style="border-color:var(--purple);background:#faf9ff">
-        <h4>✅ Confirm your payment</h4>
-        <p class="mini" style="margin:0 0 8px">Pay using the QR / UPI above, then tick the box to continue. Your login opens once we verify the payment.</p>
-        <div class="field" style="margin-bottom:8px"><input id="pay_utr" placeholder="UPI Ref / UTR no. (optional — helps us verify faster)"></div>
-        <label class="mini" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;cursor:pointer"><input type="checkbox" id="pay_confirm" style="width:auto;margin:0" onchange="togglePaid()"> <span>I have completed the payment</span></label>
-        <button class="btn btn-primary btn-sm" id="createBtn" onclick="showSignup()" disabled style="opacity:.5;cursor:not-allowed">Create my account →</button>
+        <h4>📤 Send your payment details</h4>
+        <p class="mini" style="margin:0 0 8px">After paying with the QR / UPI above, fill this. We verify the payment in our account, then create &amp; activate your login — usually shortly. <b>No account is created until we confirm the payment.</b></p>
+        <div class="field" style="margin-bottom:8px"><input id="pr_school" placeholder="School name *"></div>
+        <div class="field" style="margin-bottom:8px"><input id="pr_name" placeholder="Your name *"></div>
+        <div class="row2" style="margin-bottom:8px"><input id="pr_phone" placeholder="Mobile / WhatsApp *" style="flex:1;min-width:130px"><input id="pr_email" type="email" placeholder="Email" style="flex:1;min-width:120px"></div>
+        <div class="field" style="margin-bottom:8px"><input id="pay_utr" placeholder="UPI Ref / UTR no. from your payment *"></div>
+        <button class="btn btn-primary btn-sm" onclick="submitPayReq()">Submit for verification</button>
+        <div id="prMsg" class="msg"></div>
       </div>
     </div>
     <div id="signupBox" style="display:none">
@@ -392,16 +395,21 @@
     document.getElementById('buyModal').classList.add('open');
     return false;
   }
-  // payment gate: Create-account button stays disabled until the buyer confirms they've paid
-  function togglePaid(){
-    var c=document.getElementById('pay_confirm'), b=document.getElementById('createBtn');
-    if(!b) return;
-    if(c && c.checked){ b.disabled=false; b.style.opacity=''; b.style.cursor='pointer'; }
-    else { b.disabled=true; b.style.opacity='.5'; b.style.cursor='not-allowed'; }
+  // after UPI payment the buyer submits their details + UTR as a verification request.
+  // NO account is self-created — the owner verifies the payment in the bank, then creates/activates the login from the panel.
+  function submitPayReq(){
+    var g=function(x){return (document.getElementById(x)||{}).value||'';};
+    var m=document.getElementById('prMsg');
+    var school=g('pr_school').trim(), name=g('pr_name').trim(), phone=g('pr_phone').trim(), utr=g('pay_utr').trim(), email=g('pr_email').trim();
+    if(!school||!name||!phone||!utr){ msg(m,'School, name, mobile and UPI Ref number are required.','err'); return; }
+    msg(m,'Sending…','ok');
+    api('POST','/api/enquiry',{name:name,school:school,phone:phone,email:email,plan:CURPLAN,message:'PAID via UPI ₹'+CURAMT+' ('+CURPLAN+') — UTR/Ref: '+utr}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not send — please try again.','err'); return; }
+      document.getElementById('paidCta').innerHTML='<div class="pay-opt" style="border-color:var(--ok);background:#f0fdf4"><h4>✅ Got it — thank you!</h4><p class="mini" style="margin:0">We received your payment details. We\'ll verify the payment and set up your login shortly — you\'ll be able to sign in once your school is activated.</p></div>';
+    }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
   }
   // reveal the signup form after payment
   function showSignup(){
-    var c=document.getElementById('pay_confirm'); if(!c || !c.checked){ togglePaid(); return false; }
     document.getElementById('signupBox').style.display='block';
     document.getElementById('paidCta').style.display='none';
     var sc=document.getElementById('eq_school'), t=document.getElementById('su_school');
@@ -465,10 +473,9 @@
     document.getElementById('paidCta').style.display='block';
     document.getElementById('signupBox').style.display='none';
     var sm=document.getElementById('suMsg'); if(sm){ sm.className='msg'; sm.textContent=''; }
-    // reset the payment-confirmation gate every time Buy opens: Create account stays locked until "I have paid" is ticked
-    var pc=document.getElementById('pay_confirm'); if(pc) pc.checked=false;
-    var ut=document.getElementById('pay_utr'); if(ut) ut.value='';
-    togglePaid();
+    // clear the payment-details form every time Buy opens
+    ['pr_school','pr_name','pr_phone','pr_email','pay_utr'].forEach(function(x){ var el=document.getElementById(x); if(el) el.value=''; });
+    var pm=document.getElementById('prMsg'); if(pm){ pm.className='msg'; pm.textContent=''; }
     // build the UPI QR + deep link now that the box exists
     if(p.enable_upi!==0 && p.upi_id){
       var uri='upi://pay?pa='+encodeURIComponent(p.upi_id)+'&pn='+encodeURIComponent(p.payee_name||'Aumtara')+'&am='+CURAMT+'&cu=INR&tn='+encodeURIComponent('Aumtara '+CURPLAN);
