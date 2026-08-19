@@ -385,7 +385,12 @@
       if(r.ok) toast('✓ Password reset for '+(r.data.login_id||name)); else toast((r.data&&r.data.error)||'Could not reset');
     });
   }
-  function delSchool(id,name){ if(!confirm('Delete "'+name+'" and ALL its data? This cannot be undone.')) return; api('DELETE','/api/schools/'+id,null).then(function(r){ toast(r.ok?'Deleted':'Could not delete'); loadAll(); }); }
+  function delSchool(id,name){
+    var typed=prompt('⚠ WARNING — "'+name+'" and ALL its data (classes, teachers, timetable, users) will be permanently deleted. This CANNOT be undone.\n\nType  DELETE  below to confirm:');
+    if(typed==null) return;
+    if(String(typed).trim().toUpperCase()!=='DELETE'){ toast('Not confirmed — nothing deleted'); return; }
+    api('DELETE','/api/schools/'+id,null).then(function(r){ toast(r.ok?'✓ Deleted':'Could not delete'); loadAll(); });
+  }
   function addSchool(){
     var g=function(x){return document.getElementById(x).value.trim();}, m=document.getElementById('addMsg'), name=g('ns_name');
     if(!name){ msg(m,'School name is required.','err'); return; } msg(m,'Adding…','ok');
