@@ -3040,9 +3040,8 @@ function studentsView(){
   const secList=`
     <div class="card">
       <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <h2 style="margin:0">${t('stu_list')} <span class="small" style="color:#8891a6;font-weight:600">— ${L('class')||t('nav_class')}: ${curName}</span></h2>
-        <button class="ghost mini" onclick="refreshStudents()">↻ Refresh</button></div>
-      ${classChips}
+        <h2 style="margin:0">${t('stu_list')} <span class="small" style="color:#8891a6;font-weight:600">— ${L('class')||t('nav_class')}:</span></h2>
+        <div class="row" style="gap:8px;align-items:center">${classSel}<button class="ghost mini" onclick="refreshStudents()">↻ Refresh</button></div></div>
       <div style="border-top:1px solid #eee;margin:10px 0"></div>
       <div class="desc">Only needed for per-student elective choices (optional).</div>${stuRows}
       <div class="row" style="margin-top:10px;gap:6px"><input id="stu_name" placeholder="${t('stu_name_ph')}" style="flex:1;min-width:120px"><input id="stu_roll" placeholder="${t('stu_roll_ph')}" style="width:90px"><button onclick="addStudent()">${t('add')}</button></div>
