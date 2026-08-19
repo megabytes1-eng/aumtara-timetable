@@ -142,6 +142,15 @@ app.post('/api/login', h(async (req,res)=>{
   if(!u || !verifyPw(b.password, u.password_hash)){ res.status(401).json({error:'invalid credentials'}); return; }
   // a deactivated (inactive) school suspends all its users' logins — reactivate from the SaaS panel (platform owner not tied to a school, so unaffected)
   if(u.school_id){ const sch=await q1('SELECT active FROM tt_school WHERE id=?',[u.school_id]); if(sch && +sch.active===0){ res.status(403).json({error:'This school account is inactive. Please contact the administrator.'}); return; } }
+  // Self-heal: a school must always have at least one Admin. If an accidental role change/deletion left it
+  // with none, restore the school's founder (earliest active account) to Admin so nobody is locked out.
+  if(u.school_id){
+    const hasAdmin=await q1("SELECT 1 FROM tt_user WHERE school_id=? AND active=1 AND role IN ('admin','master') LIMIT 1",[u.school_id]);
+    if(!hasAdmin){
+      const founder=await q1('SELECT id FROM tt_user WHERE school_id=? AND active=1 ORDER BY id ASC LIMIT 1',[u.school_id]);
+      if(founder){ await run("UPDATE tt_user SET role='admin' WHERE id=?",[founder.id]); if(founder.id===u.id) u.role='admin'; }
+    }
+  }
   const token=crypto.randomBytes(24).toString('hex');
   await run('INSERT INTO tt_session(token,user_id,created_at) VALUES(?,?,now()::text)',[token,u.id]);
   res.json({ token, user:{ id:u.id, name:u.name, role:u.role, login_id:u.login_id, school_id:u.school_id } });
