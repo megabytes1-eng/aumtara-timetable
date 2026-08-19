@@ -450,6 +450,7 @@ app.post('/api/schools/:id/clone-into/:target', h(async (req,res)=>{
     const F=['weekday_start','weekday_end','saturday_start','saturday_end','period_minutes','period_durations','num_periods','lunch_after','lunch_minutes','short_break_after','short_break_minutes','working_days','sat_num_periods','sat_period_minutes','sat_period_durations','sat_lunch_after','sat_lunch_minutes','sat_short_break_after','sat_short_break_minutes','academic_session'];
     const present=F.filter(f=>f in sc);
     if(present.length) await run('UPDATE tt_config SET '+present.map(f=>f+'=?').join(',')+' WHERE school_id=?',[...present.map(f=>sc[f]), tgt]);
+    try{ await loadConfig(tgt); }catch(e){}   // refresh the in-memory config cache so cloned hours take effect immediately
   }
   for(const cb of await q('SELECT * FROM tt_combine WHERE school_id=?',[src])){
     const ids=String(cb.class_ids||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>clsMap[Number(x)]).filter(Boolean);
