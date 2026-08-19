@@ -1245,7 +1245,7 @@ function printBar(printJs){
 function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3>${title}</h3><div class="sub">${sub||''}</div>`;document.body.classList.toggle('pbw',!!PRINTOPT.bw);applyPrintSize();window.print();}
 function printPlain(){document.getElementById('printhead').innerHTML='';document.body.classList.toggle('pbw',!!PRINTOPT.bw);applyPrintSize();window.print();}
 // On-screen report PREVIEW (instead of forcing a new tab + auto-print). Shows the report in an in-app overlay; user chooses Print / Save-PDF or just views.
-function showReportPreview(html, title){
+function showReportPreview(html, title, dlUrl){
   var ov=document.getElementById('rpOverlay');
   if(!ov){
     ov=document.createElement('div'); ov.id='rpOverlay';
@@ -1262,6 +1262,7 @@ function showReportPreview(html, title){
       +'<input id="rph" type="number" step="0.1" min="0" placeholder="H" style="width:46px;padding:5px;border-radius:6px;border:none" oninput="PRINTOPT.hft=+this.value||0">'
       +'<label style="color:#dfe6f5;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" onchange="PRINTOPT.bw=this.checked">⬛ B&W</label>'
       +'<span style="flex:1"></span>'
+      +'<button id="rpDl" style="background:#1a9d6b;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;font-size:14px;cursor:pointer;display:none">⬇ Download Excel</button>'
       +'<button onclick="rpPrint()" style="background:#5a3ec8;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;font-size:14px;cursor:pointer">🖨 '+t('rp_print')+'</button>'
       +'<button onclick="rpClose()" style="background:#fff;color:#1F3864;border:none;border-radius:8px;padding:9px 16px;font-weight:700;font-size:14px;cursor:pointer">✕ '+t('rp_close')+'</button>'
       +'</div>'
@@ -1271,6 +1272,7 @@ function showReportPreview(html, title){
     document.addEventListener('keydown',function(e){ if(e.key==='Escape' && ov.style.display!=='none') rpClose(); });
   }
   document.getElementById('rpTitle').textContent=title||'';
+  var dlb=document.getElementById('rpDl'); if(dlb){ if(dlUrl){ dlb.style.display=''; dlb.onclick=function(){ dl(dlUrl); }; } else { dlb.style.display='none'; dlb.onclick=null; } }
   var f=document.getElementById('rpFrame'); f.srcdoc=html;
   ov.style.display='flex';
 }
@@ -1299,7 +1301,7 @@ function teacherGridHTML(tid){const head=ttHeadRowHTML();
       cells+= f ? '<td><b>'+sesc(sName(f.s))+'</b><br><span class="t">'+sesc(f.cls)+'</span></td>' : '<td class="free">'+t('free')+'</td>';});
     return '<tr>'+cells+'</tr>';}).join('');
   return '<table><tr>'+head+'</tr>'+rows+'</table>';}
-function printAll(kind){
+function printAll(kind, dlUrl){
   let items,gridFn;
   if(kind==='teacher'){ items=teachers; gridFn=x=>teacherGridHTML(x.id); }
   else { const fc=filteredClasses(); items=fc.length?fc:classes; gridFn=x=>classGridHTML(x.id); }
@@ -1316,7 +1318,7 @@ function printAll(kind){
     'td.free{color:#b0b0b0;}td.brk{background:#fff7e6;}td b{font-size:11px;color:#111;}td .t{color:#3355aa;font-size:10px;}td .r{color:#777;font-size:9.5px;}'+
     '@page{margin:12mm;}';
   var html='<!doctype html><html><head><meta charset="utf-8"><title>'+sesc(heading)+'</title><style>'+css+'</style></head><body><div class="doc"><div class="hd"><h1>'+sesc(school)+'</h1><div class="sub">'+sesc(heading)+wk+'</div></div>'+blocks+'</div></body></html>';
-  showReportPreview(html, heading);}
+  showReportPreview(html, heading, dlUrl);}
 function setTab(t){tab=t;if(t==='dash'){try{localStorage.removeItem('tt_onboard');}catch(e){}}/* clicking Dashboard brings the Getting-started card back after Hide */const g=NAVGROUPS.find(x=>x.key&&x.tabs.includes(t));if(g){GRPCOLL[g.key]=false;try{localStorage.setItem('tt_grpcoll',JSON.stringify(GRPCOLL));}catch(e){}}if(window.innerWidth<820)document.body.classList.add('sidenav-off');try{track('page_view',{tab:t});}catch(e){}render();}
 function toggleSidebar(){document.body.classList.toggle('sidenav-off');try{localStorage.setItem('tt_sidenav',document.body.classList.contains('sidenav-off')?'off':'on');}catch(e){}}
 let GRPCOLL={};try{GRPCOLL=JSON.parse(localStorage.getItem('tt_grpcoll')||'{}')||{};}catch(e){GRPCOLL={};}
@@ -1731,10 +1733,10 @@ function reportsView(){const cur=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))|
   const bar=subTabBar([['timetable','📅 '+t('rep_timetable')],['analysis','📈 '+t('rep_analysis')],['deo','🏛 '+t('rep_deo')],['diary','📔 '+t('rep_diary')],['custom','✎ '+t('rep_custom')]],repTab,'setRepTab');
   const secTimetable=`<div class="card"><h2>📅 ${t('rep_timetable')}</h2><div class="desc">${t('rep_timetable_d')}</div>
      <div class="row" style="gap:10px;flex-wrap:wrap">
-       <button class="green" onclick="dl('/api/export/timetable.xlsx')">🏫 ${t('rep_classwise')}</button>
-       <button class="green" onclick="dl('/api/export/teachers-report.xlsx')">👩‍🏫 ${t('rep_teacherwise')}</button>
+       <button class="green" onclick="printAll('class','/api/export/timetable.xlsx')">👁 🏫 ${t('rep_classwise')}</button>
+       <button class="green" onclick="printAll('teacher','/api/export/teachers-report.xlsx')">👁 👩‍🏫 ${t('rep_teacherwise')}</button>
        <button class="ghost" onclick="dl('/api/export/reports.xlsx')">📦 ${t('rep_fullpack')}</button></div>
-     <div class="small" style="margin-top:10px;color:#5c6580">${t('reports_note')}</div>
+     <div class="small" style="margin-top:10px;color:#5c6580">👁 = pehle preview khulega — dekhne ke baad usme se Print ya ⬇ Download Excel. ${t('reports_note')}</div>
      <div class="small" style="margin-top:6px;color:#57608a"><b>${t('reports_includes')}</b> ${t('reports_list')}</div></div>`;
   const secAnalysis=`<div class="card"><h2>📈 ${t('rep_analysis')}</h2><div class="desc">${t('rep_analysis_d')}</div>
      <div class="row" style="gap:10px;flex-wrap:wrap">
