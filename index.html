@@ -2959,14 +2959,13 @@ function combineBuilder(){
 function combineView(){
   const cls=filteredClasses();
   if((!curSClass||!cls.find(c=>c.id===curSClass))&&cls[0]) curSClass=cls[0].id;
-  const classChips=cls.length?`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${cls.map(c=>`<button class="ghost" style="${c.id===curSClass?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pickSClass(${c.id})">${sesc(c.name)}</button>`).join('')}</div>`:'<span class="small" style="color:#5c6580">No classes yet</span>';
+  const classSel=cls.length?`<select onchange="pickSClass(this.value)">${cls.map(c=>`<option value="${c.id}" ${c.id===curSClass?'selected':''}>${sesc(c.name)}</option>`).join('')}</select>`:'<span class="small" style="color:#5c6580">No classes yet</span>';
   const curName=curSClass?sesc((classes.find(c=>c.id===curSClass)||{}).name||''):'—';
   const _egroups=electiveGroups();
   const elRows=_egroups.length?('<div class="small" style="color:#166534;font-weight:800;margin:2px 0 4px">✅ Combined periods in this class ('+_egroups.length+')</div>'+_egroups.map(g=>electiveGroupCard(g)).join('')):'<div class="small" style="color:#5c6580">No combined periods in this class yet.</div>';
   return `<div id="stuTop" class="card" style="margin-bottom:12px"><h2>🧩 Combine Subjects <span class="small" style="font-weight:400;color:#5c6580">(group-split)</span></h2><div class="desc">Combine two subjects that run in parallel for the same class &amp; period — half the class does one, half the other (e.g. Computer / PT, or Hindi / Sanskrit). Pick a class, tick the two subjects with a teacher each, tick the days &amp; period, then Create.</div></div>
     <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center"><div style="font-weight:800;color:#4c1d95;margin-bottom:2px">${L('class')||t('nav_class')} — <span style="color:#1e293b">${curName}</span></div><button class="ghost mini" onclick="refreshStudents()">↻ Refresh</button></div>
-      ${classChips}
+      <div class="row" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-weight:800;color:#4c1d95">${L('class')||t('nav_class')}:</div><div class="row" style="gap:8px;align-items:center">${classSel}<button class="ghost mini" onclick="refreshStudents()">↻ Refresh</button></div></div>
       <div style="border-top:1px solid #eee;margin:10px 0"></div>
       ${elRows}
       ${combineBuilder()}
