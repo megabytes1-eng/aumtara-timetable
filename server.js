@@ -405,6 +405,67 @@ app.delete('/api/schools/:id', h(async (req,res)=>{
   res.json({ ok:true });
 }));
 
+// Clone all core setup (subjects, rooms, teachers + subject links, classes, weekly quota, academic-hours config,
+// combined periods, availability blocks) from one school into another EMPTY school. Timetable & students are NOT copied.
+app.post('/api/schools/:id/clone-into/:target', h(async (req,res)=>{
+  if(!requireAdmin(req,res)) return;
+  const src=Number(req.params.id), tgt=Number(req.params.target);
+  if(!src||!tgt||src===tgt){ res.status(400).json({error:'source and target must be two different schools'}); return; }
+  const sOK=await q1('SELECT id FROM tt_school WHERE id=?',[src]);
+  const tOK=await q1('SELECT id FROM tt_school WHERE id=?',[tgt]);
+  if(!sOK||!tOK){ res.status(404).json({error:'school not found'}); return; }
+  if(req.user.role!=='master' && src!==req.sid){ res.status(403).json({error:'forbidden'}); return; }
+  const cnt=async(tbl)=>(await q1('SELECT COUNT(*)::int n FROM '+tbl+' WHERE school_id=?',[tgt])).n;
+  if((await cnt('tt_class'))+(await cnt('tt_subject'))+(await cnt('tt_teacher'))>0){
+    res.status(400).json({error:'target school is not empty — clone only into a fresh school'}); return;
+  }
+  const subMap={}, roomMap={}, tchMap={}, clsMap={};
+  for(const s of await q('SELECT * FROM tt_subject WHERE school_id=? ORDER BY id',[src])){
+    const r=await q1('INSERT INTO tt_subject(name,active,double_period,medium,color,school_id) VALUES(?,?,?,?,?,?) RETURNING id',
+      [s.name,s.active,s.double_period,s.medium,s.color,tgt]); subMap[s.id]=r.id;
+  }
+  for(const rm of await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY id',[src])){
+    const r=await q1('INSERT INTO tt_room(name,capacity,school_id) VALUES(?,?,?) RETURNING id',[rm.name,rm.capacity,tgt]); roomMap[rm.id]=r.id;
+  }
+  for(const t of await q('SELECT * FROM tt_teacher WHERE school_id=? ORDER BY id',[src])){
+    const r=await q1(`INSERT INTO tt_teacher(name,qualification,main_subject_id,max_load,max_per_day,max_consecutive,can_substitute,designation,sanctioned_load,email,mobile,school_id)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
+      [t.name,t.qualification,subMap[t.main_subject_id]||null,t.max_load,t.max_per_day,t.max_consecutive,t.can_substitute,t.designation,t.sanctioned_load,t.email,t.mobile,tgt]);
+    tchMap[t.id]=r.id;
+    for(const ts of await q('SELECT * FROM tt_teacher_subject WHERE teacher_id=? ORDER BY seq NULLS LAST, subject_id',[t.id])){
+      if(subMap[ts.subject_id]) await run('INSERT INTO tt_teacher_subject(teacher_id,subject_id,seq) VALUES(?,?,?) ON CONFLICT DO NOTHING',[r.id,subMap[ts.subject_id],ts.seq]);
+    }
+  }
+  for(const c of await q('SELECT * FROM tt_class WHERE school_id=? ORDER BY id',[src])){
+    const r=await q1('INSERT INTO tt_class(name,class_teacher_id,board,medium,standard,section,ct_first_period,school_id) VALUES(?,?,?,?,?,?,?,?) RETURNING id',
+      [c.name, tchMap[c.class_teacher_id]||null, c.board,c.medium,c.standard,c.section,c.ct_first_period,tgt]); clsMap[c.id]=r.id;
+  }
+  for(const qr of await q('SELECT * FROM tt_quota WHERE school_id=?',[src])){
+    if(clsMap[qr.class_id] && subMap[qr.subject_id])
+      await run('INSERT INTO tt_quota(class_id,subject_id,per_week,teacher_id,school_id) VALUES(?,?,?,?,?)',
+        [clsMap[qr.class_id],subMap[qr.subject_id],qr.per_week,tchMap[qr.teacher_id]||null,tgt]);
+  }
+  const sc=await q1('SELECT * FROM tt_config WHERE school_id=?',[src]);
+  if(sc){
+    const F=['weekday_start','weekday_end','saturday_start','saturday_end','period_minutes','period_durations','num_periods','lunch_after','lunch_minutes','short_break_after','short_break_minutes','working_days','sat_num_periods','sat_period_minutes','sat_period_durations','sat_lunch_after','sat_lunch_minutes','sat_short_break_after','sat_short_break_minutes','academic_session'];
+    const present=F.filter(f=>f in sc);
+    if(present.length) await run('UPDATE tt_config SET '+present.map(f=>f+'=?').join(',')+' WHERE school_id=?',[...present.map(f=>sc[f]), tgt]);
+  }
+  for(const cb of await q('SELECT * FROM tt_combine WHERE school_id=?',[src])){
+    const ids=String(cb.class_ids||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>clsMap[Number(x)]).filter(Boolean);
+    await run('INSERT INTO tt_combine(school_id,name,subject_id,teacher_id,room_id,day_of_week,period_index,week_index,class_ids,created_at) VALUES(?,?,?,?,?,?,?,?,?,now()::text)',
+      [tgt,cb.name,subMap[cb.subject_id]||null,tchMap[cb.teacher_id]||null,roomMap[cb.room_id]||null,cb.day_of_week,cb.period_index,cb.week_index,ids.join(',')]);
+  }
+  for(const av of await q('SELECT * FROM tt_avail WHERE school_id=?',[src])){
+    let eid=null;
+    if(av.entity_type==='teacher') eid=tchMap[av.entity_id];
+    else if(av.entity_type==='class') eid=clsMap[av.entity_id];
+    else if(av.entity_type==='room') eid=roomMap[av.entity_id];
+    if(eid) await run('INSERT INTO tt_avail(school_id,entity_type,entity_id,day_of_week,period_index,created_at) VALUES(?,?,?,?,?,now()::text) ON CONFLICT DO NOTHING',
+      [tgt,av.entity_type,eid,av.day_of_week,av.period_index]);
+  }
+  res.json({ ok:true, subjects:Object.keys(subMap).length, rooms:Object.keys(roomMap).length, teachers:Object.keys(tchMap).length, classes:Object.keys(clsMap).length });
+}));
 // ---- USER MANAGEMENT (create/update/delete restricted to admin & master) ----
 const ROLES=['master','admin','principal','supervisor','teacher'];
 function requireAdmin(req,res){ if(!['admin','master'].includes(req.user.role)){ res.status(403).json({error:'forbidden'}); return false; } return true; }
