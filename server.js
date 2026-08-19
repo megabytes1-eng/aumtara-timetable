@@ -132,7 +132,10 @@ async function currentUser(req){
   if(!tok) return null;
   const s = await q1('SELECT user_id FROM tt_session WHERE token=?',[tok]);
   if(!s) return null;
-  return await q1('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,school_id,is_owner FROM tt_user WHERE id=? AND active=1',[s.user_id]);
+  const u = await q1('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,school_id,is_owner FROM tt_user WHERE id=? AND active=1',[s.user_id]);
+  // Self-heal: the platform-owner account must always be a master. If it was accidentally demoted, restore it on any request.
+  if(u && Number(u.is_owner)===1 && u.role!=='master'){ await run("UPDATE tt_user SET role='master' WHERE id=?",[u.id]); u.role='master'; }
+  return u;
 }
 // public: sign in — identifier can be login_id OR email OR mobile
 app.post('/api/login', h(async (req,res)=>{
@@ -143,13 +146,10 @@ app.post('/api/login', h(async (req,res)=>{
   // a deactivated (inactive) school suspends all its users' logins — reactivate from the SaaS panel (platform owner not tied to a school, so unaffected)
   if(u.school_id){ const sch=await q1('SELECT active FROM tt_school WHERE id=?',[u.school_id]); if(sch && +sch.active===0){ res.status(403).json({error:'This school account is inactive. Please contact the administrator.'}); return; } }
   // Self-heal: a school must always have at least one Admin. If an accidental role change/deletion left it
-  // with none, restore the school's founder (earliest active account) to Admin so nobody is locked out.
-  if(u.school_id){
+  // with none, promote whoever logs in (they are clearly staff trying to administer) so nobody is locked out.
+  if(u.school_id && !['admin','master'].includes(u.role)){
     const hasAdmin=await q1("SELECT 1 FROM tt_user WHERE school_id=? AND active=1 AND role IN ('admin','master') LIMIT 1",[u.school_id]);
-    if(!hasAdmin){
-      const founder=await q1('SELECT id FROM tt_user WHERE school_id=? AND active=1 ORDER BY id ASC LIMIT 1',[u.school_id]);
-      if(founder){ await run("UPDATE tt_user SET role='admin' WHERE id=?",[founder.id]); if(founder.id===u.id) u.role='admin'; }
-    }
+    if(!hasAdmin){ await run("UPDATE tt_user SET role='admin' WHERE id=?",[u.id]); u.role='admin'; }
   }
   const token=crypto.randomBytes(24).toString('hex');
   await run('INSERT INTO tt_session(token,user_id,created_at) VALUES(?,?,now()::text)',[token,u.id]);
