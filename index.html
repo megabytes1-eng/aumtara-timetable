@@ -1590,7 +1590,7 @@ function renderUsers(){const box=document.getElementById('usersbox');if(!box)ret
   box.innerHTML=`<div style="overflow:auto"><table><tr><th>${t('u_name')}</th><th>${t('u_login')}</th><th>${t('u_role')}</th><th>${t('u_mobile')}</th><th>${t('u_email')}</th><th>${t('u_qual')}</th><th>${t('u_subject')}</th><th>${t('u_active')}</th><th></th><th></th></tr>${USERS.map(u=>{const self=ME&&u.id===ME.id;return `<tr>
      <td><input value="${av(u.name)}" onchange="updUser(${u.id},{name:this.value})" style="width:130px"></td>
      <td><input value="${av(u.login_id)}" onchange="updUser(${u.id},{login_id:this.value})" style="width:100px"></td>
-     <td><select onchange="updUser(${u.id},{role:this.value})">${ROLES.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${t('role_'+r)}</option>`).join('')}</select></td>
+     <td><select onchange="updUser(${u.id},{role:this.value})" ${self?'disabled title="You cannot change your own role — ask another admin"':''}>${ROLES.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${t('role_'+r)}</option>`).join('')}</select></td>
      <td><input value="${av(u.mobile)}" onchange="updUser(${u.id},{mobile:this.value})" style="width:110px"></td>
      <td><input value="${av(u.email)}" onchange="updUser(${u.id},{email:this.value})" style="width:150px"></td>
      <td><input value="${av(u.qualification)}" onchange="updUser(${u.id},{qualification:this.value})" style="width:120px"></td>
@@ -1701,7 +1701,7 @@ function ownerRenderUsers(){
      <td>${schName(u.school_id)}</td>
      <td><input value="${esc(u.name)}" onchange="updUser(${u.id},{name:this.value})" style="width:120px"></td>
      <td><input value="${esc(u.login_id)}" onchange="updUser(${u.id},{login_id:this.value})" style="width:95px"></td>
-     <td><select onchange="updUser(${u.id},{role:this.value})">${ROLES.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${t('role_'+r)}</option>`).join('')}</select></td>
+     <td><select onchange="updUser(${u.id},{role:this.value})" ${self?'disabled title="You cannot change your own role — ask another admin"':''}>${ROLES.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${t('role_'+r)}</option>`).join('')}</select></td>
      <td><input value="${esc(u.mobile)}" onchange="updUser(${u.id},{mobile:this.value})" style="width:100px"></td>
      <td style="text-align:center"><input type="checkbox" ${+u.active!==0?'checked':''} onchange="updUser(${u.id},{active:this.checked?1:0})"></td>
      <td><button class="ghost mini" onclick="resetPw(${u.id})">${t('u_reset')}</button></td>

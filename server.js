@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v73';
+const SW_JS = `const CACHE='aumtara-v74';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -423,6 +423,19 @@ app.put('/api/users/:id', h(async (req,res)=>{
   const b=req.body||{}, id=req.params.id;
   if(req.user.role!=='master'){ const tgt=await q1('SELECT school_id FROM tt_user WHERE id=?',[id]); if(!tgt||tgt.school_id!==req.sid){ res.status(403).json({error:'forbidden'}); return; } }
   if(b.role!==undefined && !ROLES.includes(b.role)){ res.status(400).json({error:'bad role'}); return; }
+  // Guard: an admin must not lose their own admin access, and the LAST admin of a school must not be demoted/deactivated (would lock everyone out).
+  const demoting = (b.role!==undefined && !['admin','master'].includes(b.role));
+  const deactivating = (b.active!==undefined && (Number(b.active)===0 || b.active===false));
+  if(demoting && Number(id)===req.user.id){ res.status(400).json({error:'You cannot change your own role. Ask another Admin to do it.'}); return; }
+  if(demoting || deactivating){
+    const cur=await q1('SELECT role, school_id FROM tt_user WHERE id=?',[id]);
+    if(cur && ['admin','master'].includes(cur.role)){
+      const others = cur.school_id!=null
+        ? (await q1('SELECT COUNT(*)::int AS n FROM tt_user WHERE role IN (?,?) AND id<>? AND active=1 AND school_id=?',['admin','master',id,cur.school_id])).n
+        : (await q1('SELECT COUNT(*)::int AS n FROM tt_user WHERE role IN (?,?) AND id<>? AND active=1',['admin','master',id])).n;
+      if(!others){ res.status(400).json({error:'This is the only Admin — make another user an Admin first, then you can change this one.'}); return; }
+    }
+  }
   const cols=['name','role','email','mobile','qualification','main_subject_id','active'];
   const set=cols.filter(c=>b[c]!==undefined);
   if(set.length) await run(`UPDATE tt_user SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
