@@ -1214,27 +1214,30 @@ function paintBoxes(){
 let _pq=false;
 function _schedulePaint(){ if(_pq)return; _pq=true; setTimeout(()=>{_pq=false;paintBoxes();},30); }
 (function armPaint(){ const v=document.getElementById('view'); if(!v){setTimeout(armPaint,300);return;} try{new MutationObserver(_schedulePaint).observe(v,{childList:true,subtree:true});}catch(e){} })();
-// ---- PRINT OPTIONS (cell box size + colour / B&W) ----
-let PRINTOPT={w:0,h:0,bw:false};   // w,h = inches per timetable cell (0 = fit page); bw = black & white
+// ---- PRINT OPTIONS (whole-timetable page size in FEET + colour / B&W) ----
+let PRINTOPT={wft:0,hft:0,bw:false};   // wft,hft = FEET for the whole printed page (0 = fit normal page); bw = black & white
 function applyPrintSize(){
   let el=document.getElementById('printsizecss'); if(!el){ el=document.createElement('style'); el.id='printsizecss'; document.head.appendChild(el); }
-  const w=PRINTOPT.w>0?('width:'+PRINTOPT.w+'in !important;min-width:'+PRINTOPT.w+'in !important;'):'';
-  const h=PRINTOPT.h>0?('height:'+PRINTOPT.h+'in !important;'):'';
-  el.textContent=(w||h)?`@media print{#view table td,#view table th{${w}${h}box-sizing:border-box;} #view table{table-layout:fixed !important;}}`:'';
+  if(PRINTOPT.wft>0 && PRINTOPT.hft>0){
+    const wIn=+(PRINTOPT.wft*12).toFixed(2), hIn=+(PRINTOPT.hft*12).toFixed(2);
+    const tbl=document.querySelector('#view table'); const rows=(tbl&&tbl.rows.length)||8;
+    const rowH=Math.max(0.35,+((hIn-1.4)/rows).toFixed(2));   // fill page height: leave ~1.4in for title + margins, split the rest across rows
+    el.textContent=`@page{size:${wIn}in ${hIn}in;margin:0.4in;} @media print{#view table{width:100% !important;table-layout:fixed !important;} #view table td,#view table th{height:${rowH}in !important;box-sizing:border-box;} #view table td .subj,#view table td div{font-size:${rows>10?14:18}px;}}`;
+  } else el.textContent='';
 }
-function setPSize(w,h){ PRINTOPT.w=w; PRINTOPT.h=h; const cw=document.getElementById('pcw'),ch=document.getElementById('pch'); if(cw)cw.value=w||''; if(ch)ch.value=h||''; applyPrintSize(); toast('✓ '+(w||h?('Box '+(w||'?')+'″ × '+(h||'?')+'″'):'Fit page')); }
+function setPSize(w,h){ PRINTOPT.wft=w; PRINTOPT.hft=h; const cw=document.getElementById('pcw'),ch=document.getElementById('pch'); if(cw)cw.value=w||''; if(ch)ch.value=h||''; applyPrintSize(); toast('✓ '+(w&&h?('Page '+w+"' × "+h+"' ("+(w*12)+'"×'+(h*12)+'")'):'Normal page')); }
 function printBar(printJs){
   return `<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;background:#f6f8ff;border:1px solid #e5e7fb;border-radius:8px;padding:7px 11px;margin:2px 0 10px">
     <span class="small" style="font-weight:800;color:#1F3864">🖨 Print options</span>
-    <span class="small" style="color:#5c6580">Box size:</span>
-    <button class="ghost mini" onclick="setPSize(0,0)">Fit page</button>
-    <button class="ghost mini" onclick="setPSize(3,2)">3″×2″</button>
-    <button class="ghost mini" onclick="setPSize(3,1.6)">3″×1.6″</button>
+    <span class="small" style="color:#5c6580">Page size:</span>
+    <button class="ghost mini" onclick="setPSize(0,0)">Normal</button>
+    <button class="ghost mini" onclick="setPSize(2,3)">2'×3'</button>
+    <button class="ghost mini" onclick="setPSize(1.6,3)">1.6'×3'</button>
     <span class="small" style="color:#5c6580">or set your own:</span>
-    <input id="pcw" type="number" step="0.1" min="0" placeholder="W″" style="width:58px" value="${PRINTOPT.w||''}" oninput="PRINTOPT.w=+this.value||0;applyPrintSize()">
+    <input id="pcw" type="number" step="0.1" min="0" placeholder="W" style="width:54px" value="${PRINTOPT.wft||''}" oninput="PRINTOPT.wft=+this.value||0;applyPrintSize()">
     <span class="small">×</span>
-    <input id="pch" type="number" step="0.1" min="0" placeholder="H″" style="width:58px" value="${PRINTOPT.h||''}" oninput="PRINTOPT.h=+this.value||0;applyPrintSize()">
-    <span class="small" style="color:#8891a6">inch/cell</span>
+    <input id="pch" type="number" step="0.1" min="0" placeholder="H" style="width:54px" value="${PRINTOPT.hft||''}" oninput="PRINTOPT.hft=+this.value||0;applyPrintSize()">
+    <span class="small" style="color:#8891a6">feet (whole timetable)</span>
     <label class="chk small" title="Print in black & white to save colour ink"><input type="checkbox" ${PRINTOPT.bw?'checked':''} onchange="PRINTOPT.bw=this.checked"> ⬛ Black &amp; White</label>
     <button class="green" style="margin-left:auto" onclick="${printJs}">🖨 ${t('print_pdf')}</button>
   </div>`;
@@ -1247,8 +1250,18 @@ function showReportPreview(html, title){
   if(!ov){
     ov=document.createElement('div'); ov.id='rpOverlay';
     ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(20,27,46,.62);display:none;flex-direction:column;padding:12px';
-    ov.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
-      +'<b id="rpTitle" style="color:#fff;font-size:15px;flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>'
+    var rpbtn='background:#fff;color:#1F3864;border:none;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer';
+    ov.innerHTML='<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;flex-wrap:wrap">'
+      +'<b id="rpTitle" style="color:#fff;font-size:15px;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>'
+      +'<span style="color:#dfe6f5;font-size:12px;margin-left:6px">Size(ft):</span>'
+      +'<button onclick="rpSetSize(0,0)" style="'+rpbtn+'">Normal</button>'
+      +'<button onclick="rpSetSize(2,3)" style="'+rpbtn+'">2×3</button>'
+      +'<button onclick="rpSetSize(1.6,3)" style="'+rpbtn+'">1.6×3</button>'
+      +'<input id="rpw" type="number" step="0.1" min="0" placeholder="W" style="width:46px;padding:5px;border-radius:6px;border:none" oninput="PRINTOPT.wft=+this.value||0">'
+      +'<span style="color:#fff">×</span>'
+      +'<input id="rph" type="number" step="0.1" min="0" placeholder="H" style="width:46px;padding:5px;border-radius:6px;border:none" oninput="PRINTOPT.hft=+this.value||0">'
+      +'<label style="color:#dfe6f5;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" onchange="PRINTOPT.bw=this.checked">⬛ B&W</label>'
+      +'<span style="flex:1"></span>'
       +'<button onclick="rpPrint()" style="background:#5a3ec8;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;font-size:14px;cursor:pointer">🖨 '+t('rp_print')+'</button>'
       +'<button onclick="rpClose()" style="background:#fff;color:#1F3864;border:none;border-radius:8px;padding:9px 16px;font-weight:700;font-size:14px;cursor:pointer">✕ '+t('rp_close')+'</button>'
       +'</div>'
@@ -1262,7 +1275,16 @@ function showReportPreview(html, title){
   ov.style.display='flex';
 }
 function rpClose(){ var o=document.getElementById('rpOverlay'); if(o) o.style.display='none'; var f=document.getElementById('rpFrame'); if(f) f.srcdoc=''; }
-function rpPrint(){ var f=document.getElementById('rpFrame'); if(f&&f.contentWindow){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ toast(t('rp_print')); } } }
+function rpSetSize(w,h){ PRINTOPT.wft=w; PRINTOPT.hft=h; var cw=document.getElementById('rpw'),ch=document.getElementById('rph'); if(cw)cw.value=w||''; if(ch)ch.value=h||''; toast('✓ '+(w&&h?('Page '+w+"' × "+h+"' ("+(w*12)+'"×'+(h*12)+'")'):'Normal page')); }
+function rpPrint(){ var f=document.getElementById('rpFrame'); if(!f||!f.contentWindow){ toast(t('rp_print')); return; }
+  try{ var doc=f.contentDocument||f.contentWindow.document; var st=doc.getElementById('rpsize'); if(!st){ st=doc.createElement('style'); st.id='rpsize'; (doc.head||doc.documentElement).appendChild(st); }
+    var css='';
+    if(PRINTOPT.wft>0 && PRINTOPT.hft>0){ var wIn=(PRINTOPT.wft*12).toFixed(2), hIn=(PRINTOPT.hft*12).toFixed(2); css+='@page{size:'+wIn+'in '+hIn+'in;margin:0.4in;} body,table{width:100%!important;}'; }
+    if(PRINTOPT.bw){ css+=' *{color:#000!important;background:#fff!important;border-color:#000!important;box-shadow:none!important;} th,thead{background:#e6e6e6!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'; }
+    st.textContent=css;
+    f.contentWindow.focus(); f.contentWindow.print();
+  }catch(e){ toast(t('rp_print')); }
+}
 function ttHeadRowHTML(){const s0=slotsFor(firstWD());return '<th>'+t('day')+'</th>'+s0.map(s=>'<th>'+(s.brk?(s.kind==='lunch'?'🍽':'☕'):sesc(s.label))+'</th>').join('');}
 function classGridHTML(cid){const head=ttHeadRowHTML();
   const rows=WD().map(di=>{const slots=slotsFor(di);let pi=0;let cells='<td class="ph">'+sesc(DD()[di])+'</td>';
