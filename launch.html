@@ -355,7 +355,7 @@
   var PAY = null, TOKEN = null, CURPLAN='', CURAMT=0;
   document.getElementById('yr').textContent = new Date().getFullYear();
   // only existing/trained users sign in to the app; new schools go through a demo first
-  var si=document.getElementById('cta_signin'); if(si) si.href=APP;
+  var si=document.getElementById('cta_signin'); if(si) si.href=APP+'/?login=1';
 
   function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function api(method, pathq, body){

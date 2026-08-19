@@ -897,10 +897,12 @@ function buildLangSel(){const s=document.getElementById('langsel');s.innerHTML=L
 function applyChrome(){document.getElementById('apptitle').textContent=t('app_title');document.getElementById('appsub').textContent=t('app_sub');const s=document.getElementById('langsel');if(s)s.value=LANG;}
 
 /* ============================ auth / login ============================ */
+function wantLoginForm(){try{const p=new URLSearchParams(location.search);return p.has('login')||location.hash==='#login';}catch(e){return false;}}
+function gotoLanding(){try{location.replace('/launch');}catch(e){location.href='/launch';}}
 async function boot(){document.documentElement.lang=LANG;buildLangSel();applyChrome();
-  if(!AUTH){renderLogin();return;}
+  if(!AUTH){ if(wantLoginForm())renderLogin(); else gotoLanding(); return; }
   try{ME=await api('GET','/api/me');}catch(e){ME=null;}
-  if(!ME||!ME.id){renderLogin();return;}
+  if(!ME||!ME.id){ if(wantLoginForm())renderLogin(); else gotoLanding(); return; }
   loggedOut=false;startApp();}
 async function startApp(){loggedOut=false;
   try{SCHOOLS=await api('GET','/api/schools');}catch(e){SCHOOLS=[];}
@@ -969,7 +971,7 @@ async function doLogin(){const login_id=(document.getElementById('li_user').valu
   let r;try{r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login_id,password})});}catch(e){err.style.display='block';err.textContent=t('login_fail');return;}
   if(!r.ok){err.style.display='block';err.textContent=t('login_fail');return;}
   const d=await r.json();AUTH=d.token;ME=d.user;try{localStorage.setItem('tt_token',AUTH);}catch(e){}loggedOut=false;tab='dash';try{track('login',{});}catch(e){}startApp();}
-async function doLogout(){try{await fetch('/api/logout',{method:'POST',headers:{'Authorization':'Bearer '+AUTH}});}catch(e){}AUTH=null;ME=null;try{localStorage.removeItem('tt_token');}catch(e){}renderLogin();}
+async function doLogout(){try{await fetch('/api/logout',{method:'POST',headers:{'Authorization':'Bearer '+AUTH}});}catch(e){}AUTH=null;ME=null;try{localStorage.removeItem('tt_token');}catch(e){}gotoLanding();}
 function showUserChip(){if(!ME)return;let c=document.getElementById('userchip');if(!c){c=document.createElement('div');c.id='userchip';c.style.cssText='display:flex;align-items:center;gap:8px;color:#fff;font-size:13px;margin-left:12px';const hdr=document.querySelector('header');hdr.insertBefore(c,document.getElementById('saved'));}
   c.innerHTML=`<button class="helpbtn" id="helpbtn" onclick="openHelp()" title="Help Center" aria-label="Help">?</button><button class="ghost mini" style="background:#2c4a7c;color:#fff;border-color:#3f5f95" onclick="doLogout()">${t('logout')}</button>`;}
 // role → which tabs are visible
@@ -1092,7 +1094,7 @@ function appConfirm(msg,onYes){
   no.onclick=close; yes.onclick=()=>{close();try{onYes&&onYes();}catch(err){showErr(String(err&&err.message||err));}};
   row.appendChild(yes);row.appendChild(no);box.appendChild(row);e.appendChild(box);
 }
-function onAuthFail(){AUTH=null;ME=null;loggedOut=true;try{localStorage.removeItem('tt_token');}catch(e){}renderLogin();}
+function onAuthFail(){AUTH=null;ME=null;loggedOut=true;try{localStorage.removeItem('tt_token');}catch(e){}if(wantLoginForm())renderLogin();else gotoLanding();}
 function dl(u){let x=u+(u.includes('?')?'&':'?')+'token='+encodeURIComponent(AUTH||'');if(SCHOOL)x+='&school='+encodeURIComponent(SCHOOL);location.href=x;}
 function showOk(msg){let e=document.getElementById('okbanner');if(!e){e=document.createElement('div');e.id='okbanner';e.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#16a34a;color:#fff;padding:14px 44px 14px 18px;text-align:center;font-weight:700;font-size:15px;box-shadow:0 2px 10px rgba(0,0,0,.25);cursor:pointer';e.onclick=()=>{e.style.display='none';};document.body.appendChild(e);}e.innerHTML=String(msg).replace(/</g,'&lt;')+' <span style="opacity:.85;font-weight:400">(tap to dismiss)</span>';e.style.display='block';clearTimeout(showOk._t);showOk._t=setTimeout(()=>{e.style.display='none';},6000);}
 function toast(msg){const e=document.getElementById('saved');e.textContent=msg||t('saved');e.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>{e.classList.remove('show');e.textContent=t('saved');},msg?2800:1200);}
