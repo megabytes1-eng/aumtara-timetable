@@ -1319,6 +1319,36 @@ function printAll(kind, dlUrl){
     '@page{margin:12mm;}';
   var html='<!doctype html><html><head><meta charset="utf-8"><title>'+sesc(heading)+'</title><style>'+css+'</style></head><body><div class="doc"><div class="hd"><h1>'+sesc(school)+'</h1><div class="sub">'+sesc(heading)+wk+'</div></div>'+blocks+'</div></body></html>';
   showReportPreview(html, heading, dlUrl);}
+// wrap a report table in a clean printable HTML doc (school header + styled table)
+function _repDoc(title, inner){
+  const school=(SCHOOLS.find(s=>String(s.id)===String(SCHOOL))||{}).name||'';
+  const css='*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}body{margin:0;color:#111}.doc{padding:16px}.hd{text-align:center;margin-bottom:14px}.hd h1{margin:0;font-size:20px;color:#1F2B57}.hd .sub{font-size:13px;color:#555}table{border-collapse:collapse;width:100%;margin-top:6px}th,td{border:1px solid #b9c0d4;padding:6px 9px;font-size:12.5px;text-align:left}th{background:#1F3864;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}tr:nth-child(even) td{background:#f4f6fb}td.n{text-align:center}@page{margin:12mm}';
+  return '<!doctype html><html><head><meta charset="utf-8"><title>'+sesc(title)+'</title><style>'+css+'</style></head><body><div class="doc"><div class="hd"><h1>'+sesc(school)+'</h1><div class="sub">'+sesc(title)+'</div></div>'+inner+'</div></body></html>';
+}
+// on-screen preview for the Analysis reports (computed from the loaded timetable), with ⬇ Download Excel + 🖨 Print inside the overlay
+function previewAnalysis(kind){
+  const A={ 'class-summary':{t:t('rep_classsummary'),url:'/api/export/class-summary.xlsx'},'subject-coverage':{t:t('rep_subjcoverage'),url:'/api/export/subject-coverage.xlsx'},'room-utilization':{t:t('rep_roomutil'),url:'/api/export/room-utilization.xlsx'},'teacher-free':{t:t('rep_teacherfree'),url:'/api/export/teacher-free.xlsx'},'period-load':{t:t('rep_periodload'),url:'/api/export/period-load.xlsx'} }[kind];
+  if(!A) return; const TTc=Array.isArray(TT)?TT:[]; let inner='';
+  if(kind==='class-summary'){
+    const rows=classes.map(c=>{const cc=TTc.filter(r=>r.class_id===c.id&&r.subject_id);const uns=cc.filter(r=>r.teacher_id==null).length;return '<tr><td>'+sesc(c.name)+'</td><td class="n">'+cc.length+'</td><td class="n" style="color:'+(uns?'#c0392b':'#1a7f37')+'">'+uns+'</td></tr>';}).join('');
+    inner='<table><tr><th>'+t('class_')+'</th><th>Periods scheduled</th><th>Without teacher</th></tr>'+rows+'</table>';
+  } else if(kind==='subject-coverage'){
+    const rows=subjects.map(s=>{const n=TTc.filter(r=>r.subject_id===s.id).length;const tc=(typeof subTeachers==='function'?subTeachers(s.id).length:0);return '<tr><td>'+sesc(s.name)+'</td><td class="n">'+n+'</td><td class="n" style="color:'+(tc?'#1a7f37':'#c0392b')+'">'+tc+'</td></tr>';}).join('');
+    inner='<table><tr><th>'+t('subject')+'</th><th>Periods / week</th><th>Teachers</th></tr>'+rows+'</table>';
+  } else if(kind==='room-utilization'){
+    const rows=rooms.map(rm=>{const n=TTc.filter(r=>r.room_id===rm.id).length;return '<tr><td>'+sesc(rm.name)+'</td><td class="n">'+n+'</td></tr>';}).join('');
+    inner='<table><tr><th>Room</th><th>Periods used / week</th></tr>'+rows+'</table>';
+  } else if(kind==='teacher-free'){
+    const rows=teachers.map(tc=>{const load=TTc.filter(r=>r.teacher_id===tc.id).length;const cap=tc.max_load;const over=cap&&load>cap;return '<tr><td>'+sesc(tc.name)+'</td><td class="n">'+load+'</td><td class="n">'+(cap||'—')+'</td><td class="n" style="color:'+(over?'#c0392b':'#1a7f37')+'">'+(cap?(cap-load):'—')+'</td></tr>';}).join('');
+    inner='<table><tr><th>'+t('teacher')+'</th><th>Weekly load</th><th>Max load</th><th>Free capacity</th></tr>'+rows+'</table>';
+  } else {
+    const days=WD();const maxP=Math.max(1,...days.map(di=>slotsFor(di).filter(s=>!s.brk).length));
+    let head='<th>'+t('day')+'</th>';for(let p=0;p<maxP;p++)head+='<th>P'+(p+1)+'</th>';
+    const rows=days.map(di=>{let cells='<td>'+sesc(DD()[di])+'</td>';for(let p=0;p<maxP;p++){const n=TTc.filter(r=>r.day_of_week===di&&r.period_index===p&&r.subject_id).length;cells+='<td class="n">'+(n||'')+'</td>';}return '<tr>'+cells+'</tr>';}).join('');
+    inner='<table><tr>'+head+'</tr>'+rows+'</table><div style="font-size:11px;color:#777;margin-top:6px">Number = classes scheduled in that day/period.</div>';
+  }
+  showReportPreview(_repDoc(A.t, inner), A.t, A.url);
+}
 function setTab(t){tab=t;if(t==='dash'){try{localStorage.removeItem('tt_onboard');}catch(e){}}/* clicking Dashboard brings the Getting-started card back after Hide */const g=NAVGROUPS.find(x=>x.key&&x.tabs.includes(t));if(g){GRPCOLL[g.key]=false;try{localStorage.setItem('tt_grpcoll',JSON.stringify(GRPCOLL));}catch(e){}}if(window.innerWidth<820)document.body.classList.add('sidenav-off');try{track('page_view',{tab:t});}catch(e){}render();}
 function toggleSidebar(){document.body.classList.toggle('sidenav-off');try{localStorage.setItem('tt_sidenav',document.body.classList.contains('sidenav-off')?'off':'on');}catch(e){}}
 let GRPCOLL={};try{GRPCOLL=JSON.parse(localStorage.getItem('tt_grpcoll')||'{}')||{};}catch(e){GRPCOLL={};}
@@ -1740,11 +1770,12 @@ function reportsView(){const cur=SCHOOLS.find(s=>String(s.id)===String(SCHOOL))|
      <div class="small" style="margin-top:6px;color:#57608a"><b>${t('reports_includes')}</b> ${t('reports_list')}</div></div>`;
   const secAnalysis=`<div class="card"><h2>📈 ${t('rep_analysis')}</h2><div class="desc">${t('rep_analysis_d')}</div>
      <div class="row" style="gap:10px;flex-wrap:wrap">
-       <button class="green" onclick="dl('/api/export/class-summary.xlsx')">🏫 ${t('rep_classsummary')}</button>
-       <button class="green" onclick="dl('/api/export/subject-coverage.xlsx')">📚 ${t('rep_subjcoverage')}</button>
-       <button class="green" onclick="dl('/api/export/room-utilization.xlsx')">🚪 ${t('rep_roomutil')}</button>
-       <button class="green" onclick="dl('/api/export/teacher-free.xlsx')">🟢 ${t('rep_teacherfree')}</button>
-       <button class="green" onclick="dl('/api/export/period-load.xlsx')">🔥 ${t('rep_periodload')}</button></div></div>`;
+       <button class="green" onclick="previewAnalysis('class-summary')">👁 🏫 ${t('rep_classsummary')}</button>
+       <button class="green" onclick="previewAnalysis('subject-coverage')">👁 📚 ${t('rep_subjcoverage')}</button>
+       <button class="green" onclick="previewAnalysis('room-utilization')">👁 🚪 ${t('rep_roomutil')}</button>
+       <button class="green" onclick="previewAnalysis('teacher-free')">👁 🟢 ${t('rep_teacherfree')}</button>
+       <button class="green" onclick="previewAnalysis('period-load')">👁 🔥 ${t('rep_periodload')}</button></div>
+     <div class="small" style="margin-top:8px;color:#5c6580">👁 = pehle preview khulega — usme se 🖨 Print ya ⬇ Download Excel.</div></div>`;
   const secDeo=deoSectionHTML(cur);
   const secDiary=`<div class="card"><h2>📔 ${t('rep_diary')}</h2><div class="desc">${t('rep_diary_d')}</div>
      <div class="row" style="gap:10px;flex-wrap:wrap">
