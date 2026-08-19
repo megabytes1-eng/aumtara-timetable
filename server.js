@@ -667,7 +667,7 @@ app.get('/api/readiness', h(async (req,res)=>{
   const quota    = await cnt('SELECT COUNT(*)::int n FROM tt_quota WHERE per_week>0 AND school_id=?');
   const cells    = await cnt('SELECT COUNT(*)::int n FROM tt_timetable WHERE subject_id IS NOT NULL AND school_id=?');
   const named    = !!(c.school_name && c.school_name!=='Your School Name');
-  const hours    = !!(c.weekday_start && c.weekday_end && c.period_minutes);
+  const hours    = !!(c.weekday_start && c.weekday_end && (c.period_minutes || c.num_periods || (c.period_durations && String(c.period_durations).trim())));
   const steps = [
     { key:'classes',   done: classes>0,  count: classes },
     { key:'subjects',  done: subjects>0, count: subjects },
