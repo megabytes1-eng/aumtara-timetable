@@ -273,6 +273,9 @@ async function init() {
   // ===================== SaaS PLATFORM-OWNER (super-admin) =====================
   // one platform owner account manages all schools' pricing / modules / users
   await run(`ALTER TABLE tt_user ADD COLUMN IF NOT EXISTS is_owner INTEGER DEFAULT 0`);
+  // Institution-scoped admin: a user with group_scope set can manage every school whose group_name matches
+  // (e.g. one "RNNAIK" login for the High School + Higher Secondary sections). Blank = single-school admin.
+  await run(`ALTER TABLE tt_user ADD COLUMN IF NOT EXISTS group_scope TEXT`);
   // mark the original seeded admin as the platform owner (only if none is set yet)
   await run(`UPDATE tt_user SET is_owner=1 WHERE id=(SELECT MIN(id) FROM tt_user WHERE role='master') AND NOT EXISTS (SELECT 1 FROM tt_user WHERE is_owner=1)`);
   // per-school SaaS fields: price + paid/unpaid + validity + disabled-modules CSV + contact/notes

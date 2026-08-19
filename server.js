@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v86';
+const SW_JS = `const CACHE='aumtara-v88';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -132,7 +132,7 @@ async function currentUser(req){
   if(!tok) return null;
   const s = await q1('SELECT user_id FROM tt_session WHERE token=?',[tok]);
   if(!s) return null;
-  const u = await q1('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,school_id,is_owner FROM tt_user WHERE id=? AND active=1',[s.user_id]);
+  const u = await q1('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,school_id,is_owner,group_scope FROM tt_user WHERE id=? AND active=1',[s.user_id]);
   // Self-heal: the platform-owner account must always be a master. If it was accidentally demoted, restore it on any request.
   if(u && Number(u.is_owner)===1 && u.role!=='master'){ await run("UPDATE tt_user SET role='master' WHERE id=?",[u.id]); u.role='master'; }
   return u;
@@ -231,6 +231,13 @@ app.use('/api', (req,res,next)=>{
     const raw = (req.query && req.query.school) || req.headers['x-school-id'];
     let sid;
     if (req.user.role === 'master') sid = (raw!=null && raw!=='') ? Number(raw) : (req.user.school_id || null);
+    else if (req.user.group_scope) {
+      // institution-scoped admin — may act on any school in their group, verified against group_name
+      if (raw!=null && raw!=='') {
+        const g = await q1('SELECT group_name FROM tt_school WHERE id=?',[Number(raw)]);
+        sid = (g && String(g.group_name||'').trim().toLowerCase() === String(req.user.group_scope).trim().toLowerCase()) ? Number(raw) : (req.user.school_id || null);
+      } else sid = req.user.school_id || null;
+    }
     else sid = req.user.school_id || null;
     if (sid == null) { const s = await q1('SELECT id FROM tt_school WHERE active=1 ORDER BY id LIMIT 1'); sid = s ? s.id : null; }
     req.sid = sid;
@@ -360,6 +367,7 @@ app.post('/api/student-choices', h(async (req,res)=>{
 // -------------------- SCHOOLS (registry) --------------------
 app.get('/api/schools', h(async (req,res)=>{
   if (req.user.role === 'master') res.json(await q('SELECT * FROM tt_school ORDER BY id'));
+  else if (req.user.group_scope) res.json(await q('SELECT * FROM tt_school WHERE lower(trim(group_name))=lower(trim(?)) ORDER BY section_order NULLS LAST, id',[req.user.group_scope]));
   else res.json(await q('SELECT * FROM tt_school WHERE id=? ORDER BY id',[req.user.school_id]));
 }));
 const SCHOOL_LICENCE_LIMIT=4;   // max schools/sections per account on the current licence
@@ -476,8 +484,8 @@ const ROLES=['master','admin','principal','supervisor','teacher'];
 function requireAdmin(req,res){ if(!['admin','master'].includes(req.user.role)){ res.status(403).json({error:'forbidden'}); return false; } return true; }
 app.get('/api/users', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
-  if(req.user.role==='master') res.json(await q('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,active,created_at,school_id FROM tt_user ORDER BY id'));
-  else res.json(await q('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,active,created_at,school_id FROM tt_user WHERE school_id=? ORDER BY id',[req.sid]));
+  if(req.user.role==='master') res.json(await q('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,active,created_at,school_id,group_scope FROM tt_user ORDER BY id'));
+  else res.json(await q('SELECT id,name,role,login_id,email,mobile,qualification,main_subject_id,active,created_at,school_id,group_scope FROM tt_user WHERE school_id=? ORDER BY id',[req.sid]));
 }));
 app.post('/api/users', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
@@ -488,9 +496,10 @@ app.post('/api/users', h(async (req,res)=>{
   const pw=(b.password!=null && String(b.password).length)?b.password:'changeme123';
   // new users belong to the current school (master may target a specific school via body.school_id)
   const school = (req.user.role==='master' && b.school_id) ? b.school_id : req.sid;
-  const row=await q1(`INSERT INTO tt_user(name,role,login_id,email,mobile,qualification,main_subject_id,password_hash,active,created_at,school_id)
-     VALUES(?,?,?,?,?,?,?,?,1,now()::text,?) RETURNING id`,
-    [b.name||login, b.role||'teacher', login, b.email||null, b.mobile||null, b.qualification||null, b.main_subject_id||null, hashPw(pw), school]);
+  const gscope = (b.group_scope!=null && String(b.group_scope).trim()!=='') ? String(b.group_scope).trim() : null;
+  const row=await q1(`INSERT INTO tt_user(name,role,login_id,email,mobile,qualification,main_subject_id,password_hash,active,created_at,school_id,group_scope)
+     VALUES(?,?,?,?,?,?,?,?,1,now()::text,?,?) RETURNING id`,
+    [b.name||login, b.role||'teacher', login, b.email||null, b.mobile||null, b.qualification||null, b.main_subject_id||null, hashPw(pw), school, gscope]);
   res.json({ id:row.id });
 }));
 app.put('/api/users/:id', h(async (req,res)=>{
@@ -511,7 +520,7 @@ app.put('/api/users/:id', h(async (req,res)=>{
       if(!others){ res.status(400).json({error:'This is the only Admin — make another user an Admin first, then you can change this one.'}); return; }
     }
   }
-  const cols=['name','role','email','mobile','qualification','main_subject_id','active'];
+  const cols=['name','role','email','mobile','qualification','main_subject_id','active','group_scope'];
   const set=cols.filter(c=>b[c]!==undefined);
   if(set.length) await run(`UPDATE tt_user SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
   if(b.login_id){ const login=String(b.login_id).trim(); if(login && !(await q1('SELECT 1 FROM tt_user WHERE lower(login_id)=lower(?) AND id<>?',[login,id]))) await run('UPDATE tt_user SET login_id=? WHERE id=?',[login,id]); }

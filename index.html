@@ -923,7 +923,7 @@ function showSchoolBar(){const hdr=document.querySelector('header');let el=docum
   // Section shows as a label (not a dropdown) — it auto-follows whichever school is selected.
   const secLabel=String(cur.section_name||'').trim();
   const secChip=secLabel?` <span style="background:#1e3a68;border:1px solid #3f5f95;border-radius:8px;padding:4px 10px;font-weight:600;font-size:12.5px">${esc(secLabel)}</span>`:'';
-  if(isMaster&&SCHOOLS.length>1){
+  if(SCHOOLS.length>1){
     el.innerHTML=`${logo} <select title="${t('switch_school')}" onchange="switchSchool(this.value)" style="${selStyle}">${SCHOOLS.map(s=>`<option value="${s.id}" ${String(s.id)===String(SCHOOL)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>${secChip}`;
   } else {
     el.innerHTML=`${logo} <span style="opacity:.92;font-weight:600">${esc(cur.name)}</span>${secChip}`;
@@ -1596,14 +1596,16 @@ function usersView(){const av=s=>String(s==null?'':s).replace(/"/g,'&quot;');
        <div><label>${t('u_email')}</label><input id="nu_email" style="width:170px"></div>
        <div><label>${t('u_qual')}</label><input id="nu_qual" style="width:130px"></div>
        <div><label>${t('u_subject')}</label><select id="nu_subj"><option value="">—</option>${subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div>
+       <div><label>Manages institution</label><select id="nu_group" style="width:150px">${instOptions('')}</select></div>
        <div><label>${t('u_password')}</label><input id="nu_pw" style="width:130px" placeholder="${t('u_pw_hint')}"></div>
        <button class="green" onclick="addUser()">${t('add')}</button></div></div>`;}
 function renderUsers(){const box=document.getElementById('usersbox');if(!box)return;const av=s=>String(s==null?'':s).replace(/"/g,'&quot;');
   if(!USERS.length){box.innerHTML='<span class="small">'+t('none')+'</span>';return;}
-  box.innerHTML=`<div style="overflow:auto"><table><tr><th>${t('u_name')}</th><th>${t('u_login')}</th><th>${t('u_role')}</th><th>${t('u_mobile')}</th><th>${t('u_email')}</th><th>${t('u_qual')}</th><th>${t('u_subject')}</th><th>${t('u_active')}</th><th></th><th></th></tr>${USERS.map(u=>{const self=ME&&u.id===ME.id;return `<tr>
+  box.innerHTML=`<div style="overflow:auto"><table><tr><th>${t('u_name')}</th><th>${t('u_login')}</th><th>${t('u_role')}</th><th>Institution</th><th>${t('u_mobile')}</th><th>${t('u_email')}</th><th>${t('u_qual')}</th><th>${t('u_subject')}</th><th>${t('u_active')}</th><th></th><th></th></tr>${USERS.map(u=>{const self=ME&&u.id===ME.id;return `<tr>
      <td><input value="${av(u.name)}" onchange="updUser(${u.id},{name:this.value})" style="width:130px"></td>
      <td><input value="${av(u.login_id)}" onchange="updUser(${u.id},{login_id:this.value})" style="width:100px"></td>
      <td><select onchange="updUser(${u.id},{role:this.value})" ${self?'disabled title="You cannot change your own role — ask another admin"':''}>${ROLES.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${t('role_'+r)}</option>`).join('')}</select></td>
+     <td><select onchange="updUser(${u.id},{group_scope:this.value})" title="Which institution's schools this login manages" style="width:135px">${instOptions(u.group_scope)}</select></td>
      <td><input value="${av(u.mobile)}" onchange="updUser(${u.id},{mobile:this.value})" style="width:110px"></td>
      <td><input value="${av(u.email)}" onchange="updUser(${u.id},{email:this.value})" style="width:150px"></td>
      <td><input value="${av(u.qualification)}" onchange="updUser(${u.id},{qualification:this.value})" style="width:120px"></td>
@@ -1611,7 +1613,7 @@ function renderUsers(){const box=document.getElementById('usersbox');if(!box)ret
      <td style="text-align:center"><input type="checkbox" ${+u.active!==0?'checked':''} onchange="updUser(${u.id},{active:this.checked?1:0})"></td>
      <td><button class="ghost mini" onclick="resetPw(${u.id})">${t('u_reset')}</button></td>
      <td>${self?'':`<button class="ghost mini red" onclick="delUser(${u.id},'${av(u.login_id).replace(/'/g,"\\'")}')">✕</button>`}</td></tr>`;}).join('')}</table></div>`;}
-async function addUser(){const g=id=>document.getElementById(id);const b={name:g('nu_name').value.trim(),login_id:g('nu_login').value.trim(),role:g('nu_role').value,mobile:g('nu_mobile').value.trim(),email:g('nu_email').value.trim(),qualification:g('nu_qual').value.trim(),main_subject_id:g('nu_subj').value?+g('nu_subj').value:null,password:g('nu_pw').value};
+async function addUser(){const g=id=>document.getElementById(id);const b={name:g('nu_name').value.trim(),login_id:g('nu_login').value.trim(),role:g('nu_role').value,mobile:g('nu_mobile').value.trim(),email:g('nu_email').value.trim(),qualification:g('nu_qual').value.trim(),main_subject_id:g('nu_subj').value?+g('nu_subj').value:null,group_scope:g('nu_group')?g('nu_group').value:'',password:g('nu_pw').value};
   if(!b.login_id){toast(t('u_need_login'));return;}const r=await api('POST','/api/users',b);if(r&&r.error){toast(r.error);return;}toast(t('u_added'));await loadUsers();render();}
 async function updUser(id,patch){const r=await api('PUT','/api/users/'+id,patch);if(r&&r.error){toast(r.error);}else{toast();}await loadUsers();}
 async function delUser(id,login){if(!confirm(t('u_confirm_del',{login})))return;const r=await api('DELETE','/api/users/'+id);if(r&&r.error){toast(r.error);return;}toast();await loadUsers();render();}
@@ -1738,6 +1740,8 @@ const SECTIONS=['Pre-Primary','Primary','Upper Primary','High School','Higher Se
 let CUSTOM_SECTIONS=[];   // user-added section names (kept for this session so they show in every dropdown)
 function allSections(){return SECTIONS.concat(CUSTOM_SECTIONS.filter(x=>SECTIONS.indexOf(x)===-1));}
 function sectionOptions(cur){cur=String(cur||'');const list=allSections();if(cur&&list.indexOf(cur)===-1)list.unshift(cur);return `<option value="">—</option>`+list.map(x=>`<option value="${x.replace(/"/g,'&quot;')}" ${x===cur?'selected':''}>${x.replace(/</g,'&lt;')}</option>`).join('');}
+function instList(){return [...new Set((SCHOOLS||[]).map(s=>String(s.group_name||'').trim()).filter(Boolean))];}
+function instOptions(cur){cur=String(cur||'');var list=instList();if(cur&&list.indexOf(cur)===-1)list.unshift(cur);return '<option value="">— single school —</option>'+list.map(g=>'<option value="'+g.replace(/"/g,'&quot;')+'" '+(g===cur?'selected':'')+'>'+g.replace(/</g,'&lt;')+'</option>').join('');}
 function promptNewSection(){const v=(prompt(t('new_section_ask'))||'').trim();if(!v)return null;if(SECTIONS.indexOf(v)===-1&&CUSTOM_SECTIONS.indexOf(v)===-1)CUSTOM_SECTIONS.push(v);return v;}
 function addSectionForSchool(id){const v=promptNewSection();if(v)updSchool(id,{section_name:v});}
 function addSectionToAddForm(){const v=promptNewSection();if(!v)return;const sel=document.getElementById('ns_section');if(sel){if(![...sel.options].some(o=>o.value===v)){const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);}sel.value=v;}}
