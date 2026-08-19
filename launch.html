@@ -318,9 +318,11 @@
     <div id="payOpts"></div>
     <div id="paidCta" style="display:none">
       <div class="pay-opt" style="border-color:var(--purple);background:#faf9ff">
-        <h4>✅ Payment done?</h4>
-        <p class="mini" style="margin:0 0 8px">Create your school login now and start using Aumtara right away.</p>
-        <button class="btn btn-primary btn-sm" onclick="showSignup()">Create my account →</button>
+        <h4>✅ Confirm your payment</h4>
+        <p class="mini" style="margin:0 0 8px">Pay using the QR / UPI above, then tick the box to continue. Your login opens once we verify the payment.</p>
+        <div class="field" style="margin-bottom:8px"><input id="pay_utr" placeholder="UPI Ref / UTR no. (optional — helps us verify faster)"></div>
+        <label class="mini" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;cursor:pointer"><input type="checkbox" id="pay_confirm" style="width:auto;margin:0" onchange="togglePaid()"> <span>I have completed the payment</span></label>
+        <button class="btn btn-primary btn-sm" id="createBtn" onclick="showSignup()" disabled style="opacity:.5;cursor:not-allowed">Create my account →</button>
       </div>
     </div>
     <div id="signupBox" style="display:none">
@@ -390,8 +392,16 @@
     document.getElementById('buyModal').classList.add('open');
     return false;
   }
+  // payment gate: Create-account button stays disabled until the buyer confirms they've paid
+  function togglePaid(){
+    var c=document.getElementById('pay_confirm'), b=document.getElementById('createBtn');
+    if(!b) return;
+    if(c && c.checked){ b.disabled=false; b.style.opacity=''; b.style.cursor='pointer'; }
+    else { b.disabled=true; b.style.opacity='.5'; b.style.cursor='not-allowed'; }
+  }
   // reveal the signup form after payment
   function showSignup(){
+    var c=document.getElementById('pay_confirm'); if(!c || !c.checked){ togglePaid(); return false; }
     document.getElementById('signupBox').style.display='block';
     document.getElementById('paidCta').style.display='none';
     var sc=document.getElementById('eq_school'), t=document.getElementById('su_school');
@@ -407,7 +417,8 @@
     if(!school||!login||!pw){ msg(m,'School, login ID and password are required.','err'); return; }
     if(pw.length<6){ msg(m,'Password must be at least 6 characters.','err'); return; }
     msg(m,'Creating your account…','ok');
-    api('POST','/api/signup',{school_name:school,name:name||login,username:login,password:pw,email:g('su_email'),mobile:g('su_mobile'),plan:CURPLAN,pending:true}).then(function(r){
+    var _utr=(document.getElementById('pay_utr')||{}).value||'';
+    api('POST','/api/signup',{school_name:school,name:name||login,username:login,password:pw,email:g('su_email'),mobile:g('su_mobile'),plan:CURPLAN,pay_ref:_utr.trim(),pending:true}).then(function(r){
       if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not create account.','err'); return; }
       if(r.data && r.data.pending){
         // access stays locked until the owner verifies payment & activates the school
@@ -454,6 +465,10 @@
     document.getElementById('paidCta').style.display='block';
     document.getElementById('signupBox').style.display='none';
     var sm=document.getElementById('suMsg'); if(sm){ sm.className='msg'; sm.textContent=''; }
+    // reset the payment-confirmation gate every time Buy opens: Create account stays locked until "I have paid" is ticked
+    var pc=document.getElementById('pay_confirm'); if(pc) pc.checked=false;
+    var ut=document.getElementById('pay_utr'); if(ut) ut.value='';
+    togglePaid();
     // build the UPI QR + deep link now that the box exists
     if(p.enable_upi!==0 && p.upi_id){
       var uri='upi://pay?pa='+encodeURIComponent(p.upi_id)+'&pn='+encodeURIComponent(p.payee_name||'Aumtara')+'&am='+CURAMT+'&cu=INR&tn='+encodeURIComponent('Aumtara '+CURPLAN);

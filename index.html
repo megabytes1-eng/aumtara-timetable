@@ -934,14 +934,49 @@ function showSchoolBar(){const hdr=document.querySelector('header');let el=docum
 function switchInstitution(key){const cand=SCHOOLS.filter(s=>schoolGroupKey(s)===key);if(!cand.length)return;cand.sort((a,b)=>((a.section_order==null?999:a.section_order)-(b.section_order==null?999:b.section_order)));switchSchool(cand[0].id);}
 function switchSchool(id){SCHOOL=String(id);try{localStorage.setItem('tt_school',SCHOOL);}catch(e){}tab='dash';refreshModulesOff();showSchoolBar();loadAll();}
 function renderLogin(){loggedOut=false;const tb=document.getElementById('tabs');if(tb)tb.innerHTML='';const uc=document.getElementById('userchip');if(uc)uc.remove();const sb=document.getElementById('schoolbar');if(sb)sb.remove();
-  document.getElementById('view').innerHTML=`<div class="card" style="max-width:400px;margin:48px auto">
-    <h2>${t('login_title')}</h2><div class="desc">${t('login_sub')}</div>
-    <div style="margin-bottom:4px"><label>${t('login_id')}</label><input id="li_user" style="width:100%" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <div class="small" style="color:#5c6580;margin-bottom:10px">${t('login_hint')}</div>
-    <div style="margin-bottom:14px"><label>${t('login_pw')}</label><input id="li_pw" type="password" style="width:100%" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <button class="green" style="width:100%" onclick="doLogin()">${t('login_btn')}</button>
-    <div id="li_err" class="errmsg" style="display:none;margin-top:10px"></div>
-    <div style="text-align:center;margin-top:16px;border-top:1px solid #eef1f9;padding-top:14px"><a href="#" onclick="renderSignup();return false" style="color:#6b3fa0;font-size:13px;font-weight:600">${t('signup_link')}</a></div></div>`;
+  var _L=(window.LANG||'en');
+  var _HERO={
+    en:{tag:'Smart timetable & school management software',feat:['Clash-free timetable — auto-generated in seconds','Smart substitute / proxy teacher finder','Inspection & Patrak (attendance) reports','Multi-subject &amp; shared teachers handled cleanly','One-click Excel import / export','Daily first-period board &amp; push alerts'],note:'Built for schools — fast, accurate, paperless.'},
+    hi:{tag:'स्मार्ट टाइमटेबल और स्कूल मैनेजमेंट सॉफ्टवेयर',feat:['बिना टकराव वाला टाइमटेबल — सेकंडों में ऑटो-जनरेट','स्मार्ट सब्स्टिट्यूट / प्रॉक्सी टीचर फाइंडर','इंस्पेक्शन और पत्रक (हाज़री) रिपोर्ट','मल्टी-सब्जेक्ट और शेयर्ड टीचर आसानी से','एक क्लिक में Excel इम्पोर्ट / एक्सपोर्ट','रोज़ का पहला पीरियड बोर्ड और पुश अलर्ट'],note:'स्कूलों के लिए — तेज़, सटीक, पेपरलेस।'},
+    gu:{tag:'સ્માર્ટ ટાઈમટેબલ અને સ્કૂલ મેનેજમેન્ટ સોફ્ટવેર',feat:['અથડામણ વગરનું ટાઈમટેબલ — સેકંડોમાં ઓટો-જનરેટ','સ્માર્ટ સબસ્ટિટ્યૂટ / પ્રોક્સી ટીચર ફાઈન્ડર','ઇન્સ્પેક્શન અને પત્રક (હાજરી) રિપોર્ટ','મલ્ટિ-સબ્જેક્ટ અને શેર કરેલા શિક્ષકો સરળતાથી','એક ક્લિકમાં Excel ઇમ્પોર્ટ / એક્સપોર્ટ','રોજનું પહેલું પીરિયડ બોર્ડ અને પુશ અલર્ટ'],note:'સ્કૂલો માટે — ઝડપી, સચોટ, પેપરલેસ.'}
+  };
+  var _H=_HERO[_L]||_HERO.en;
+  var _feats=_H.feat.map(function(x){return '<li>'+x+'</li>';}).join('');
+  document.getElementById('view').innerHTML=`
+  <style>
+   .loginSplit{display:flex;flex-wrap:wrap;gap:26px;max-width:1000px;margin:30px auto;align-items:stretch;padding:0 6px}
+   .loginHero{flex:1 1 380px;min-width:300px;border-radius:20px;padding:34px 30px;color:#fff;background:linear-gradient(150deg,#5a3ec8 0%,#7c3aed 55%,#9333ea 100%);box-shadow:0 18px 40px rgba(90,62,200,.28);display:flex;flex-direction:column;justify-content:center}
+   .loginHero .lhLogo{font-size:27px;font-weight:800;letter-spacing:.2px;margin-bottom:6px}
+   .loginHero .lhLogo span{opacity:.85;font-weight:600}
+   .loginHero .lhTag{font-size:15px;opacity:.92;margin-bottom:20px}
+   .loginHero ul{list-style:none;margin:0;padding:0}
+   .loginHero ul li{position:relative;padding:8px 0 8px 30px;font-size:14.5px;line-height:1.45;border-bottom:1px solid rgba(255,255,255,.13)}
+   .loginHero ul li:last-child{border-bottom:none}
+   .loginHero ul li:before{content:'✓';position:absolute;left:0;top:8px;width:20px;height:20px;background:rgba(255,255,255,.22);border-radius:50%;font-size:12px;text-align:center;line-height:20px;font-weight:700}
+   .loginHero .lhNote{margin-top:20px;font-size:13px;opacity:.85;font-style:italic}
+   .loginFormCol{flex:1 1 340px;min-width:300px;display:flex;align-items:center;justify-content:center}
+   .loginFormCol .card{width:100%;max-width:400px;margin:0}
+   @media(max-width:760px){ .loginHero{order:2;padding:26px 22px} .loginFormCol{order:1} .loginSplit{margin:16px auto;gap:18px} }
+  </style>
+  <div class="loginSplit">
+    <div class="loginHero">
+      <div class="lhLogo">🗓️ Aumtara <span>Timetable</span></div>
+      <div class="lhTag">${_H.tag}</div>
+      <ul>${_feats}</ul>
+      <div class="lhNote">${_H.note}</div>
+    </div>
+    <div class="loginFormCol">
+      <div class="card">
+        <h2>${t('login_title')}</h2><div class="desc">${t('login_sub')}</div>
+        <div style="margin-bottom:4px"><label>${t('login_id')}</label><input id="li_user" style="width:100%" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div class="small" style="color:#5c6580;margin-bottom:10px">${t('login_hint')}</div>
+        <div style="margin-bottom:14px"><label>${t('login_pw')}</label><input id="li_pw" type="password" style="width:100%" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <button class="green" style="width:100%" onclick="doLogin()">${t('login_btn')}</button>
+        <div id="li_err" class="errmsg" style="display:none;margin-top:10px"></div>
+        <div style="text-align:center;margin-top:16px;border-top:1px solid #eef1f9;padding-top:14px"><a href="#" onclick="renderSignup();return false" style="color:#6b3fa0;font-size:13px;font-weight:600">${t('signup_link')}</a></div>
+      </div>
+    </div>
+  </div>`;
   ensureCookieBanner();const f=document.getElementById('li_user');if(f)f.focus();}
 const BOARDS=['CBSE','ICSE / CISCE','IB (International Baccalaureate)','IGCSE / Cambridge','State Board','NIOS','Other'];
 function renderSignup(){loggedOut=false;const tb=document.getElementById('tabs');if(tb)tb.innerHTML='';const uc=document.getElementById('userchip');if(uc)uc.remove();

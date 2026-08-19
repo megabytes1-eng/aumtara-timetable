@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v90';
+const SW_JS = `const CACHE='aumtara-v95';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -2724,9 +2724,20 @@ app.post('/api/import/hours', upload.single('file'), async (req,res)=>{
 });
 
 // ---------- STARTUP ----------
+async function ensurePayDefaults(){
+  try{
+    let s={}; try{ const raw=await getMeta('pay_settings'); s=raw?JSON.parse(raw):{}; }catch(_){ s={}; }
+    let changed=false;
+    if(!s.upi_id){ s.upi_id='spaumtaraent3107261120@spcb'; changed=true; }
+    if(!s.payee_name || s.payee_name==='Aumtara Timetable'){ s.payee_name='AUMTARA ENTERPRISE'; changed=true; }
+    if(s.enable_upi!==0 && s.enable_upi!==1){ s.enable_upi=1; changed=true; }
+    if(changed){ await setMeta('pay_settings', JSON.stringify(s)); console.log('Seeded pay_settings UPI defaults'); }
+  }catch(e){ console.error('ensurePayDefaults failed', e); }
+}
 (async () => {
   await init();
   await ensureVapid();
+  await ensurePayDefaults();
   const PORT=process.env.PORT||4100;
   app.listen(PORT,()=>console.log(`Timetable module running → http://localhost:${PORT}`));
 })().catch(e=>{ console.error('Startup failed:', e); process.exit(1); });
