@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v79';
+const SW_JS = `const CACHE='aumtara-v82';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -368,7 +368,7 @@ app.post('/api/schools', h(async (req,res)=>{
   if(!name){ res.status(400).json({error:'school name required'}); return; }
   const row=await q1('INSERT INTO tt_school(name,board,medium,active,created_at) VALUES(?,?,?,1,now()::text) RETURNING id',
     [name, b.board||null, b.medium||null]);
-  for(const f of ['address','school_code','mobile','email','udise','district','principal_name','pin_code','work_phone']){   // optional profile fields captured at creation
+  for(const f of ['address','school_code','mobile','email','udise','district','principal_name','pin_code','work_phone','group_name','section_name','section_order']){   // optional profile fields captured at creation
     if(b[f]!==undefined && String(b[f]).trim()!=='') await run('UPDATE tt_school SET '+f+'=? WHERE id=?',[String(b[f]).trim(), row.id]);
   }
   await seedConfigForSchool(row.id, name, b.board||null, b.medium||null);
@@ -377,7 +377,7 @@ app.post('/api/schools', h(async (req,res)=>{
 app.put('/api/schools/:id', h(async (req,res)=>{
   if(!requireAdmin(req,res)) return;
   const b=req.body||{}, id=req.params.id;
-  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes','email','mobile','udise','district','deo_reg_code','deo_inspection_ref','deo_officer_name','deo_max_load','address','school_code','principal_name','pin_code','work_phone'];   // SaaS/profile + DEO header fields
+  const cols=['name','board','medium','active','logo','price','paid','valid_till','modules_off','contact','notes','email','mobile','udise','district','deo_reg_code','deo_inspection_ref','deo_officer_name','deo_max_load','address','school_code','principal_name','pin_code','work_phone','group_name','section_name','section_order'];   // SaaS/profile + DEO header fields
   const set=cols.filter(c=>b[c]!==undefined);
   if(set.length) await run(`UPDATE tt_school SET ${set.map(c=>c+'=?').join(',')} WHERE id=?`,[...set.map(c=>b[c]===''?null:b[c]), id]);
   // keep this school's config row in sync for display (school_name/board/medium)

@@ -306,6 +306,11 @@ async function init() {
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS principal_name TEXT`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS pin_code TEXT`);
   await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS work_phone TEXT`);
+  // Institution → sections (Pre-Primary/Primary/High/Higher-Secondary or Commerce/BBA/BCA/Science). Schools sharing a
+  // group_name are independent sections of one institution; section_name is the division label shown in the top bar.
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS group_name TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS section_name TEXT`);
+  await run(`ALTER TABLE tt_school ADD COLUMN IF NOT EXISTS section_order INTEGER`);
 
   const n = (await q1('SELECT COUNT(*)::int AS n FROM tt_class')).n;
   if (!n) await seed();
