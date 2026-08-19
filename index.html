@@ -253,6 +253,11 @@ td.cell.dragover{outline:2px dashed var(--accent);outline-offset:-2px;}
   #printhead{display:block;text-align:center;margin-bottom:10px;} #printhead h3{margin:0;color:#000;} #printhead .sub{font-size:12px;color:#444;}
   table{font-size:12px;} th{background:#1F3864 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .conflict{outline:none;}
+  /* Black & White print (save colour ink) — flatten all coloured cells to white/black */
+  body.pbw #view table td, body.pbw #view table th{background:#fff !important;color:#000 !important;border-color:#000 !important;box-shadow:none !important;outline:none !important;}
+  body.pbw #view table td *{color:#000 !important;}
+  body.pbw #view table th{background:#e6e6e6 !important;}
+  body.pbw #view table td{border:1px solid #000 !important;border-left:1px solid #000 !important;}
 }
 </style>
 </head>
@@ -1209,8 +1214,33 @@ function paintBoxes(){
 let _pq=false;
 function _schedulePaint(){ if(_pq)return; _pq=true; setTimeout(()=>{_pq=false;paintBoxes();},30); }
 (function armPaint(){ const v=document.getElementById('view'); if(!v){setTimeout(armPaint,300);return;} try{new MutationObserver(_schedulePaint).observe(v,{childList:true,subtree:true});}catch(e){} })();
-function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3>${title}</h3><div class="sub">${sub||''}</div>`;window.print();}
-function printPlain(){document.getElementById('printhead').innerHTML='';window.print();}
+// ---- PRINT OPTIONS (cell box size + colour / B&W) ----
+let PRINTOPT={w:0,h:0,bw:false};   // w,h = inches per timetable cell (0 = fit page); bw = black & white
+function applyPrintSize(){
+  let el=document.getElementById('printsizecss'); if(!el){ el=document.createElement('style'); el.id='printsizecss'; document.head.appendChild(el); }
+  const w=PRINTOPT.w>0?('width:'+PRINTOPT.w+'in !important;min-width:'+PRINTOPT.w+'in !important;'):'';
+  const h=PRINTOPT.h>0?('height:'+PRINTOPT.h+'in !important;'):'';
+  el.textContent=(w||h)?`@media print{#view table td,#view table th{${w}${h}box-sizing:border-box;} #view table{table-layout:fixed !important;}}`:'';
+}
+function setPSize(w,h){ PRINTOPT.w=w; PRINTOPT.h=h; const cw=document.getElementById('pcw'),ch=document.getElementById('pch'); if(cw)cw.value=w||''; if(ch)ch.value=h||''; applyPrintSize(); toast('✓ '+(w||h?('Box '+(w||'?')+'″ × '+(h||'?')+'″'):'Fit page')); }
+function printBar(printJs){
+  return `<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;background:#f6f8ff;border:1px solid #e5e7fb;border-radius:8px;padding:7px 11px;margin:2px 0 10px">
+    <span class="small" style="font-weight:800;color:#1F3864">🖨 Print options</span>
+    <span class="small" style="color:#5c6580">Box size:</span>
+    <button class="ghost mini" onclick="setPSize(0,0)">Fit page</button>
+    <button class="ghost mini" onclick="setPSize(3,2)">3″×2″</button>
+    <button class="ghost mini" onclick="setPSize(3,1.6)">3″×1.6″</button>
+    <span class="small" style="color:#5c6580">or set your own:</span>
+    <input id="pcw" type="number" step="0.1" min="0" placeholder="W″" style="width:58px" value="${PRINTOPT.w||''}" oninput="PRINTOPT.w=+this.value||0;applyPrintSize()">
+    <span class="small">×</span>
+    <input id="pch" type="number" step="0.1" min="0" placeholder="H″" style="width:58px" value="${PRINTOPT.h||''}" oninput="PRINTOPT.h=+this.value||0;applyPrintSize()">
+    <span class="small" style="color:#8891a6">inch/cell</span>
+    <label class="chk small" title="Print in black & white to save colour ink"><input type="checkbox" ${PRINTOPT.bw?'checked':''} onchange="PRINTOPT.bw=this.checked"> ⬛ Black &amp; White</label>
+    <button class="green" style="margin-left:auto" onclick="${printJs}">🖨 ${t('print_pdf')}</button>
+  </div>`;
+}
+function printDoc(title,sub){document.getElementById('printhead').innerHTML=`<h3>${title}</h3><div class="sub">${sub||''}</div>`;document.body.classList.toggle('pbw',!!PRINTOPT.bw);applyPrintSize();window.print();}
+function printPlain(){document.getElementById('printhead').innerHTML='';document.body.classList.toggle('pbw',!!PRINTOPT.bw);applyPrintSize();window.print();}
 // On-screen report PREVIEW (instead of forcing a new tab + auto-print). Shows the report in an in-app overlay; user chooses Print / Save-PDF or just views.
 function showReportPreview(html, title){
   var ov=document.getElementById('rpOverlay');
@@ -2622,10 +2652,10 @@ function classView(){const slots0=slotsFor(firstWD());
   return genReportCard()+`<div class="card"><h2>${t('class_title')}</h2>${ctName?`<div class="desc">👤 ${t('class_teacher')}: <b>${ctName}</b></div>`:''}
    <div class="row" style="margin-bottom:12px;align-items:flex-end;gap:8px;flex-wrap:wrap">${filterSelectsHTML()}
      <div><label>${t('class_')}</label><select id="clsSel" onchange="curClass=+this.value;render()">${filteredClasses().map(c=>`<option value="${c.id}" ${c.id===curClass?'selected':''}>${c.name}</option>`).join("")}</select></div>
-     <button class="ghost" onclick="printDoc(t('print_class_title')+' '+document.getElementById('clsSel').selectedOptions[0].text,'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="dl('/api/export/timetable.xlsx')">${t('excel')}</button>
      <button class="ghost" onclick="printAll('class')">🖨 ${t('print_all_classes')}</button>
      <button class="ghost" onclick="shareClass()">🔗 ${t('share_link')}</button></div>
+   ${printBar("printDoc(t('print_class_title')+' '+document.getElementById('clsSel').selectedOptions[0].text,'Aumtara')")}
    ${weekBar()}<div id="sharebox"></div>
    ${(ALLELECTIVES||[]).some(e=>e.class_id===curClass)?`<div class="small" style="color:#7c3aed;margin:2px 0 8px">${t('split_hint')}</div>`:''}
    ${hlBar()}
@@ -2914,8 +2944,8 @@ function teacherView(){const slots0=slotsFor(firstWD());let load=0;
      <div><label>${t('teacher')}</label><select onchange="curTeacher=+this.value;render()">${teachers.map(t2=>`<option value="${t2.id}" ${t2.id===curTeacher?'selected':''}>${t2.name}</option>`).join("")}</select></div>
      <div><label>${t('lbl_mark_absent')}</label><select onchange="setAbsent(${curTeacher},this.value)"><option value="">${t('opt_none')}</option>${WD().map((i)=>`<option value="${i}" ${absentDay(curTeacher).includes(i)?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
      <div style="align-self:flex-end"><span class="tag" style="${(()=>{const mx=(teachers.find(t2=>t2.id===curTeacher)||{}).max_load;return mx&&load>mx?'background:#fee2e2;color:#991b1b':''})()}">${t('load_word')}: ${load}${(teachers.find(t2=>t2.id===curTeacher)||{}).max_load?' / '+(teachers.find(t2=>t2.id===curTeacher).max_load)+' '+t('max_word'):''}</span></div>
-     <button class="ghost" onclick="printDoc(t('print_teacher_title'),'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="printAll('teacher')">🖨 ${t('print_all_teachers')}</button></div>
+   ${printBar("printDoc(t('print_teacher_title'),'Aumtara')")}
    ${weekBar()}<div style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
 async function setAbsent(t2,v){
   const tn=(teachers.find(x=>x.id===t2)||{}).name||'';
@@ -2933,8 +2963,8 @@ function schoolView(){const di=WD().includes(buildDay)?buildDay:firstWD(),slots=
     return `<tr>${cells}</tr>`;}).join("");
   return `<div class="card">
    <div class="row" style="margin-bottom:12px;align-items:flex-end;gap:12px;flex-wrap:wrap"><div style="flex:1 1 200px;min-width:170px"><h2 style="margin:0;font-size:20px">${t('school_title')}</h2><div class="desc" style="margin:2px 0 0">${t('school_desc')}</div></div>${filterSelectsHTML()}<div><label>${t('day')}</label><select onchange="buildDay=+this.value;render()">${WD().map((i)=>`<option value="${i}" ${i===di?'selected':''}>${DD()[i]}</option>`).join("")}</select></div>
-     <button class="ghost" onclick="printDoc(t('print_school_title')+' '+DD()[buildDay],'Aumtara')">${t('print_pdf')}</button>
      <button class="ghost" onclick="dl('/api/export/timetable.xlsx')">${t('excel_all')}</button></div>
+   ${printBar("printDoc(t('print_school_title')+' '+DD()[buildDay],'Aumtara')")}
    ${weekBar()}${hlBar()}<div id="ttwrap" style="overflow:auto"><table><tr>${head}</tr>${rows}</table></div></div>`;}
 
 // ---------- QUOTA ----------
