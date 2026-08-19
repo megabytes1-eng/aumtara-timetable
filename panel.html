@@ -151,9 +151,7 @@
       <h3 class="head">Schools</h3>
       <p class="sub">Paid signups arrive <b>Suspended</b> — confirm the payment reached you, then press <b>Activate</b>. Click <b>Open</b> to sign into any school and inspect its setup for support.</p>
       <div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button></div>
-      <div style="overflow:auto"><table><thead><tr>
-        <th>School</th><th>Board · Medium</th><th>U / T / C</th><th>Price ₹</th><th>Payment</th><th>Status</th><th>Expiry / valid till</th><th>Actions</th>
-      </tr></thead><tbody id="schoolBody"></tbody></table></div>
+      <div id="schoolBody"></div>
       <hr>
       <h3 class="head">Add a school manually</h3>
       <div class="grid" style="margin-top:10px">
@@ -310,22 +308,36 @@
     document.getElementById('kpis').innerHTML=[['🏫','Schools',SCHOOLS.length,'g-purple'],['🟢','Active',SCHOOLS.length-pend,'g-green'],['⏳','Pending',pend,'g-amber'],['💰','Paid',paid,'g-blue'],['⚠️','Unpaid',SCHOOLS.length-paid,'g-pink'],['👥','Total users',users,'g-teal'],['📆','Expiring ≤30d',soon,'g-orange'],['⛔','Expired',expd,'g-red']]
       .map(function(k){return '<div class="kpi '+k[3]+'"><div class="ic">'+k[0]+'</div><b>'+k[2]+'</b><span>'+k[1]+'</span></div>';}).join('');
     document.getElementById('schoolBody').innerHTML=SCHOOLS.map(function(s){
+      var off=String(s.modules_off||'').split(',').map(function(x){return x.trim();}).filter(Boolean);
+      var mods=MODULES.map(function(m){ var on=off.indexOf(m[0])===-1;
+        return '<label class="mini" style="display:inline-flex;align-items:center;gap:6px;margin:0 12px 7px 0"><input type="checkbox" data-sch="'+s.id+'" data-mod="'+m[0]+'" '+(on?'checked':'')+' onchange="saveSchoolMods('+s.id+')" style="width:auto;margin:0">'+esc(m[1])+'</label>';
+      }).join('');
+      var ei=expiryInfo(s.valid_till);
+      var activeOn=+s.active!==0;
+      var nm=esc(String(s.name)).replace(/\x27/g,'');
+      var pill='<span style="font-size:12px;font-weight:700;padding:2px 9px;border-radius:11px;'+(activeOn?'background:#e6f7ee;color:#127a45':'background:#fdeaea;color:#b3261e')+'">'+(activeOn?'● Active':'○ Suspended')+'</span>';
       var paidP=+s.paid!==0?'<button class="toggle t-paid" onclick="setField('+s.id+',\'paid\',0,\'Marked unpaid\')">✓ Paid</button>':'<button class="toggle t-due" onclick="setField('+s.id+',\'paid\',1,\'Marked paid\')">● Unpaid</button>';
-      var actP=+s.active!==0?'<button class="toggle t-on" onclick="setField('+s.id+',\'active\',0,\'Suspended\')">🟢 Active</button>':'<button class="toggle t-off" onclick="setField('+s.id+',\'active\',1,\'Activated\')">▶ Activate</button>';
-      var nm=esc(String(s.name)).replace(/\x27/g,''); var ei=expiryInfo(s.valid_till);
-      return '<tr'+(+s.active===0?' class="pending"':'')+'><td><b>'+esc(s.name)+'</b>'+(+s.active===0?'<span class="badge">pending</span>':'')+'</td>'+
-        '<td>'+esc([s.board,s.medium].filter(Boolean).join(' · ')||'—')+'</td>'+
-        '<td>'+(s.users||0)+' / '+(s.teachers||0)+' / '+(s.classes||0)+'</td>'+
-        '<td><input style="width:74px" value="'+esc(s.price==null?'':s.price)+'" onchange="setPrice('+s.id+',this.value)"></td>'+
-        '<td>'+paidP+'</td><td>'+actP+'</td>'+
-        '<td><input type="date" style="width:150px" value="'+esc(s.valid_till||'')+'" onchange="setExpiry('+s.id+',this.value)"><div class="mini '+ei.cls+'">'+ei.label+'</div></td>'+
-        '<td><div class="rowact"><button class="link" onclick="renew('+s.id+')">Renew +1yr</button>'+
-        '<button class="link" onclick="openModules('+s.id+')">Modules</button>'+
-        '<button class="link" onclick="openSchool('+s.id+',\''+nm+'\')">Open</button>'+
-        '<button class="link" onclick="payFor('+s.id+')">Record ₹</button>'+
-        '<button class="link" onclick="resetPw('+s.id+',\''+nm+'\')">Reset pw</button>'+
-        '<button class="del" title="Delete" onclick="delSchool('+s.id+',\''+nm+'\')">🗑</button></div></td></tr>';
-    }).join('') || '<tr><td colspan="8" class="mini">No schools yet.</td></tr>';
+      var pkgOpts='<option value="">— apply a package —</option>'+PACKAGES.map(function(p,i){return '<option value="'+i+'">'+esc(p.name)+(p.price?(' (₹'+esc(p.price)+')'):'')+'</option>';}).join('');
+      return '<div class="card" style="margin-bottom:10px;padding:14px;'+(activeOn?'':'opacity:.72;')+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'+
+          '<b style="font-size:15px">🏫 '+esc(s.name)+' <span class="mini" style="color:#8891a6">#'+s.id+'</span> '+pill+'</b>'+
+          '<span class="mini" style="color:#8891a6">👤 '+(s.users||0)+' · 👨‍🏫 '+(s.teachers||0)+' · 🗂 '+(s.classes||0)+'</span></div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-top:10px">'+
+          '<div class="field" style="margin:0"><label>Price ₹ / year</label><input style="width:110px" value="'+esc(s.price==null?'':s.price)+'" onchange="setPrice('+s.id+',this.value)"></div>'+
+          '<div class="field" style="margin:0"><label>Valid till</label><input type="date" style="width:150px" value="'+esc(s.valid_till||'')+'" onchange="setExpiry('+s.id+',this.value)"><div class="mini '+ei.cls+'">'+ei.label+'</div></div>'+
+          '<div class="field" style="margin:0"><label>Payment</label>'+paidP+'</div>'+
+          '<div class="field" style="margin:0"><label>Apply package</label><select style="width:200px" onchange="applyPkgToSchool('+s.id+',this.value);this.value=\'\'">'+pkgOpts+'</select></div>'+
+        '</div>'+
+        '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)"><b class="mini" style="color:#57608a">Modules included:</b><div style="margin-top:6px">'+mods+'</div></div>'+
+        '<div class="rowact" style="margin-top:10px">'+
+          (activeOn?'<button class="link" onclick="setField('+s.id+',\'active\',0,\'Suspended\')">⏸ Suspend</button>':'<button class="link" onclick="setField('+s.id+',\'active\',1,\'Activated\')">▶ Activate</button>')+
+          '<button class="link" onclick="renew('+s.id+')">Renew +1yr</button>'+
+          '<button class="link" onclick="openSchool('+s.id+',\''+nm+'\')">Open</button>'+
+          '<button class="link" onclick="payFor('+s.id+')">Record ₹</button>'+
+          '<button class="link" onclick="resetPw('+s.id+',\''+nm+'\')">Reset pw</button>'+
+          '<button class="del" title="Delete" onclick="delSchool('+s.id+',\''+nm+'\')">🗑</button></div>'+
+      '</div>';
+    }).join('') || '<div class="mini">No schools yet.</div>';
     renderRenewals();
     // fill payment-form school dropdown
     var sel=document.getElementById('pm_school');
@@ -333,6 +345,13 @@
   }
   function setPrice(id,v){ api('PUT','/api/schools/'+id,{price:v||null}).then(function(r){ toast(r.ok?'Price saved':'Could not save'); }); }
   function setField(id,f,v,label){ var o={}; o[f]=v; api('PUT','/api/schools/'+id,o).then(function(r){ if(r.ok){ toast('✓ '+label); loadAll(); } else { toast('Could not update'); } }); }
+  // Inline per-school module toggles (Schools & Plans style) — unchecked module = turned OFF for that school.
+  function saveSchoolMods(id){ var off=[];
+    [].forEach.call(document.querySelectorAll('input[data-sch="'+id+'"][data-mod]'),function(c){ if(!c.checked) off.push(c.getAttribute('data-mod')); });
+    api('PUT','/api/schools/'+id,{modules_off:off.join(',')}).then(function(r){ toast(r.ok?'✓ Modules saved':'Could not save modules'); }); }
+  function applyPkgToSchool(id,idx){ if(idx===''||idx==null) return; var p=PACKAGES[parseInt(idx,10)]; if(!p) return; var on=p.modules||[];
+    [].forEach.call(document.querySelectorAll('input[data-sch="'+id+'"][data-mod]'),function(c){ c.checked=on.indexOf(c.getAttribute('data-mod'))>=0; });
+    saveSchoolMods(id); toast('✓ Applied package: '+(p.name||'')); }
   // ---------- EXPIRY / RENEWALS ----------
   function expiryInfo(v){ if(!v) return {days:null,label:'no date',cls:''}; var t=new Date(); t.setHours(0,0,0,0); var d=new Date(v); if(isNaN(d)) return {days:null,label:'',cls:''}; var days=Math.ceil((d-t)/86400000);
     if(days<0) return {days:days,label:'expired '+(-days)+'d ago',cls:'ex-red'};
@@ -428,7 +447,7 @@
   function markEnq(id){ api('PUT','/api/enquiry/'+id,{handled:1}).then(loadEnq); }
 
   // ---------- PACKAGES ----------
-  function loadPackages(){ api('GET','/api/owner/packages').then(function(o){ PACKAGES=(o.ok&&Array.isArray(o.data))?o.data:[]; renderPackages(); renderPkgForm([]); }); }
+  function loadPackages(){ api('GET','/api/owner/packages').then(function(o){ PACKAGES=(o.ok&&Array.isArray(o.data))?o.data:[]; renderPackages(); renderPkgForm([]); if(SCHOOLS&&SCHOOLS.length) renderSchools({schools:SCHOOLS}); }); }
   function modName(k){ var m=MODULES.filter(function(x){return x[0]===k;})[0]; return m?m[1]:k; }
   function renderPackages(){
     document.getElementById('pkgBody').innerHTML=PACKAGES.map(function(p,i){
