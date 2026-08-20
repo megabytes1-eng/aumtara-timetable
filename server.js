@@ -2839,10 +2839,24 @@ async function ensurePayDefaults(){
     if(changed){ await setMeta('pay_settings', JSON.stringify(s)); console.log('Seeded pay_settings UPI defaults'); }
   }catch(e){ console.error('ensurePayDefaults failed', e); }
 }
+// Break-glass owner recovery: if the env var OWNER_PW_RESET is set (only the account owner can set it in Render),
+// reset the platform-owner login's password to that value on startup and clear any 2FA. Remove the env var afterwards.
+async function ensureOwnerReset(){
+  try{
+    const pw=String(process.env.OWNER_PW_RESET||'').trim();
+    if(pw.length<6) return;
+    let owner=await q1('SELECT id,login_id FROM tt_user WHERE is_owner=1 ORDER BY id LIMIT 1');
+    if(!owner) owner=await q1("SELECT id,login_id FROM tt_user WHERE role='master' ORDER BY id LIMIT 1");
+    if(!owner){ console.log('OWNER_PW_RESET set but no owner/master account found'); return; }
+    await run('UPDATE tt_user SET password_hash=?, active=1, totp_enabled=0, totp_secret=NULL, backup_codes=NULL WHERE id=?',[hashPw(pw), owner.id]);
+    console.log('OWNER_PW_RESET applied to owner login "'+owner.login_id+'" (2FA cleared). Remove the OWNER_PW_RESET env var now.');
+  }catch(e){ console.error('ensureOwnerReset failed', e); }
+}
 (async () => {
   await init();
   await ensureVapid();
   await ensurePayDefaults();
+  await ensureOwnerReset();
   const PORT=process.env.PORT||4100;
   app.listen(PORT,()=>console.log(`Timetable module running → http://localhost:${PORT}`));
 })().catch(e=>{ console.error('Startup failed:', e); process.exit(1); });
