@@ -257,6 +257,15 @@
 <div id="toast"></div>
 
 <!-- PER-SCHOOL MODULES MODAL -->
+<div id="loginsModal" style="position:fixed;inset:0;z-index:99998;background:rgba(20,27,46,.6);display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:92vh;overflow:auto;padding:24px">
+    <h3 class="head" id="lsTitle">Logins</h3>
+    <p class="sub" style="margin:2px 0 12px">All sign-ins for this school. You control everything from this panel — you can <b>delete</b> a login or turn an <b>Admin</b> into a plain <b>Principal</b>. The platform-owner login is protected.</p>
+    <div id="lsList" style="margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="closeLogins()">Close</button></div>
+    <div id="lsMsg" class="msg"></div>
+  </div>
+</div>
 <div id="loginModal" style="position:fixed;inset:0;z-index:99998;background:rgba(20,27,46,.6);display:none;align-items:center;justify-content:center;padding:16px">
   <div style="background:#fff;border-radius:16px;max-width:440px;width:100%;max-height:92vh;overflow:auto;padding:24px">
     <h3 class="head" id="lgTitle">Create login</h3>
@@ -355,6 +364,7 @@
           '<button class="link" onclick="openSchool('+s.id+',\''+nm+'\')">Open</button>'+
           '<button class="link" onclick="payFor('+s.id+')">Record ₹</button>'+
           '<button class="link" onclick="openCreateLogin('+s.id+',\''+nm+'\')">🔑 Create login</button>'+
+          '<button class="link" onclick="openLogins('+s.id+',\''+nm+'\')">👥 Logins</button>'+
           '<button class="link" onclick="resetPw('+s.id+',\''+nm+'\')">Reset pw</button>'+
           '<button class="del" title="Delete" onclick="delSchool('+s.id+',\''+nm+'\')">🗑</button></div>'+
       '</div>';
@@ -427,6 +437,38 @@
       msg(m,'✓ Login created: '+(r.data.login_id||login)+' ('+(r.data.role||'admin')+'). Share the ID & password with the school.','ok');
       setTimeout(function(){ closeCreateLogin(); loadAll(); }, 1400);
     }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
+  }
+  var LS_SID=null, LS_NAME='';
+  function openLogins(id,name){ LS_SID=id; LS_NAME=name;
+    document.getElementById('lsTitle').textContent='Logins — '+name;
+    document.getElementById('lsList').innerHTML='<p class="mini">Loading…</p>';
+    var m=document.getElementById('lsMsg'); if(m){ m.className='msg'; m.textContent=''; }
+    document.getElementById('loginsModal').style.display='flex';
+    api('GET','/api/owner/school/'+id+'/logins').then(function(r){ if(r.ok) renderLogins(r.data.logins||[]); else document.getElementById('lsList').innerHTML='<p class="mini">Could not load logins.</p>'; });
+  }
+  function closeLogins(){ document.getElementById('loginsModal').style.display='none'; }
+  function renderLogins(rows){
+    if(!rows.length){ document.getElementById('lsList').innerHTML='<p class="mini">No logins for this school yet. Use “Create login” to add one.</p>'; return; }
+    document.getElementById('lsList').innerHTML='<div style="overflow:auto"><table><thead><tr><th>Login ID</th><th>Name</th><th>Role</th><th>Email</th><th></th></tr></thead><tbody>'+
+      rows.map(function(u){
+        var owner=(+u.is_owner===1||u.role==='master');
+        var roleBadge=owner?'<span class="mini" style="color:#6b3fa0"><b>OWNER</b></span>':esc(u.role||'');
+        var acts=owner?'<span class="mini">protected</span>':
+          ((u.role==='admin'?'<button class="link" onclick="setRole('+u.id+',\'principal\')">→ Make principal</button>':'<button class="link" onclick="setRole('+u.id+',\'admin\')">→ Make admin</button>')+
+           ' <button class="del" onclick="delLogin('+u.id+',\''+String(u.login_id||'').replace(/'/g,"\\'")+'\')">🗑 Delete</button>');
+        return '<tr><td><b>'+esc(u.login_id||'')+'</b></td><td>'+esc(u.name||'—')+'</td><td>'+roleBadge+'</td><td>'+esc(u.email||'—')+'</td><td class="rowact">'+acts+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  }
+  function setRole(uid,role){
+    api('PUT','/api/owner/user/'+uid+'/role',{role:role}).then(function(r){
+      if(r.ok){ toast('✓ Now '+role); openLogins(LS_SID,LS_NAME); } else toast((r.data&&r.data.error)||'Could not change role');
+    });
+  }
+  function delLogin(uid,label){
+    if(!confirm('Delete login "'+label+'"? This removes their sign-in permanently. The school data (timetable etc.) stays.')) return;
+    api('DELETE','/api/owner/user/'+uid,null).then(function(r){
+      if(r.ok){ toast('✓ Login deleted'); openLogins(LS_SID,LS_NAME); } else toast((r.data&&r.data.error)||'Could not delete');
+    });
   }
   function delSchool(id,name){
     var typed=prompt('⚠ WARNING — "'+name+'" and ALL its data (classes, teachers, timetable, users) will be permanently deleted. This CANNOT be undone.\n\nType  DELETE  below to confirm:');

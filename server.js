@@ -647,6 +647,30 @@ app.post('/api/owner/school/:id/create-login', h(async (req,res)=>{ if(!requireO
      VALUES(?,?,?,?,?,?,1,now()::text,?) RETURNING id`, [name, role, login, email, mobile, hashPw(pw), sid]);
   res.json({ ok:true, id:row.id, login_id:login, role:role, school:sch.name });
 }));
+// owner-only: list all logins for a school (manage from the owner panel)
+app.get('/api/owner/school/:id/logins', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const sid=Number(req.params.id);
+  const rows=await q('SELECT id,name,login_id,role,email,mobile,active,is_owner FROM tt_user WHERE school_id=? ORDER BY id',[sid]);
+  res.json({ ok:true, logins:rows });
+}));
+// owner-only: delete a login (cannot delete the platform-owner/master account)
+app.delete('/api/owner/user/:uid', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const uid=Number(req.params.uid);
+  const u=await q1('SELECT id,role,is_owner FROM tt_user WHERE id=?',[uid]);
+  if(!u){ res.status(404).json({error:'login not found'}); return; }
+  if(Number(u.is_owner)===1 || u.role==='master'){ res.status(400).json({error:'cannot delete the platform-owner / master login'}); return; }
+  await run('DELETE FROM tt_user WHERE id=?',[uid]);
+  res.json({ ok:true });
+}));
+// owner-only: change a login's role (e.g. demote an admin to principal)
+app.put('/api/owner/user/:uid/role', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const uid=Number(req.params.uid); const role=(String((req.body||{}).role||'')==='admin')?'admin':'principal';
+  const u=await q1('SELECT id,is_owner,role FROM tt_user WHERE id=?',[uid]);
+  if(!u){ res.status(404).json({error:'login not found'}); return; }
+  if(Number(u.is_owner)===1 || u.role==='master'){ res.status(400).json({error:'cannot change the owner / master login'}); return; }
+  await run('UPDATE tt_user SET role=? WHERE id=?',[role, uid]);
+  res.json({ ok:true, role });
+}));
 // any signed-in user: update own profile (email + mobile)
 app.put('/api/me', h(async (req,res)=>{
   const b=req.body||{};
