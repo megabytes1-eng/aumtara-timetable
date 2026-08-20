@@ -628,6 +628,25 @@ app.post('/api/owner/school/:id/reset-password', h(async (req,res)=>{ if(!requir
   await run('UPDATE tt_user SET password_hash=? WHERE id=?',[hashPw(pw), u.id]);
   res.json({ ok:true, login_id:u.login_id });
 }));
+// owner-only: directly create an admin/principal login for a school (e.g. after verifying a payment)
+app.post('/api/owner/school/:id/create-login', h(async (req,res)=>{ if(!requireOwner(req,res)) return;
+  const sid=Number(req.params.id); const b=req.body||{};
+  const login=String(b.login_id||'').trim();
+  const pw=String(b.password||'');
+  const name=String(b.name||'').trim()||login;
+  const email=String(b.email||'').trim()||null;
+  const mobile=String(b.mobile||'').trim()||null;
+  const role=(b.role==='principal')?'principal':'admin';
+  if(!login){ res.status(400).json({error:'login ID is required'}); return; }
+  if(pw.length<6){ res.status(400).json({error:'password must be at least 6 characters'}); return; }
+  const sch=await q1('SELECT id,name FROM tt_school WHERE id=?',[sid]);
+  if(!sch){ res.status(404).json({error:'school not found'}); return; }
+  if(await q1('SELECT 1 FROM tt_user WHERE lower(login_id)=lower(?)',[login])){ res.status(400).json({error:'this login ID is already taken'}); return; }
+  if(email && await q1('SELECT 1 FROM tt_user WHERE lower(email)=lower(?)',[email])){ res.status(400).json({error:'this email is already used by another login'}); return; }
+  const row=await q1(`INSERT INTO tt_user(name,role,login_id,email,mobile,password_hash,active,created_at,school_id)
+     VALUES(?,?,?,?,?,?,1,now()::text,?) RETURNING id`, [name, role, login, email, mobile, hashPw(pw), sid]);
+  res.json({ ok:true, id:row.id, login_id:login, role:role, school:sch.name });
+}));
 // any signed-in user: update own profile (email + mobile)
 app.put('/api/me', h(async (req,res)=>{
   const b=req.body||{};

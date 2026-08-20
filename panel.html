@@ -257,6 +257,19 @@
 <div id="toast"></div>
 
 <!-- PER-SCHOOL MODULES MODAL -->
+<div id="loginModal" style="position:fixed;inset:0;z-index:99998;background:rgba(20,27,46,.6);display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;max-width:440px;width:100%;max-height:92vh;overflow:auto;padding:24px">
+    <h3 class="head" id="lgTitle">Create login</h3>
+    <p class="sub" style="margin:2px 0 14px">Make a sign-in for this school — e.g. after you've confirmed the payment. Share the login ID &amp; password with the school; they can change the password after signing in.</p>
+    <div class="field" style="margin-bottom:10px"><label>Login ID (username) *</label><input id="lg_login" autocomplete="off" placeholder="e.g. stpauls or principal@school"></div>
+    <div class="field" style="margin-bottom:10px"><label>Password (min 6) *</label><input id="lg_pw" type="text" autocomplete="off" placeholder="give the school this password"></div>
+    <div class="field" style="margin-bottom:10px"><label>Display name</label><input id="lg_name" placeholder="e.g. Principal / school name"></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px"><div class="field" style="flex:1;margin:0"><label>Email</label><input id="lg_email" type="email"></div><div class="field" style="flex:1;margin:0"><label>Mobile</label><input id="lg_mobile"></div></div>
+    <div class="field" style="margin-bottom:14px"><label>Role</label><select id="lg_role"><option value="principal">Principal — normal school login (recommended)</option><option value="admin">Admin — full control incl. user management</option></select><div class="mini" style="margin-top:4px;color:#57608a">You control everything from this owner panel, so a <b>Principal</b> login is enough for the school.</div></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="submitCreateLogin()">Create login</button><button class="btn btn-ghost btn-sm" onclick="closeCreateLogin()">Cancel</button></div>
+    <div id="lgMsg" class="msg"></div>
+  </div>
+</div>
 <div id="modModal" style="position:fixed;inset:0;z-index:99998;background:rgba(20,27,46,.6);display:none;align-items:center;justify-content:center;padding:16px">
   <div style="background:#fff;border-radius:16px;max-width:470px;width:100%;max-height:92vh;overflow:auto;padding:24px">
     <h3 class="head" id="modTitle">School modules</h3>
@@ -341,6 +354,7 @@
           '<button class="link" onclick="renew('+s.id+')">Renew +1yr</button>'+
           '<button class="link" onclick="openSchool('+s.id+',\''+nm+'\')">Open</button>'+
           '<button class="link" onclick="payFor('+s.id+')">Record ₹</button>'+
+          '<button class="link" onclick="openCreateLogin('+s.id+',\''+nm+'\')">🔑 Create login</button>'+
           '<button class="link" onclick="resetPw('+s.id+',\''+nm+'\')">Reset pw</button>'+
           '<button class="del" title="Delete" onclick="delSchool('+s.id+',\''+nm+'\')">🗑</button></div>'+
       '</div>';
@@ -389,6 +403,30 @@
     api('POST','/api/owner/school/'+id+'/reset-password',{password:pw}).then(function(r){
       if(r.ok) toast('✓ Password reset for '+(r.data.login_id||name)); else toast((r.data&&r.data.error)||'Could not reset');
     });
+  }
+  var LG_SID=null;
+  function openCreateLogin(id,name){
+    LG_SID=id;
+    document.getElementById('lgTitle').textContent='Create login — '+name;
+    ['lg_login','lg_pw','lg_name','lg_email','lg_mobile'].forEach(function(x){ var el=document.getElementById(x); if(el) el.value=''; });
+    var r=document.getElementById('lg_role'); if(r) r.value='principal';
+    var m=document.getElementById('lgMsg'); if(m){ m.className='msg'; m.textContent=''; }
+    document.getElementById('loginModal').style.display='flex';
+    var f=document.getElementById('lg_login'); if(f) f.focus();
+  }
+  function closeCreateLogin(){ document.getElementById('loginModal').style.display='none'; }
+  function submitCreateLogin(){
+    var g=function(x){return (document.getElementById(x)||{}).value||'';};
+    var m=document.getElementById('lgMsg');
+    var login=g('lg_login').trim(), pw=g('lg_pw').trim();
+    if(!login){ msg(m,'Login ID is required.','err'); return; }
+    if(pw.length<6){ msg(m,'Password must be at least 6 characters.','err'); return; }
+    msg(m,'Creating…','ok');
+    api('POST','/api/owner/school/'+LG_SID+'/create-login',{login_id:login,password:pw,name:g('lg_name').trim(),email:g('lg_email').trim(),mobile:g('lg_mobile').trim(),role:g('lg_role')}).then(function(r){
+      if(!r.ok){ msg(m,(r.data&&r.data.error)||'Could not create login.','err'); return; }
+      msg(m,'✓ Login created: '+(r.data.login_id||login)+' ('+(r.data.role||'admin')+'). Share the ID & password with the school.','ok');
+      setTimeout(function(){ closeCreateLogin(); loadAll(); }, 1400);
+    }).catch(function(e){ msg(m,'Network error — '+e,'err'); });
   }
   function delSchool(id,name){
     var typed=prompt('⚠ WARNING — "'+name+'" and ALL its data (classes, teachers, timetable, users) will be permanently deleted. This CANNOT be undone.\n\nType  DELETE  below to confirm:');
