@@ -39,8 +39,8 @@ app.use(express.json({ limit: '8mb' }));   // logos (base64 data-URLs) can excee
 // so the repo uploads cleanly to GitHub's web uploader, which can't preserve subfolders).
 // index.html is fully self-contained (inline CSS/JS), so no other static assets are needed.
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/launch', (_, res) => res.sendFile(path.join(__dirname, 'launch.html')));   // public marketing landing (customers)
-app.get('/panel', (_, res) => res.sendFile(path.join(__dirname, 'panel.html')));    // dedicated owner control panel (separate from the school app login)
+app.get('/launch', (_, res) => { res.set('Cache-Control','no-cache'); res.sendFile(path.join(__dirname, 'launch.html')); });   // public marketing landing (customers)
+app.get('/panel', (_, res) => { res.set('Cache-Control','no-cache'); res.sendFile(path.join(__dirname, 'panel.html')); });    // dedicated owner control panel (separate from the school app login)
 
 // ---------- PWA (installable web app: manifest + service worker + icons) ----------
 const MANIFEST = {
@@ -138,11 +138,32 @@ async function currentUser(req){
   return u;
 }
 // public: sign in — identifier can be login_id OR email OR mobile
+// ---------- TOTP (RFC 6238) for authenticator-app 2FA ----------
+const _B32='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function b32encode(buf){ let bits='',out=''; for(const byte of buf){ bits+=byte.toString(2).padStart(8,'0'); } for(let i=0;i+5<=bits.length;i+=5){ out+=_B32[parseInt(bits.substr(i,5),2)]; } return out; }
+function b32decode(s){ s=String(s||'').toUpperCase().replace(/[^A-Z2-7]/g,''); let bits=''; for(const c of s){ const v=_B32.indexOf(c); if(v<0) continue; bits+=v.toString(2).padStart(5,'0'); } const bytes=[]; for(let i=0;i+8<=bits.length;i+=8){ bytes.push(parseInt(bits.substr(i,8),2)); } return Buffer.from(bytes); }
+function totpAt(secret, tstep){ const key=b32decode(secret); const buf=Buffer.alloc(8); let c=tstep; for(let i=7;i>=0;i--){ buf[i]=c&0xff; c=Math.floor(c/256); } const hmac=crypto.createHmac('sha1',key).update(buf).digest(); const off=hmac[hmac.length-1]&0xf; const bin=((hmac[off]&0x7f)<<24)|((hmac[off+1]&0xff)<<16)|((hmac[off+2]&0xff)<<8)|(hmac[off+3]&0xff); return String(bin%1000000).padStart(6,'0'); }
+function totpVerify(secret, code){ code=String(code||'').replace(/\D/g,''); if(code.length!==6||!secret) return false; const step=Math.floor(Date.now()/1000/30); for(let w=-1;w<=1;w++){ if(totpAt(secret, step+w)===code) return true; } return false; }
+function genTotpSecret(){ return b32encode(crypto.randomBytes(20)); }
+function genBackupCodes(n){ const codes=[]; for(let i=0;i<(n||8);i++){ codes.push(crypto.randomBytes(5).toString('hex')); } return codes; }
+
 app.post('/api/login', h(async (req,res)=>{
   const b=req.body||{};
   const idf=String(b.login_id||'').trim();
   const u=await q1('SELECT * FROM tt_user WHERE (lower(login_id)=lower(?) OR lower(email)=lower(?) OR mobile=?) AND active=1 LIMIT 1',[idf,idf,idf]);
   if(!u || !verifyPw(b.password, u.password_hash)){ res.status(401).json({error:'invalid credentials'}); return; }
+  // Two-factor: if this account has 2FA on, require a valid authenticator code (or a one-time backup code)
+  if(Number(u.totp_enabled)===1){
+    const code=String(b.code||'').replace(/\s/g,'');
+    if(!code){ res.status(401).json({error:'2FA code required', needs_2fa:true}); return; }
+    let ok=totpVerify(u.totp_secret, code);
+    if(!ok){
+      let bc=[]; try{ bc=JSON.parse(u.backup_codes||'[]'); }catch(_){ bc=[]; }
+      const idx=bc.findIndex(hc=>verifyPw(code.toLowerCase(), hc));
+      if(idx>=0){ ok=true; bc.splice(idx,1); await run('UPDATE tt_user SET backup_codes=? WHERE id=?',[JSON.stringify(bc), u.id]); }
+    }
+    if(!ok){ res.status(401).json({error:'Invalid 2FA code', needs_2fa:true}); return; }
+  }
   // a deactivated (inactive) school suspends all its users' logins — reactivate from the SaaS panel (platform owner not tied to a school, so unaffected)
   if(u.school_id){ const sch=await q1('SELECT active FROM tt_school WHERE id=?',[u.school_id]); if(sch && +sch.active===0){ res.status(403).json({error:'This school account is inactive. Please contact the administrator.'}); return; } }
   // Self-heal: a school must always have at least one Admin. If an accidental role change/deletion left it
@@ -671,14 +692,55 @@ app.put('/api/owner/user/:uid/role', h(async (req,res)=>{ if(!requireOwner(req,r
   await run('UPDATE tt_user SET role=? WHERE id=?',[role, uid]);
   res.json({ ok:true, role });
 }));
-// any signed-in user: update own profile (email + mobile)
+// any signed-in user: update own profile (email + mobile + optionally login ID)
 app.put('/api/me', h(async (req,res)=>{
   const b=req.body||{};
   const email=String(b.email||'').trim()||null, mobile=String(b.mobile||'').trim()||null;
   if(email && await q1('SELECT 1 FROM tt_user WHERE lower(email)=lower(?) AND id<>?',[email, req.user.id])){ res.status(400).json({error:'email already used by another account'}); return; }
   if(mobile && await q1('SELECT 1 FROM tt_user WHERE mobile=? AND id<>?',[mobile, req.user.id])){ res.status(400).json({error:'mobile already used by another account'}); return; }
+  let newLogin=null;
+  if(b.login_id!==undefined){
+    newLogin=String(b.login_id||'').trim();
+    if(!newLogin){ res.status(400).json({error:'login ID cannot be empty'}); return; }
+    if(await q1('SELECT 1 FROM tt_user WHERE lower(login_id)=lower(?) AND id<>?',[newLogin, req.user.id])){ res.status(400).json({error:'that login ID is already taken'}); return; }
+    await run('UPDATE tt_user SET login_id=? WHERE id=?',[newLogin, req.user.id]);
+  }
   await run('UPDATE tt_user SET email=?, mobile=? WHERE id=?',[email, mobile, req.user.id]);
-  res.json({ ok:true, email, mobile });
+  res.json({ ok:true, email, mobile, login_id:newLogin!==null?newLogin:req.user.login_id });
+}));
+// ---------- 2FA (authenticator app / TOTP) — for the signed-in account ----------
+app.get('/api/2fa/status', h(async (req,res)=>{
+  const u=await q1('SELECT totp_enabled FROM tt_user WHERE id=?',[req.user.id]);
+  res.json({ ok:true, enabled: !!(u && Number(u.totp_enabled)===1) });
+}));
+// step 1: create a fresh secret (not yet enabled) and return the otpauth URI for the QR
+app.post('/api/2fa/setup', h(async (req,res)=>{
+  const secret=genTotpSecret();
+  await run('UPDATE tt_user SET totp_secret=?, totp_enabled=0 WHERE id=?',[secret, req.user.id]);
+  const label=encodeURIComponent('Aumtara ('+(req.user.login_id||'owner')+')');
+  const otpauth='otpauth://totp/'+label+'?secret='+secret+'&issuer=Aumtara&period=30&digits=6&algorithm=SHA1';
+  res.json({ ok:true, secret, otpauth });
+}));
+// step 2: verify a code from the app, then turn 2FA on and hand back one-time backup codes
+app.post('/api/2fa/enable', h(async (req,res)=>{
+  const u=await q1('SELECT totp_secret FROM tt_user WHERE id=?',[req.user.id]);
+  if(!u || !u.totp_secret){ res.status(400).json({error:'Please start the setup first.'}); return; }
+  if(!totpVerify(u.totp_secret, (req.body||{}).code)){ res.status(400).json({error:'That code is wrong or expired — check your authenticator app and try again.'}); return; }
+  const codes=genBackupCodes(8);
+  const hashed=JSON.stringify(codes.map(c=>hashPw(c)));
+  await run('UPDATE tt_user SET totp_enabled=1, backup_codes=? WHERE id=?',[hashed, req.user.id]);
+  res.json({ ok:true, backup_codes:codes });
+}));
+// turn 2FA off (needs a current code or a backup code)
+app.post('/api/2fa/disable', h(async (req,res)=>{
+  const u=await q1('SELECT totp_secret,totp_enabled,backup_codes FROM tt_user WHERE id=?',[req.user.id]);
+  if(!u || Number(u.totp_enabled)!==1){ res.json({ ok:true }); return; }
+  const code=String((req.body||{}).code||'').replace(/\s/g,'');
+  let ok=totpVerify(u.totp_secret, code);
+  if(!ok){ let bc=[]; try{ bc=JSON.parse(u.backup_codes||'[]'); }catch(_){ bc=[]; } ok=bc.some(hc=>verifyPw(code.toLowerCase(),hc)); }
+  if(!ok){ res.status(400).json({error:'Enter a valid current code to turn 2FA off.'}); return; }
+  await run('UPDATE tt_user SET totp_enabled=0, totp_secret=NULL, backup_codes=NULL WHERE id=?',[req.user.id]);
+  res.json({ ok:true });
 }));
 // any signed-in user: change own password (needs current password)
 app.post('/api/me/password', h(async (req,res)=>{
