@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v97';
+const SW_JS = `const CACHE='aumtara-v98';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -900,6 +900,7 @@ app.put('/api/teachers/:id', h(async (req,res)=>{
   if(b.max_per_day!==undefined) await run('UPDATE tt_teacher SET max_per_day=? WHERE id=? AND school_id=?',[b.max_per_day||null, req.params.id, sid]);
   if(b.max_consecutive!==undefined) await run('UPDATE tt_teacher SET max_consecutive=? WHERE id=? AND school_id=?',[b.max_consecutive||null, req.params.id, sid]);
   if(b.can_substitute!==undefined) await run('UPDATE tt_teacher SET can_substitute=? WHERE id=? AND school_id=?',[b.can_substitute?1:0, req.params.id, sid]);
+  if(b.is_senior!==undefined) await run('UPDATE tt_teacher SET is_senior=? WHERE id=? AND school_id=?',[b.is_senior?1:0, req.params.id, sid]);
   if(b.designation!==undefined) await run('UPDATE tt_teacher SET designation=? WHERE id=? AND school_id=?',[b.designation||null, req.params.id, sid]);
   if(b.sanctioned_load!==undefined) await run('UPDATE tt_teacher SET sanctioned_load=? WHERE id=? AND school_id=?',[b.sanctioned_load||null, req.params.id, sid]);
   if(b.subjects!==undefined){ const subs=[]; const seen=new Set(); (b.subjects||[]).forEach(x=>{ if(!seen.has(x)){seen.add(x);subs.push(x);} }); if(b.main_subject_id&&!seen.has(+b.main_subject_id))subs.push(+b.main_subject_id); await setSubjects(+req.params.id, subs); }
@@ -1117,6 +1118,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const activeSet=new Set(subjects.map(s=>s.id));
   const dblSet=new Set(subjects.filter(s=>+s.double_period===1).map(s=>s.id));   // subjects to place as consecutive double periods (labs / lock-together)
   const coreSet=new Set(subjects.filter(s=>+s.is_core===1).map(s=>s.id));   // ⭐ core/main subjects (Math, Science, English…) → generator spreads them across days + biases them to morning slots; secondary/co-curricular subjects are unrestricted
+  const seniorClassSet=new Set(classes.filter(c=>{ const st=_stdOf(c.name); return st!=null && st>=9; }).map(c=>c.id));   // ⭐ senior classes (standard 9+, parsed from class name like DEO Reports does) → non-pinned teacher pick prefers a "Senior teacher" when tied on load
   const rooms=await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY id',[sid]);
   const tmap=await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
   const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
@@ -1182,11 +1184,12 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const cycleWeeks= rotMode(sid) ? 1 : Math.max(1,Math.min(4, parseInt(optCfg.cycle_weeks,10)||1));   // day-rotation uses a single week (days = rotation days)
   const dayList = workingDaysArr(sid);   // rotation mode → [0..rotDays-1]; else the school's working weekdays
   const slotCount={}; dayList.forEach(di=>{ slotCount[di]=teachingSlots(di,sid).length; });
-  const maxLoad={}, capDay={}, capCons={};
-  (await q('SELECT id,max_load,max_per_day,max_consecutive FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>{
+  const maxLoad={}, capDay={}, capCons={}, seniorT=new Set();
+  (await q('SELECT id,max_load,max_per_day,max_consecutive,is_senior FROM tt_teacher WHERE school_id=?',[sid])).forEach(t=>{
     maxLoad[t.id]=t.max_load||999;
     capDay[t.id]=(t.max_per_day&&t.max_per_day>0)?t.max_per_day:Infinity;
     capCons[t.id]=(t.max_consecutive&&t.max_consecutive>0)?t.max_consecutive:Infinity;
+    if(+t.is_senior===1) seniorT.add(t.id);   // ⭐ senior teacher → preferred (over an equally-loaded non-senior teacher) for senior-class (std 9+) assignments
   });
   const load={}, dayCount={}, lastPi={}, consRun={};   // per-teacher weekly/day counts + consecutive tracking
   const predRun=(t,di,pi)=> (lastPi[t+'_'+di]===pi-1 ? (consRun[t+'_'+di]||0)+1 : 1);   // consecutive run if placed at (di,pi)
@@ -1303,6 +1306,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
             opts.sort((a,b)=>{
               // LEAST-LOADED FIRST → a subject shared by many teachers (e.g. PT by Dharmesh & Bharat) is spread evenly instead of dumped on one.
               const d=(load[a]||0)-(load[b]||0); if(d) return d;
+              if(seniorClassSet.has(c.id)){ const sa=seniorT.has(a)?0:1, sb=seniorT.has(b)?0:1; if(sa!==sb) return sa-sb; }   // ⭐ tie on load, senior class (std 9+) → prefer the senior teacher
               const sp=(tsubSeq[a+'_'+subjId]??99)-(tsubSeq[b+'_'+subjId]??99); if(sp) return sp;   // tie → prefer the teacher whose higher-priority (main) subject it is
               if(optGap){ const ga=(lastPi[a+'_'+di]===pi-1?0:1), gb=(lastPi[b+'_'+di]===pi-1?0:1); if(ga!==gb) return ga-gb; }  // then fewer gaps
               return 0;
