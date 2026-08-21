@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v102';
+const SW_JS = `const CACHE='aumtara-v103';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -1270,8 +1270,16 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const toInsert=[];
   for(let wk=0; wk<cycleWeeks; wk++){                       // generate each week of the cycle independently
     clearState();
-    // ⭐ seed daySubs with already-LOCKED core subjects (e.g. the class-teacher P1 pin) so the "core subject max once/day" rule in pickSubject knows about them — otherwise a core subject that's also a CT-pin (or any other locked cell) could get placed a 2nd time that same day by the normal generator, since locked cells bypass commitPick entirely
-    lockedRows.forEach(r=>{ if((r.week_index||0)===wk && r.subject_id!=null && coreSet.has(r.subject_id)){ (daySubs[r.class_id+'_'+r.day_of_week]=daySubs[r.class_id+'_'+r.day_of_week]||new Set()).add(r.subject_id); } });
+    // NOTE: tried seeding daySubs from CT-pin/locked core-subject cells here (so the once/day rule "sees" the pin) — reverted.
+    // When the pinned subject is ITSELF core AND its quota exceeds the number of working days (common: the class teacher's
+    // subject is often the core vernacular language), this made the hard once/day rule unsatisfiable on EVERY day at once,
+    // so the forced-fallback placements (which pick by pool order, not by least-used day) clumped 3-4 extra periods onto
+    // whichever days still had space instead of spreading evenly — empirically WORSE than leaving the pin invisible to this
+    // rule, which lets the existing optSpread "fresh" preference keep doing its (already near-optimal) job. Verified against
+    // live data on 2026-08-21: without this seeding, an over-quota core subject spreads its 4 extra periods across 4 distinct
+    // days (max 2/day); WITH it, the same subject dumped 4 periods onto a single day. A real fix needs the tail-end "no rule
+    // satisfies → take pool[0]" fallback in pickSubject to pick the LEAST-USED day instead of pool order — bigger change,
+    // left for a future session.
     classes.forEach(c=>{ let pool=shuffleStable(poolFor(c.id,totalSlots), c.id + wk*1009).slice();   // vary shuffle per week so weeks differ
       const pp=ctPinPool[wk+'_'+c.id]; if(pp){ let n=pp.n; for(let i=pool.length-1;i>=0 && n>0;i--){ if(pool[i]===pp.subj){ pool.splice(i,1); n--; } } }   // the class-teacher P1 pins already cover n of this subject → drop from pool so quota total is exact
       remaining[c.id]=pool; });
