@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v96';
+const SW_JS = `const CACHE='aumtara-v97';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -835,7 +835,7 @@ function simpleCrud(route, tbl, cols){
   app.delete('/api/'+route+'/:id', h(async (req,res)=>{ await run(`DELETE FROM ${tbl} WHERE id=? AND school_id=?`, [req.params.id, req.sid]); res.json({ok:true}); }));
 }
 simpleCrud('classes','tt_class',['name','class_teacher_id','board','medium','standard','section','ct_first_period']);
-simpleCrud('subjects','tt_subject',['name','active','double_period','medium','color']);
+simpleCrud('subjects','tt_subject',['name','active','double_period','medium','color','is_core']);
 simpleCrud('rooms','tt_room',['name','capacity']);
 
 // ---------- SETUP READINESS (checklist %) ----------
@@ -1116,6 +1116,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const subjects=await q('SELECT * FROM tt_subject WHERE active=1 AND school_id=? ORDER BY id',[sid]);
   const activeSet=new Set(subjects.map(s=>s.id));
   const dblSet=new Set(subjects.filter(s=>+s.double_period===1).map(s=>s.id));   // subjects to place as consecutive double periods (labs / lock-together)
+  const coreSet=new Set(subjects.filter(s=>+s.is_core===1).map(s=>s.id));   // ⭐ core/main subjects (Math, Science, English…) → generator spreads them across days + biases them to morning slots; secondary/co-curricular subjects are unrestricted
   const rooms=await q('SELECT * FROM tt_room WHERE school_id=? ORDER BY id',[sid]);
   const tmap=await q('SELECT ts.* FROM tt_teacher_subject ts JOIN tt_teacher t ON t.id=ts.teacher_id WHERE t.school_id=?',[sid]);
   const quotas=await q('SELECT * FROM tt_quota WHERE school_id=?',[sid]);
@@ -1204,9 +1205,9 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     clsRules[c.id]={sameDay,notAdj};
   });
 
-  // per-class subject "weight" = weekly quota (higher = more core) for the morning-bias optimizer
+  // per-class subject "weight" = weekly quota (higher = more core) for the morning-bias optimizer, boosted for ⭐ core subjects so they always win the early-period tie-break over secondary/co-curricular subjects regardless of their quota count
   const subjWeight={};
-  classes.forEach(c=>{ const w={}; quotas.filter(x=>x.class_id===c.id).forEach(x=>{ w[x.subject_id]=(w[x.subject_id]||0)+(+x.per_week||0); }); subjWeight[c.id]=w; });
+  classes.forEach(c=>{ const w={}; quotas.filter(x=>x.class_id===c.id).forEach(x=>{ w[x.subject_id]=(w[x.subject_id]||0)+(+x.per_week||0); }); Object.keys(w).forEach(k=>{ if(coreSet.has(+k)) w[k]+=1000; }); subjWeight[c.id]=w; });
 
   // A subject is only scheduled if it has at least one teacher connected. Subjects with NO teacher are
   // ignored entirely (not counted, not placed) so extra/unstaffed subjects never leave blank cells.
@@ -1240,7 +1241,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   function pickSubject(cid,di,pi,usedT){
     const rem=remaining[cid]; if(!rem.length) return null;
     const R=clsRules[cid]; const ds=daySubs[cid+'_'+di]; const prev=prevSub[cid+'_'+di];
-    const ruleOk=(s)=>{ if(ds){ for(const x of ds){ if(R.sameDay.has(rkey(s,x))){ return false; } } }
+    const ruleOk=(s)=>{ if(ds){ for(const x of ds){ if(R.sameDay.has(rkey(s,x))){ return false; } } if(coreSet.has(s) && ds.has(s)) return false; }   // ⭐ core subjects: max once per day per class (falls back gracefully like any other rule if truly unavoidable)
       if(prev!=null && R.notAdj.has(rkey(s,prev))) return false; return true; };
     // rule-valid candidate indices; then prefer ones not yet placed today (spread)
     const cand=[]; for(let i=0;i<rem.length;i++){ if(ruleOk(rem[i])) cand.push(i); }
