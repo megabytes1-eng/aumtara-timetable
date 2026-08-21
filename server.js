@@ -54,7 +54,7 @@ const MANIFEST = {
     { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 };
-const SW_JS = `const CACHE='aumtara-v101';
+const SW_JS = `const CACHE='aumtara-v102';
 const SHELL=['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()).catch(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -1150,7 +1150,7 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
     }
   }
   // locked/pinned cells — preserved as-is; generator never schedules over them, avoids their teacher/room, and pre-counts their teacher load
-  const lockedRows = await q('SELECT class_id,day_of_week,period_index,week_index,teacher_id,room_id FROM tt_timetable WHERE school_id=? AND COALESCE(locked,0)=1',[sid]);
+  const lockedRows = await q('SELECT class_id,day_of_week,period_index,week_index,teacher_id,room_id,subject_id FROM tt_timetable WHERE school_id=? AND COALESCE(locked,0)=1',[sid]);
   const lockSlot=new Set(); const lockUseAt={}; const lockLoadWk={}; const seenLoad=new Set();
   lockedRows.forEach(r=>{ const w=r.week_index||0;
     lockSlot.add(w+'_'+r.class_id+'_'+r.day_of_week+'_'+r.period_index);
@@ -1270,6 +1270,8 @@ app.post('/api/timetable/auto-generate', h(async (req,res)=>{
   const toInsert=[];
   for(let wk=0; wk<cycleWeeks; wk++){                       // generate each week of the cycle independently
     clearState();
+    // ⭐ seed daySubs with already-LOCKED core subjects (e.g. the class-teacher P1 pin) so the "core subject max once/day" rule in pickSubject knows about them — otherwise a core subject that's also a CT-pin (or any other locked cell) could get placed a 2nd time that same day by the normal generator, since locked cells bypass commitPick entirely
+    lockedRows.forEach(r=>{ if((r.week_index||0)===wk && r.subject_id!=null && coreSet.has(r.subject_id)){ (daySubs[r.class_id+'_'+r.day_of_week]=daySubs[r.class_id+'_'+r.day_of_week]||new Set()).add(r.subject_id); } });
     classes.forEach(c=>{ let pool=shuffleStable(poolFor(c.id,totalSlots), c.id + wk*1009).slice();   // vary shuffle per week so weeks differ
       const pp=ctPinPool[wk+'_'+c.id]; if(pp){ let n=pp.n; for(let i=pool.length-1;i>=0 && n>0;i--){ if(pool[i]===pp.subj){ pool.splice(i,1); n--; } } }   // the class-teacher P1 pins already cover n of this subject → drop from pool so quota total is exact
       remaining[c.id]=pool; });
