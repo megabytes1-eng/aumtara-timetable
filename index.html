@@ -1672,7 +1672,7 @@ function mSubjectsView(){
      <input class="smed" list="medlist" title="${t('ph_medium')}" style="width:66px" value="${(s.medium||'').replace(/"/g,'&quot;')}" placeholder="${t('ph_medium')}" onchange="upd('subjects',${s.id},{medium:this.value})">
      <label class="chk" title="${t('subj_active_hint')}"><input type="checkbox" ${off?'':'checked'} onchange="upd('subjects',${s.id},{active:this.checked?1:0})">${off?t('subj_inactive'):t('subj_active')}</label>
      <label class="chk" title="${t('dbl_hint')}"><input type="checkbox" ${+s.double_period===1?'checked':''} onchange="upd('subjects',${s.id},{double_period:this.checked?1:0})">${t('dbl_label')}</label>
-     ${+s.is_core===1?`<span class="subchip" style="background:#eef2ff;color:#1F3864;font-weight:700" title="${t('core_hint')}">⭐ ${t('core_label').replace(/^⭐\s*/,'')}</span>`:''}
+     <label class="chk" title="${t('core_hint')}"><input type="checkbox" ${+s.is_core===1?'checked':''} onchange="upd('subjects',${s.id},{is_core:this.checked?1:0})">${t('core_label')}</label>
      <button class="ghost mini" title="Timetable box colour — click to change" onclick="colorEditId=(colorEditId===${s.id}?null:${s.id});render()" style="background:${subjCol(s.id).bg};border:1px solid var(--line);border-left:6px solid ${subjCol(s.id).ac};font-weight:700">🎨</button>
      <button class="ghost mini red" style="margin-left:auto" onclick="del('subjects',${s.id})">✕</button></div>${colorEditId===s.id?colorPalette(s.id):''}`;}).join('');
   // medium dropdown only when at least one medium actually exists (else it looks like it does nothing)
@@ -1713,6 +1713,7 @@ function addSubjectForm(){
       <label class="nf" style="font-size:11px;color:#1F2B57">${t('ph_medium')}<input id="ns_med" list="medlist" style="width:130px" placeholder="${t('ph_medium')}"></label>
       <label class="chk" title="${t('subj_active_hint')}" style="align-self:center;font-size:12.5px"><input type="checkbox" id="ns_active" checked>${t('subj_active')}</label>
       <label class="chk" title="${t('dbl_hint')}" style="align-self:center;font-size:12.5px"><input type="checkbox" id="ns_dbl">${t('dbl_label')}</label>
+      <label class="chk" title="${t('core_hint')}" style="align-self:center;font-size:12.5px"><input type="checkbox" id="ns_core">${t('core_label')}</label>
     </div>
     <div id="addsubmsg" style="margin-top:9px;font-size:12.5px;min-height:6px"></div>
     <div class="row" style="gap:8px;margin-top:8px">
@@ -1726,7 +1727,7 @@ async function saveNewSubject(){
   const msg=document.getElementById('addsubmsg');
   if(!name){if(msg){msg.style.color='#c0392b';msg.textContent='⚠ '+t('enter_name');}var n=document.getElementById('ns_name');if(n)n.focus();return;}
   const medEl=document.getElementById('ns_med');
-  const body={name:name,active:document.getElementById('ns_active').checked?1:0,double_period:document.getElementById('ns_dbl').checked?1:0,medium:(medEl&&medEl.value||'').trim()||null};   // is_core defaults to 0 (Secondary) in DB — set via the 🔀 Secondary Subjects panel after creating
+  const body={name:name,active:document.getElementById('ns_active').checked?1:0,double_period:document.getElementById('ns_dbl').checked?1:0,is_core:document.getElementById('ns_core').checked?1:0,medium:(medEl&&medEl.value||'').trim()||null};
   if(msg){msg.style.color='#5c6580';msg.textContent='⏳ '+t('saving');}
   const res=await api('POST','/api/subjects',body);
   if(!res||res.error){if(msg){msg.style.color='#c0392b';msg.textContent='⚠ '+((res&&res.error)||t('save_failed'));}showErr((res&&res.error)||t('save_failed'));return;}
